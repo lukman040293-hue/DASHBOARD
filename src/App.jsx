@@ -4621,7 +4621,7 @@ export default function App() {
                 
                 {/* JUDUL PEKERJAAN */}
                 <div className="min-w-0 flex-1 pr-2">
-                  <h2 className="text-xs md:text-sm lg:text-base font-normal uppercase tracking-tight text-slate-800 leading-snug line-clamp-2 w-full pointer-events-auto" title={String(projectData?.pekerjaan || 'JUDUL PEKERJAAN KONTRAK')}>
+                  <h2 className="text-[11px] md:text-xs lg:text-sm font-normal uppercase tracking-tight text-slate-800 leading-snug line-clamp-2 w-full pointer-events-auto" title={String(projectData?.pekerjaan || 'JUDUL PEKERJAAN KONTRAK')}>
                     {String(projectData?.pekerjaan || 'JUDUL PEKERJAAN KONTRAK')}
                   </h2>
                 </div>
