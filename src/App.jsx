@@ -4564,16 +4564,21 @@ export default function App() {
       )}
 
       <aside className={`${isSidebarOpen ? 'hidden md:flex w-56' : 'hidden'} border-r border-slate-200 flex-col bg-white shrink-0 shadow-sm relative z-[100] pointer-events-auto transition-all duration-300`}>
+        
+        {/* TOMBOL HIDE SIDEBAR PADA GARIS PEMBATAS DEKAT OVERVIEW */}
+        <button
+          onClick={() => setIsSidebarOpen(false)}
+          className="hidden md:flex absolute -right-3.5 top-[152px] p-1 bg-white border border-slate-200 rounded-full shadow-sm text-slate-400 hover:text-blue-600 hover:bg-blue-50 hover:scale-110 transition-all z-[200] cursor-pointer"
+          title="Sembunyikan Menu"
+        >
+          <ChevronLeft size={16} strokeWidth={2.5} />
+        </button>
+
         <div className="p-5">
-          {/* LOGO DI ATAS & TOMBOL HIDE */}
-          <div className="flex items-center justify-between mb-8 px-1">
-            <div className="flex items-center gap-2.5">
-              <Activity size={24} className="text-blue-600 shrink-0" />
-              <h1 className="text-lg font-black tracking-tight text-slate-800">Synx<span className="text-blue-500">Build</span></h1>
-            </div>
-            <button onClick={() => setIsSidebarOpen(false)} className="p-1.5 text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 shadow-sm" title="Sembunyikan Menu">
-              <ChevronLeft size={16} />
-            </button>
+          {/* LOGO DI ATAS */}
+          <div className="flex items-center gap-2.5 mb-8 px-1">
+            <Activity size={24} className="text-blue-600 shrink-0" />
+            <h1 className="text-lg font-black tracking-tight text-slate-800">Synx<span className="text-blue-500">Build</span></h1>
           </div>
 
           {/* TOMBOL KEMBALI DITURUNKAN SEJAJAR DENGAN PERSIAPAN */}
@@ -5440,12 +5445,15 @@ export default function App() {
                     <span className="text-[9px] font-bold text-slate-400 bg-white px-2 py-1 rounded border border-slate-200 flex items-center gap-1.5"><Save size={10} className="text-blue-500" /> Waktu Kerja & Lokasi otomatis tersimpan ke template rutinitas</span>
                   </div>
 
-                  <SurveyInputRow label="Tanggal Laporan & Lokasi">
-                    <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="space-y-4">
+                    <SurveyInputRow label="Lokasi Pekerjaan">
+                      <input type="text" value={dailyReportForm.lokasi} onChange={e => setDailyReportForm(p => ({ ...p, lokasi: e.target.value }))} placeholder="Nama Jalan, Titik Lokasi, atau STA (Opsional)" className="w-full p-3.5 rounded-xl border border-slate-200 bg-white text-sm font-normal text-slate-800 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all shadow-sm" />
+                    </SurveyInputRow>
+
+                    <SurveyInputRow label="Tanggal Laporan">
                       <input type="date" value={dailyReportForm.tanggal} onChange={e => setDailyReportForm(p => ({ ...p, tanggal: e.target.value }))} className="w-full sm:w-1/3 p-3.5 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all shadow-sm" required />
-                      <input type="text" value={dailyReportForm.lokasi} onChange={e => setDailyReportForm(p => ({ ...p, lokasi: e.target.value }))} placeholder="Nama Jalan, Titik Lokasi, atau STA (Opsional)" className="w-full p-3.5 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all shadow-sm" />
-                    </div>
-                  </SurveyInputRow>
+                    </SurveyInputRow>
+                  </div>
 
                   {dailyReportForm.shifts.map((shift, idx) => (
                     <div key={shift.id} className="relative bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
@@ -5602,7 +5610,7 @@ export default function App() {
                     value={dailyReportForm.catatan} 
                     onChange={e => setDailyReportForm(p => ({ ...p, catatan: e.target.value }))} 
                     placeholder="Tuliskan catatan, instruksi, kendala atau permasalahan (Opsional)... &#10;Note: Jika ada kata 'kendala' sistem akan otomatis menandai log dengan warna merah." 
-                    className="w-full p-2 outline-none text-sm font-bold text-slate-700 bg-transparent resize-y"
+                    className="w-full p-2 outline-none text-sm font-normal text-slate-700 bg-transparent resize-y"
                   ></textarea>
                 </div>
               </div>
@@ -5715,7 +5723,7 @@ export default function App() {
                       value={quickReportNote} 
                       onChange={e => setQuickReportNote(e.target.value)} 
                       placeholder="Ketik keterangan mengenai foto di atas, kondisi di lapangan, temuan, atau instruksi..." 
-                      className="w-full p-4 rounded-xl border border-slate-200 bg-white outline-none focus:border-emerald-500 text-sm font-bold shadow-sm"
+                      className="w-full p-4 rounded-xl border border-slate-200 bg-white outline-none focus:border-emerald-500 text-sm font-normal shadow-sm"
                       required
                     ></textarea>
                   </SurveyInputRow>
