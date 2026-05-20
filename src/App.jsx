@@ -4609,51 +4609,25 @@ export default function App() {
 
             <header className="px-4 py-3 md:px-6 md:py-4 flex flex-col gap-3 border-b border-slate-200 bg-white/50 backdrop-blur-md relative z-[100] shadow-sm shrink-0 pointer-events-auto">
               
-              {/* BARIS 1: JUDUL (Full Width) */}
-              <div className="flex items-start gap-2 md:gap-3 w-full">
+              {/* BARIS 1: KEMBALI, JUDUL & TOMBOL AKSI */}
+              <div className="flex justify-between items-center gap-2 md:gap-3 w-full">
                 
                 {/* TOMBOL KEMBALI MOBILE */}
-                <div className="md:hidden mt-0.5 shrink-0">
+                <div className="md:hidden shrink-0">
                   <button type="button" onClick={handleBackFromProject} className="p-2 bg-white border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-blue-600 transition-colors cursor-pointer block relative z-[99999] pointer-events-auto" title="Kembali ke Menu Utama">
                     <ArrowLeft size={18} />
                   </button>
                 </div>
                 
-                {/* JUDUL PEKERJAAN */}
+                {/* JUDUL PEKERJAAN (Akan mengalah dan truncate jika sempit) */}
                 <div className="min-w-0 flex-1 pr-2">
                   <h2 className="text-[11px] md:text-xs lg:text-sm font-normal uppercase tracking-tight text-slate-800 leading-snug truncate w-full pointer-events-auto" title={String(projectData?.pekerjaan || 'JUDUL PEKERJAAN KONTRAK')}>
                     {String(projectData?.pekerjaan || 'JUDUL PEKERJAAN KONTRAK')}
                   </h2>
                 </div>
-              </div>
 
-              {/* BARIS 2: TOGGLE, INFO TEKNIS & TOMBOL AKSI */}
-              <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 w-full">
-                
-                {/* KIRI: TOGGLE PHASE & INFO TEKNIS */}
-                <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
-                  {/* TOGGLE PHASE */}
-                  <div className="flex gap-1 p-1 bg-slate-100/80 w-max rounded-lg border border-slate-200/60 shadow-inner shrink-0">
-                    <button onClick={() => setDashboardMode('persiapan')} className={`px-4 py-2 text-[9px] md:text-[10px] font-black uppercase tracking-wider rounded-md transition-all ${currentPhase === 'persiapan' ? 'bg-white shadow-sm text-blue-600 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>Persiapan</button>
-                    <button onClick={() => setDashboardMode('pelaksanaan')} className={`px-4 py-2 text-[9px] md:text-[10px] font-black uppercase tracking-wider rounded-md transition-all ${currentPhase === 'pelaksanaan' ? 'bg-white shadow-sm text-blue-600 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>Pelaksanaan</button>
-                  </div>
-
-                  {/* INFO TEKNIS (Dikembalikan Solid) */}
-                  <div className="flex flex-wrap items-center gap-2">
-                     <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-3 py-2 rounded-lg shadow-sm text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                       <Ruler size={14} className="text-blue-500" /> Panjang: <span className="text-slate-800 font-black">{projectData?.panjang_rencana ? `${projectData.panjang_rencana} m` : '-'}</span>
-                     </div>
-                     <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-3 py-2 rounded-lg shadow-sm text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                       <Ruler size={14} className="rotate-90 text-amber-500" /> Lebar: <span className="text-slate-800 font-black">{projectData?.lebar_rencana ? `${projectData.lebar_rencana} m` : '-'}</span>
-                     </div>
-                     <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-3 py-2 rounded-lg shadow-sm text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                       <HardHat size={14} className="text-emerald-500 shrink-0" /> <span className="shrink-0">Saluran:</span> <span className="text-slate-800 font-black truncate max-w-[120px]" title={projectData?.jenis_model || '-'}>{projectData?.jenis_model || '-'}</span>
-                     </div>
-                  </div>
-                </div>
-                
-                {/* AKSI KANAN: Bell, Settings, Main Action */}
-                <div className="flex items-center gap-2 shrink-0 relative z-[99999] w-full xl:w-auto mt-2 xl:mt-0">
+                {/* AKSI KANAN: Bell, Settings, Main Action (Dipindah ke baris atas) */}
+                <div className="flex items-center gap-1.5 md:gap-2 shrink-0 relative z-[99999]">
                   <button type="button" onClick={() => setReadFeeds(new Set(safeFeeds.map(f => f.id)))} className="relative z-50 p-2 text-slate-400 hover:text-blue-600 transition-colors bg-white hover:bg-blue-50 rounded-xl shadow-sm border border-slate-200 cursor-pointer pointer-events-auto" title="Tandai semua log sudah dibaca">
                     <Bell size={16} />
                     {safeFeeds.filter(f => !readFeeds.has(f.id)).length > 0 && (
@@ -4668,11 +4642,38 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => currentPhase === 'persiapan' ? setShowUnifiedModal(true) : handleOpenReportModal()}
-                    className="flex-1 sm:flex-none bg-blue-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-bold uppercase flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors shadow-lg cursor-pointer relative z-50 pointer-events-auto"
+                    className="bg-blue-600 text-white px-3 py-2 md:px-5 md:py-2.5 rounded-xl text-[10px] font-bold uppercase flex items-center justify-center gap-1.5 md:gap-2 hover:bg-blue-700 transition-colors shadow-md cursor-pointer relative z-50 pointer-events-auto"
                   >
-                    {currentPhase === 'persiapan' ? <Plus size={16} /> : <Camera size={16} />}
-                    {currentPhase === 'persiapan' ? 'Input Survei' : 'Lapor Lapangan'}
+                    {currentPhase === 'persiapan' ? <Plus size={14} className="md:w-4 md:h-4" /> : <Camera size={14} className="md:w-4 md:h-4" />}
+                    <span className="hidden sm:inline">{currentPhase === 'persiapan' ? 'Input Survei' : 'Lapor Lapangan'}</span>
+                    <span className="sm:hidden">{currentPhase === 'persiapan' ? 'Survei' : 'Lapor'}</span>
                   </button>
+                </div>
+              </div>
+
+              {/* BARIS 2: TOGGLE & INFO TEKNIS */}
+              <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 w-full">
+                
+                {/* TOGGLE PHASE & INFO TEKNIS */}
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-3 w-full">
+                  {/* TOGGLE PHASE */}
+                  <div className="flex gap-1 p-1 bg-slate-100/80 w-max rounded-lg border border-slate-200/60 shadow-inner shrink-0">
+                    <button onClick={() => setDashboardMode('persiapan')} className={`px-4 py-2 text-[9px] md:text-[10px] font-black uppercase tracking-wider rounded-md transition-all ${currentPhase === 'persiapan' ? 'bg-white shadow-sm text-blue-600 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>Persiapan</button>
+                    <button onClick={() => setDashboardMode('pelaksanaan')} className={`px-4 py-2 text-[9px] md:text-[10px] font-black uppercase tracking-wider rounded-md transition-all ${currentPhase === 'pelaksanaan' ? 'bg-white shadow-sm text-blue-600 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>Pelaksanaan</button>
+                  </div>
+
+                  {/* INFO TEKNIS */}
+                  <div className="flex flex-wrap items-center gap-2">
+                     <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-3 py-2 rounded-lg shadow-sm text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                       <Ruler size={14} className="text-blue-500" /> Panjang: <span className="text-slate-800 font-black">{projectData?.panjang_rencana ? `${projectData.panjang_rencana} m` : '-'}</span>
+                     </div>
+                     <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-3 py-2 rounded-lg shadow-sm text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                       <Ruler size={14} className="rotate-90 text-amber-500" /> Lebar: <span className="text-slate-800 font-black">{projectData?.lebar_rencana ? `${projectData.lebar_rencana} m` : '-'}</span>
+                     </div>
+                     <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-3 py-2 rounded-lg shadow-sm text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                       <HardHat size={14} className="text-emerald-500 shrink-0" /> <span className="shrink-0">Saluran:</span> <span className="text-slate-800 font-black truncate max-w-[120px]" title={projectData?.jenis_model || '-'}>{projectData?.jenis_model || '-'}</span>
+                     </div>
+                  </div>
                 </div>
               </div>
 
