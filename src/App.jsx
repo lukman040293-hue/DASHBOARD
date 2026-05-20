@@ -1236,10 +1236,10 @@ const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBac
         <MasterMapView allProjects={allProjects} onSelectProject={onSelectProject} mapType={mapType} />
       </div>
 
-      {/* TOMBOL TOGGLE HIDE/SHOW UI (Diperbaiki area kliknya) */}
+      {/* TOMBOL TOGGLE HIDE/SHOW UI */}
       <button
         onClick={() => setIsUIHidden(!isUIHidden)}
-        className="absolute top-0 left-1/2 -translate-x-1/2 z-[99999] pointer-events-auto bg-white/40 backdrop-blur-lg hover:bg-white/60 text-slate-800 px-8 py-2 md:px-14 md:py-2.5 border-x border-b border-white/40 shadow-md rounded-b-2xl transition-all flex items-center justify-center group cursor-pointer block"
+        className="absolute top-0 left-1/2 -translate-x-1/2 z-[99999] pointer-events-auto bg-black/60 backdrop-blur-md hover:bg-black/80 text-white px-8 py-2 md:px-14 md:py-2.5 border-x border-b border-white/10 shadow-md rounded-b-2xl transition-all flex items-center justify-center group cursor-pointer block"
         title={isUIHidden ? "Tampilkan Menu Utama" : "Sembunyikan Menu (Layar Penuh)"}
       >
         {isUIHidden ? <ChevronDown size={20} className="md:w-6 md:h-6 group-hover:translate-y-1 transition-transform" /> : <ChevronUp size={20} className="md:w-6 md:h-6 group-hover:-translate-y-1 transition-transform" />}
@@ -1248,8 +1248,8 @@ const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBac
       {/* FLOATING HEADER */}
       <header className={`absolute top-4 left-4 right-4 md:top-8 md:left-6 md:right-6 z-20 flex justify-between items-start pointer-events-none transition-all duration-500 ease-in-out ${isUIHidden ? '-translate-y-32 opacity-0' : 'translate-y-0 opacity-100'}`}>
          <div className="flex flex-col gap-4 pointer-events-auto">
-            {/* Logo Area (Tanpa Tombol Laci - Hanya Ikon) */}
-            <div className="bg-white/40 backdrop-blur-lg p-3 rounded-3xl shadow-lg border border-white/40 flex items-center justify-center">
+            {/* Logo Area */}
+            <div className="bg-black/60 backdrop-blur-md p-3 rounded-3xl shadow-lg border border-white/10 flex items-center justify-center">
                <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-md shrink-0">
                  <Activity size={20} />
                </div>
@@ -1259,8 +1259,8 @@ const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBac
          {/* Action Buttons Right */}
          <div className="flex flex-col md:flex-row items-end md:items-center gap-2 md:gap-3 pointer-events-auto">
              
-             {/* Tombol Menu Utama dirapikan ke dalam antrean (Flex), tidak lagi menggunakan posisi absolute yang menimpa tombol lain */}
-             <button onClick={onBackToSelection} className="bg-white/40 backdrop-blur-lg text-slate-800 px-3 py-3 md:px-4 md:py-3.5 rounded-2xl text-[10px] md:text-xs font-black uppercase flex items-center gap-2 shadow-lg hover:bg-white/60 hover:text-blue-600 transition-colors border border-white/40" title="Kembali ke Menu Utama">
+             {/* Tombol Menu Utama */}
+             <button onClick={onBackToSelection} className="bg-black/60 backdrop-blur-md text-slate-200 px-3 py-3 md:px-4 md:py-3.5 rounded-2xl text-[10px] md:text-xs font-black uppercase flex items-center gap-2 shadow-lg hover:bg-black/80 hover:text-white transition-colors border border-white/10" title="Kembali ke Menu Utama">
                 <Grid size={16}/> <span className="hidden sm:inline">Menu Utama</span>
              </button>
 
@@ -1274,7 +1274,7 @@ const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBac
                   'carto': 'satellite'
                 };
                 setMapType(nextMap[mapType] || 'satellite');
-             }} className="bg-white/40 backdrop-blur-lg text-slate-800 px-3 py-3 md:px-4 md:py-3.5 rounded-2xl text-[10px] md:text-xs font-black uppercase flex items-center gap-2 shadow-lg hover:bg-white/60 hover:text-blue-600 transition-colors border border-white/40" title="Ganti Tampilan Peta">
+             }} className="bg-black/60 backdrop-blur-md text-slate-200 px-3 py-3 md:px-4 md:py-3.5 rounded-2xl text-[10px] md:text-xs font-black uppercase flex items-center gap-2 shadow-lg hover:bg-black/80 hover:text-white transition-colors border border-white/10" title="Ganti Tampilan Peta">
                 <MapIcon size={16}/> 
                 <span className="hidden sm:inline">
                    {mapType === 'satellite' ? 'Satelit (G)' : 
@@ -1291,38 +1291,14 @@ const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBac
          </div>
       </header>
 
-      {/* WIDGET RINGKASAN PROGRESS KESELURUHAN */}
+      {/* WIDGET RINGKASAN PROGRESS KESELURUHAN (SIMPLIFIED & DARK) */}
       <div className={`absolute bottom-6 left-4 md:left-6 z-20 pointer-events-none transition-all duration-500 ease-in-out ${isUIHidden ? 'translate-y-48 opacity-0' : 'translate-y-0 opacity-100'}`}>
-         <div className="bg-white/40 backdrop-blur-lg p-5 rounded-[24px] shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-white/40 pointer-events-auto flex flex-col gap-4 min-w-[240px]">
-            <div className="flex items-center gap-3 border-b border-slate-200/60 pb-3">
-               <div className="p-2 bg-emerald-100 text-emerald-600 rounded-xl shadow-inner shrink-0">
-                  <TrendingUp size={18} />
-               </div>
-               <div className="flex flex-col">
-                  <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider leading-tight">Progress Total</h3>
-                  <span className="text-[9px] font-bold text-slate-500 uppercase">Semua Proyek</span>
-               </div>
+         <div className="bg-black/70 backdrop-blur-md p-5 rounded-[20px] shadow-[0_8px_30px_rgba(0,0,0,0.3)] border border-white/10 pointer-events-auto flex flex-col gap-3 min-w-[260px] text-slate-200">
+            <div className="text-[11px] md:text-xs font-bold tracking-wide">
+               Total Pek/Total Kamar : <span className="text-blue-400 font-black text-base ml-1">{totalProjects}</span>
             </div>
-
-            <div className="grid grid-cols-2 gap-4 divide-x divide-slate-200/60">
-               <div className="flex flex-col">
-                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Kamar</span>
-                  <span className="text-2xl font-black text-slate-800 leading-none">{totalProjects}</span>
-               </div>
-               <div className="flex flex-col pl-4">
-                  <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-1">Pelaksanaan</span>
-                  <span className="text-2xl font-black text-blue-600 leading-none">{runningProjects}</span>
-               </div>
-            </div>
-
-            <div className="flex flex-col pt-2 border-t border-slate-200/60">
-               <div className="flex justify-between items-end mb-2">
-                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Rata-rata Fisik</span>
-                  <span className="text-sm font-black text-emerald-600 drop-shadow-sm">{avgProgress.toFixed(1)}%</span>
-               </div>
-               <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                  <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-1000" style={{ width: `${avgProgress}%` }}></div>
-               </div>
+            <div className="text-[11px] md:text-xs font-bold tracking-wide">
+               Total Progress Keseluruhan : <span className="text-emerald-400 font-black text-base ml-1">{avgProgress.toFixed(1)}%</span>
             </div>
          </div>
       </div>
@@ -2908,6 +2884,7 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
 const ProjectSelectionListView = ({ projects, onSelectProject, onBack, onAddProject, onDeleteProject }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('Semua'); // State baru untuk filter tab
+  const [showRekapModal, setShowRekapModal] = useState(false); // State Modal Rekap
 
   // UPDATE: Filter berdasarkan pencarian nama & filter tombol status
   const filteredProjects = projects.filter(p => {
@@ -2940,11 +2917,17 @@ const ProjectSelectionListView = ({ projects, onSelectProject, onBack, onAddProj
             <p className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Total {projects.length} Proyek Tersedia</p>
           </div>
         </div>
-        <div className="flex w-full md:w-auto gap-3">
+        <div className="flex w-full md:w-auto gap-2 md:gap-3 flex-wrap md:flex-nowrap">
            <div className="flex-1 md:w-64 flex items-center bg-slate-100 border border-slate-200 rounded-xl px-3 shadow-inner">
              <Search size={16} className="text-slate-400 shrink-0" />
              <input type="text" placeholder="Cari nama proyek..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full py-3 px-2 outline-none text-xs font-bold bg-transparent text-slate-700" />
            </div>
+           
+           {/* TOMBOL REKAP TOTAL */}
+           <button onClick={() => setShowRekapModal(true)} className="bg-blue-50 text-blue-600 border border-blue-100 px-4 py-3 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 shadow-sm hover:bg-blue-100 transition-all shrink-0">
+              <FileSpreadsheet size={16} /> <span className="hidden sm:inline">Rekap</span>
+           </button>
+
            <button onClick={onAddProject} className="bg-emerald-600 text-white px-4 py-3 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 shadow-md hover:bg-emerald-700 transition-all shrink-0">
               <Plus size={16} /> <span className="hidden sm:inline">Baru</span>
            </button>
@@ -3003,6 +2986,103 @@ const ProjectSelectionListView = ({ projects, onSelectProject, onBack, onAddProj
            )}
         </div>
       </div>
+
+      {/* MODAL REKAPITULASI KESELURUHAN PROYEK */}
+      {showRekapModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[5000] p-4">
+          <div className="bg-white rounded-[32px] p-6 md:p-8 w-full max-w-5xl shadow-2xl relative flex flex-col max-h-[90vh]">
+            <button onClick={() => setShowRekapModal(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-700 transition-colors bg-slate-100 rounded-full"><X size={20} /></button>
+            
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pr-12 border-b border-slate-100 pb-4 shrink-0">
+               <div>
+                  <h3 className="text-xl font-black text-slate-800 flex items-center gap-2"><FileSpreadsheet className="text-emerald-500" /> Rekapitulasi Keseluruhan Proyek</h3>
+                  <p className="text-xs text-slate-500 font-bold mt-1">Data total progres dan posisi termin terakhir untuk semua proyek</p>
+               </div>
+               <button onClick={() => {
+                  let csvContent = "data:text/csv;charset=utf-8,";
+                  csvContent += "No,Nama Pekerjaan,Status,Progress Fisik (%),Posisi Termin,Update Terakhir\n";
+                  projects.forEach((p, index) => {
+                    const prog = parseFloat(p.actual_progress || 0).toFixed(2);
+                    let termin = '1'; let tPct = '0';
+                    if ((p.termin_ke || '').toString().includes(',')) { [termin, tPct] = p.termin_ke.split(','); } else { termin = p.termin_ke || '1'; }
+                    const tglUpdate = p.updated_at ? new Date(p.updated_at).toLocaleDateString('id-ID') : (p.created_at ? new Date(p.created_at).toLocaleDateString('id-ID') : '-');
+                    const safeName = (p.pekerjaan || '').replace(/"/g, '""');
+                    csvContent += `"${index + 1}","${safeName}","${p.status}","${prog}","Termin ${termin} (${tPct}%)","${tglUpdate}"\n`;
+                  });
+                  const encodedUri = encodeURI(csvContent);
+                  const link = document.createElement("a");
+                  link.setAttribute("href", encodedUri);
+                  link.setAttribute("download", `Rekap_Proyek_${new Date().toLocaleDateString('id-ID').replace(/\//g,'-')}.csv`);
+                  document.body.appendChild(link);
+                  link.click(); document.body.removeChild(link);
+               }} className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase shadow-sm hover:bg-emerald-700 transition-all flex items-center gap-2 shrink-0">
+                  <Download size={14} /> Export CSV / Excel
+               </button>
+            </div>
+
+            <div className="flex-1 overflow-auto custom-scrollbar border border-slate-200 rounded-2xl">
+              <table className="w-full text-left border-collapse min-w-[800px]">
+                <thead className="bg-slate-50 sticky top-0 shadow-sm z-10">
+                  <tr className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
+                    <th className="p-4 border-b border-slate-200 w-12 text-center">No</th>
+                    <th className="p-4 border-b border-slate-200 max-w-[300px]">Nama Pekerjaan</th>
+                    <th className="p-4 border-b border-slate-200 text-center w-32">Status</th>
+                    <th className="p-4 border-b border-slate-200 text-center w-32">Progress Fisik</th>
+                    <th className="p-4 border-b border-slate-200 text-center w-40">Posisi Termin</th>
+                    <th className="p-4 border-b border-slate-200 text-center w-36">Update Terakhir</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {projects.length === 0 ? (
+                    <tr><td colSpan="6" className="p-10 text-center text-slate-400 font-bold text-xs">Belum ada proyek terdaftar.</td></tr>
+                  ) : (
+                    projects.map((p, idx) => {
+                      let termin = '1'; let tPct = '0';
+                      if ((p.termin_ke || '').toString().includes(',')) { [termin, tPct] = p.termin_ke.split(','); } else { termin = p.termin_ke || '1'; }
+                      const actualProg = parseFloat(p.actual_progress || 0);
+                      const isRunning = p.status === 'Running' || actualProg > 0;
+
+                      return (
+                        <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="p-4 text-center font-bold text-slate-400 text-xs">{idx + 1}</td>
+                          <td className="p-4">
+                            <div className="font-bold text-slate-800 text-xs line-clamp-2" title={p.pekerjaan}>{p.pekerjaan}</div>
+                          </td>
+                          <td className="p-4 text-center">
+                            <span className={`px-2 py-1 text-[9px] font-black uppercase tracking-widest rounded shadow-sm border ${isRunning ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                              {isRunning ? 'Pelaksanaan' : 'Persiapan'}
+                            </span>
+                          </td>
+                          <td className="p-4 text-center">
+                            <div className="flex flex-col items-center">
+                              <span className="font-black text-slate-800 text-sm">{actualProg.toFixed(1)}%</span>
+                              <div className="w-16 h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                                <div className={`h-full rounded-full ${isRunning ? 'bg-blue-500' : 'bg-slate-300'}`} style={{ width: `${actualProg}%` }}></div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-4 text-center">
+                             <div className="flex flex-col items-center">
+                                <span className="font-bold text-slate-800 text-xs">Termin {toRoman(termin)}</span>
+                                <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded mt-0.5 border border-slate-200">{tPct}% Terserap</span>
+                             </div>
+                          </td>
+                          <td className="p-4 text-center">
+                             <span className="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
+                               {p.updated_at ? new Date(p.updated_at).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'}) : (p.created_at ? new Date(p.created_at).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'}) : '-')}
+                             </span>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
