@@ -16,35 +16,7 @@ import {
 const SUPABASE_URL = 'https://hnxomovcwwjbtirupnao.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhueG9tb3Zjd3dqYnRpcnVwbmFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MTQzMDEsImV4cCI6MjA5MzQ5MDMwMX0.TTqrps9cuHfJKNS-fHNjmrX1nza7Ktp-wDfbIi8Jhlk';
 
-const SQL_QUERY = `CREATE TABLE IF NOT EXISTS projects (id UUID DEFAULT gen_random_uuid() PRIMARY KEY, pekerjaan TEXT NOT NULL, kegiatan TEXT, target_progress DECIMAL DEFAULT 0, actual_progress DECIMAL DEFAULT 0, status TEXT DEFAULT 'Running', termin_ke TEXT DEFAULT '1,0', panjang_rencana TEXT, lebar_rencana TEXT, jenis_model TEXT, dinas_data JSONB, kontraktor_data JSONB, konsultan_data JSONB, s_curve_data JSONB, rab_data JSONB, start_lat DECIMAL, start_lng DECIMAL, end_lat DECIMAL, end_lng DECIMAL, planned_path JSONB, actual_segments_data JSONB, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS field_reports (id UUID DEFAULT gen_random_uuid() PRIMARY KEY, project_id UUID REFERENCES projects(id) ON DELETE CASCADE, title TEXT NOT NULL, description TEXT, media_url TEXT, is_problem BOOLEAN DEFAULT false, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS documents (id UUID DEFAULT gen_random_uuid() PRIMARY KEY, project_id UUID REFERENCES projects(id) ON DELETE CASCADE, name TEXT NOT NULL, category TEXT DEFAULT 'Lainnya', size TEXT, file_url TEXT NOT NULL, status TEXT DEFAULT 'Pending', created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS attendances (id UUID DEFAULT gen_random_uuid() PRIMARY KEY, project_id UUID, employee_name TEXT, role TEXT, location_type TEXT, location_name TEXT, latitude DECIMAL, longitude DECIMAL, status TEXT, check_in_time TIMESTAMP WITH TIME ZONE DEFAULT NOW(), check_out_time TIMESTAMP WITH TIME ZONE, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());
-
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS panjang_rencana TEXT;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS lebar_rencana TEXT;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS jenis_model TEXT;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS start_lat DECIMAL;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS start_lng DECIMAL;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS end_lat DECIMAL;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS end_lng DECIMAL;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS planned_path JSONB;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS actual_segments_data JSONB;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS rab_data JSONB;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS name TEXT;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS item_utama_data JSONB;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS schedule_data JSONB;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS waktu_pelaksanaan TEXT;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS doc_categories JSONB;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS report_template_data JSONB;
-
--- Perbaikan tipe data untuk mendukung nilai desimal pada progress (S-Curve)
-ALTER TABLE projects ALTER COLUMN actual_progress TYPE DECIMAL USING actual_progress::numeric;
-ALTER TABLE projects ALTER COLUMN target_progress TYPE DECIMAL USING target_progress::numeric;
-
-CREATE TABLE IF NOT EXISTS karyawan (id UUID DEFAULT gen_random_uuid() PRIMARY KEY, employee_id TEXT UNIQUE NOT NULL, name TEXT NOT NULL, role TEXT NOT NULL, pin TEXT NOT NULL, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());
-`;
+// SQL_QUERY dihapus untuk Keamanan (Mencegah SQL Injection dari frontend)
 
 const INITIAL_AKTIVITAS = [
   { nama: 'Pek. Galian tanah', kemarin: '', hariIni: '', satuan: 'm' },
@@ -1244,10 +1216,10 @@ const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBac
       {/* TOMBOL TOGGLE HIDE/SHOW UI */}
       <button
         onClick={() => setIsUIHidden(!isUIHidden)}
-        className="absolute top-0 left-1/2 -translate-x-1/2 z-[99999] pointer-events-auto bg-black/60 backdrop-blur-md hover:bg-black/80 text-white px-8 py-2 md:px-14 md:py-2.5 border-x border-b border-white/10 shadow-md rounded-b-2xl transition-all flex items-center justify-center group cursor-pointer block"
+        className="absolute top-0 left-1/2 -translate-x-1/2 z-[99999] pointer-events-auto bg-black/60 backdrop-blur-md hover:bg-black/80 text-white px-4 py-1 md:px-8 md:py-1.5 border-x border-b border-white/10 shadow-md rounded-b-xl transition-all flex items-center justify-center group cursor-pointer block"
         title={isUIHidden ? "Tampilkan Menu Utama" : "Sembunyikan Menu (Layar Penuh)"}
       >
-        {isUIHidden ? <ChevronDown size={20} className="md:w-6 md:h-6 group-hover:translate-y-1 transition-transform" /> : <ChevronUp size={20} className="md:w-6 md:h-6 group-hover:-translate-y-1 transition-transform" />}
+        {isUIHidden ? <ChevronDown size={16} className="md:w-5 md:h-5 group-hover:translate-y-1 transition-transform" /> : <ChevronUp size={16} className="md:w-5 md:h-5 group-hover:-translate-y-1 transition-transform" />}
       </button>
 
       {/* FLOATING HEADER */}
@@ -2737,12 +2709,12 @@ const ContractTable = ({ title, icon, dataArray, colorClass, bgClass }) => {
 
 // --- VIEW BARU: HALAMAN LOGIN ---
 const LoginView = ({ onLogin, error, isProcessing }) => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onLogin(username, password);
+    onLogin(email, password);
   };
 
   return (
@@ -2772,7 +2744,7 @@ const LoginView = ({ onLogin, error, isProcessing }) => {
           <div>
              <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400"><User size={18} /></div>
-                <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Username" className="w-full pl-11 pr-4 py-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-sm font-bold outline-none focus:border-blue-500 focus:bg-white transition-all" required />
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email Terdaftar" className="w-full pl-11 pr-4 py-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-sm font-bold outline-none focus:border-blue-500 focus:bg-white transition-all" required />
              </div>
           </div>
           <div>
@@ -2802,10 +2774,10 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
       {/* TOMBOL TOGGLE HIDE/SHOW UI (Diperbaiki area kliknya) */}
       <button
         onClick={() => setIsUIHidden(!isUIHidden)}
-        className="absolute top-0 left-1/2 -translate-x-1/2 z-[99999] pointer-events-auto bg-white/10 backdrop-blur-md hover:bg-white/20 text-slate-300 hover:text-white px-8 py-2 md:px-14 md:py-2.5 border-x border-b border-white/10 shadow-md rounded-b-2xl transition-all flex items-center justify-center group cursor-pointer block"
+        className="absolute top-0 left-1/2 -translate-x-1/2 z-[99999] pointer-events-auto bg-white/10 backdrop-blur-md hover:bg-white/20 text-slate-300 hover:text-white px-4 py-1 md:px-8 md:py-1.5 border-x border-b border-white/10 shadow-md rounded-b-xl transition-all flex items-center justify-center group cursor-pointer block"
         title={isUIHidden ? "Tampilkan Header" : "Sembunyikan Header"}
       >
-        {isUIHidden ? <ChevronDown size={20} className="md:w-6 md:h-6 group-hover:translate-y-1 transition-transform" /> : <ChevronUp size={20} className="md:w-6 md:h-6 group-hover:-translate-y-1 transition-transform" />}
+        {isUIHidden ? <ChevronDown size={16} className="md:w-5 md:h-5 group-hover:translate-y-1 transition-transform" /> : <ChevronUp size={16} className="md:w-5 md:h-5 group-hover:-translate-y-1 transition-transform" />}
       </button>
 
       {/* Header */}
@@ -3028,7 +3000,6 @@ export default function App() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [showUnifiedModal, setShowUnifiedModal] = useState(false);
   const [showSCurveModal, setShowSCurveModal] = useState(false);
-  const [showSQLModal, setShowSQLModal] = useState(false);
   const [showDocModal, setShowDocModal] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
@@ -3090,28 +3061,74 @@ export default function App() {
   const [themeSetting, setThemeSetting] = useState('auto');
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  // --- LOGIKA LOGIN SEDERHANA ---
-  const handleLogin = (username, password) => {
+  // --- KUNCI KE FONT WINDOWS (SEGOE UI / ARIAL) ---
+  useEffect(() => {
+    let fontEl = document.getElementById('windows-font-style');
+    if (!fontEl) {
+      fontEl = document.createElement('style');
+      fontEl.id = 'windows-font-style';
+      fontEl.innerHTML = `
+        html, body, .font-sans, h1, h2, h3, h4, h5, p, span, div, button, input, select, textarea, td, th {
+           font-family: "Segoe UI", Arial, Tahoma, sans-serif !important;
+        }
+        .font-mono {
+           font-family: Consolas, "Courier New", monospace !important;
+        }
+      `;
+      document.head.appendChild(fontEl);
+    }
+    return () => { if (fontEl) fontEl.remove(); };
+  }, []);
+
+  // --- LOGIKA LOGIN SUPABASE AUTH (AMAN) ---
+  const handleLogin = async (email, password) => {
      setIsProcessing(true);
      setAuthError('');
-     // Simulasi delay login
-     setTimeout(() => {
-        if (username === 'm' && password === '1') {
-           setIsLoggedIn(true);
-           setAppMode('selection'); // Setelah login sukses, arahkan ke Gerbang Pemilihan
-        } else {
-           setAuthError('Username atau Password salah!');
-        }
+     try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+          email: email,
+          password: password,
+        });
+        if (error) throw error;
+        // Jika sukses, onAuthStateChange akan menangani perubahan state
+     } catch (err) {
+        setAuthError(err.message === 'Invalid login credentials' ? 'Email atau Password salah!' : err.message);
+     } finally {
         setIsProcessing(false);
-     }, 1000);
+     }
   };
 
-  const handleLogout = () => {
-     setIsLoggedIn(false);
-     setAppMode('login');
-     setProjectData(null);
-     setReadFeeds(new Set());
+  const handleLogout = async () => {
+     await supabaseClient.auth.signOut();
+     // State direset oleh onAuthStateChange
   };
+
+  // Efek untuk memantau status login dari Supabase
+  useEffect(() => {
+    if (!supabaseClient) return;
+
+    // Cek sesi saat pertama kali dimuat
+    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setIsLoggedIn(true);
+        if (appMode === 'login') setAppMode('selection');
+      }
+    });
+
+    // Dengarkan perubahan login/logout
+    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session);
+      if (session) {
+         if (appMode === 'login') setAppMode('selection');
+      } else {
+         setAppMode('login');
+         setProjectData(null);
+         setReadFeeds(new Set());
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabaseClient, appMode]);
 
   useEffect(() => {
     let styleEl = document.getElementById('dark-mode-style');
@@ -4699,7 +4716,6 @@ export default function App() {
              <button onClick={() => setThemeSetting('auto')} className={`flex-1 py-2 flex justify-center rounded-lg transition-all ${themeSetting === 'auto' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`} title="Otomatis Sesuai Jam"><Clock size={14} /></button>
              <button onClick={() => setThemeSetting('dark')} className={`flex-1 py-2 flex justify-center rounded-lg transition-all ${themeSetting === 'dark' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`} title="Mode Gelap"><Moon size={14} /></button>
           </div>
-          <button onClick={() => setShowSQLModal(true)} className="w-full bg-slate-50 py-3 rounded-xl text-[9px] font-bold uppercase flex justify-center items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors"><Database size={14} /> DB Setup</button>
         </div>
       </aside>
 
@@ -6035,19 +6051,6 @@ export default function App() {
               <button onClick={() => setDeleteConfig(null)} className="flex-1 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors">Batal</button>
               <button onClick={confirmDeleteData} disabled={isProcessing} className="flex-1 py-3.5 bg-rose-500 text-white rounded-xl text-sm font-bold hover:bg-rose-600 transition-colors shadow-md">{isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Ya, Hapus'}</button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {showSQLModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[2000] p-4">
-          <div className="bg-white rounded-[32px] p-6 md:p-8 w-full max-w-2xl shadow-2xl relative">
-            <button onClick={() => setShowSQLModal(false)} className="absolute top-6 right-6 p-2"><X size={20} /></button>
-            <h3 className="text-lg font-black mb-6">Setup Database</h3>
-            <div className="bg-slate-900 rounded-2xl p-4 text-[10px] text-emerald-400 font-mono overflow-y-auto h-64">
-              {SQL_QUERY}
-            </div>
-            <button onClick={() => copyToClipboard(SQL_QUERY)} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-xl font-bold">Copy SQL</button>
           </div>
         </div>
       )}
