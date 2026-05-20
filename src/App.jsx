@@ -2503,6 +2503,13 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg }) => {
                   const ptStart = window.L.latLng(coords[0][0], coords[0][1]);
                   const ptEnd = window.L.latLng(coords[i][0], coords[i][1]);
                   closeDist = ptStart.distanceTo(ptEnd);
+                  
+                  // Menambahkan label jarak untuk garis penutup (closing segment) pada Poligon
+                  window.L.marker([(ptStart.lat + ptEnd.lat) / 2, (ptStart.lng + ptEnd.lng) / 2], {
+                      interactive: false,
+                      zIndexOffset: 200,
+                      icon: createDistLabel(closeDist > 1000 ? `${(closeDist / 1000).toFixed(2)} km` : `${Math.round(closeDist)} m`, false, pathObj.color || '#10b981')
+                  }).addTo(routeLayerRef.current);
               }
               const finalDist = segmentTotalDist + closeDist;
               window.L.marker([coords[i][0], coords[i][1]], { interactive: false, zIndexOffset: 200, icon: createDistLabel(finalDist > 1000 ? `${(finalDist / 1000).toFixed(2)} km` : `${Math.round(finalDist)} m${isPolygon?' (Keliling)':''}`, true, pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')) }).addTo(routeLayerRef.current);
