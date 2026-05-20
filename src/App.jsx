@@ -38,6 +38,11 @@ ALTER TABLE projects ADD COLUMN IF NOT EXISTS schedule_data JSONB;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS waktu_pelaksanaan TEXT;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS doc_categories JSONB;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS report_template_data JSONB;
+
+-- Perbaikan tipe data untuk mendukung nilai desimal pada progress (S-Curve)
+ALTER TABLE projects ALTER COLUMN actual_progress TYPE DECIMAL USING actual_progress::numeric;
+ALTER TABLE projects ALTER COLUMN target_progress TYPE DECIMAL USING target_progress::numeric;
+
 CREATE TABLE IF NOT EXISTS karyawan (id UUID DEFAULT gen_random_uuid() PRIMARY KEY, employee_id TEXT UNIQUE NOT NULL, name TEXT NOT NULL, role TEXT NOT NULL, pin TEXT NOT NULL, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());
 `;
 
@@ -2780,11 +2785,6 @@ const LoginView = ({ onLogin, error, isProcessing }) => {
             {isProcessing ? <Loader2 size={18} className="animate-spin" /> : 'LOGIN'}
           </button>
         </form>
-
-        <div className="mt-8 text-center border-t border-slate-100 pt-6 w-full">
-           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Kredensial Demo:</p>
-           <p className="text-[10px] text-slate-500 mt-1.5 font-bold">User: <span className="text-slate-800 font-black">m</span> | Pass: <span className="text-slate-800 font-black">1</span></p>
-        </div>
       </div>
     </div>
   );
@@ -3530,21 +3530,8 @@ export default function App() {
       }
       setSCurveData(parsedData);
 
-      // 2. Kalkulasi Progress Fisik Otomatis & Auto Status
-      let calculatedProgress = 0;
-      if (editProjectForm.item_utama_data && editProjectForm.item_utama_data.length > 0) {
-        let totalBobot = 0;
-        let weightedProgress = 0;
-        editProjectForm.item_utama_data.forEach(item => {
-          const bobot = parseFloat(String(item.bobot || '0').replace(',', '.')) || 0;
-          const persen = parseFloat(String(item.persen || '0').replace(',', '.')) || 0;
-          totalBobot += bobot;
-          weightedProgress += (bobot * (persen / 100));
-        });
-        if (totalBobot > 0) {
-          calculatedProgress = (weightedProgress / totalBobot) * 100;
-        }
-      }
+      // 2. Kalkulasi Progress Fisik Otomatis & Auto Status (Dari Realisasi Kurva S)
+      let calculatedProgress = lastValidA || 0;
       const autoStatus = (editProjectForm.status === 'Running' || calculatedProgress > 0) ? 'Running' : editProjectForm.status;
 
       // 3. Menyimpan Semuanya Sekaligus
@@ -4102,8 +4089,21 @@ export default function App() {
       }
       setSCurveData(parsedData); setShowSCurveModal(false);
       if (projectData) {
-        const { error } = await supabaseClient.from('projects').update({ s_curve_data: parsedData, updated_at: new Date().toISOString() }).eq('id', projectData.id);
+        // PERBAIKAN: Kalkulasi nilai realisasi terakhir dan simpan juga ke kolom actual_progress
+        const calculatedProgress = lastValidA || 0;
+        const { error } = await supabaseClient.from('projects').update({ 
+            s_curve_data: parsedData, 
+            actual_progress: parseFloat(calculatedProgress.toFixed(2)),
+            updated_at: new Date().toISOString() 
+        }).eq('id', projectData.id);
         if (error) throw error;
+        
+        // Update state lokal agar UI langsung berubah tanpa perlu refresh
+        setProjectData(prev => ({ 
+            ...prev, 
+            s_curve_data: parsedData, 
+            actual_progress: parseFloat(calculatedProgress.toFixed(2)) 
+        }));
       }
       showMsg("Grafik Berhasil Disinkronkan!", "success");
     } catch (err) { showMsg("Error menyimpan Kurva S: " + err.message, "error"); } finally { setIsProcessing(false); }
@@ -5430,6 +5430,11 @@ export default function App() {
               <div><label className="text-[10px] font-bold block mb-1">Posisi Termin (Ke)</label><input type="text" className="w-full p-3 rounded-xl border bg-slate-50 outline-none focus:border-blue-400" value={editProjectForm.termin_ke} onChange={e => setEditProjectForm({ ...editProjectForm, termin_ke: e.target.value })} /></div>
               
               <div><label className="text-[10px] font-bold block mb-1">Persentase (%)</label><input type="number" step="0.01" className="w-full p-3 rounded-xl border bg-slate-50 outline-none focus:border-blue-400" value={editProjectForm.termin_persen} onChange={e => setEditProjectForm({ ...editProjectForm, termin_persen: e.target.value })} /></div>
+              
+              <div><label className="text-[10px] font-bold block mb-1">Progress Fisik (%) - Dari Kurva S</label><input type="text" className="w-full p-3 rounded-xl border border-transparent bg-slate-200 text-slate-500 font-bold outline-none cursor-not-allowed shadow-inner" value={(() => {
+                const cleanActual = String(sCurveForm.actual || '').replace(/\s+/g, '').replace(/,/g, '.').split('-').filter(Boolean);
+                return cleanActual.length > 0 ? (parseFloat(cleanActual[cleanActual.length - 1]) || 0) : 0;
+              })()} readOnly title="Otomatis diambil dari Realisasi Kurva S di bagian bawah form" /></div>
               
               <div><label className="text-[10px] font-bold block mb-1">Waktu Pelaksanaan (Hari)</label><input type="number" className="w-full p-3 rounded-xl border bg-slate-50 outline-none focus:border-blue-400" value={editProjectForm.waktu_pelaksanaan} onChange={e => setEditProjectForm({ ...editProjectForm, waktu_pelaksanaan: e.target.value })} placeholder="0" /></div>
               
