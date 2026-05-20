@@ -1216,7 +1216,7 @@ return (
   );
 };
 
-const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBackToSelection }) => {
+const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBackToSelection, onViewRekap }) => {
   // State untuk kontrol peta induk
   const [mapType, setMapType] = useState(() => localStorage.getItem('master_mapType') || 'satellite');
   const [isUIHidden, setIsUIHidden] = useState(true);
@@ -1283,6 +1283,10 @@ const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBac
                     mapType === 'esri' ? 'Esri Satelit' : 
                     mapType === 'carto' ? 'CartoDB' : 'Peta'}
                 </span>
+             </button>
+
+             <button onClick={onViewRekap} className="bg-amber-500 text-white px-3 py-3 md:px-4 md:py-3.5 rounded-2xl text-[10px] md:text-xs font-black uppercase flex items-center gap-2 shadow-lg hover:bg-amber-600 hover:scale-105 transition-all border border-amber-400" title="Rekap Semua Data Proyek">
+                <FileSpreadsheet size={16} /> <span className="hidden sm:inline">Rekap Data</span>
              </button>
 
              <button onClick={onAddProject} className="bg-blue-600 text-white px-3 py-3 md:px-4 md:py-3.5 rounded-2xl text-[10px] md:text-xs font-black uppercase flex items-center gap-2 shadow-lg hover:bg-blue-700 hover:scale-105 transition-all border border-blue-500">
@@ -2787,7 +2791,7 @@ const LoginView = ({ onLogin, error, isProcessing }) => {
 };
 
 // --- VIEW BARU: GERBANG PEMILIHAN MODE ---
-const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddProject, onLogout, onViewAbsensi }) => {
+const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddProject, onLogout, onViewAbsensi, onViewRekap }) => {
   // State untuk menyimpan ID proyek yang dipilih pada dropdown
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [isUIHidden, setIsUIHidden] = useState(true);
@@ -2816,6 +2820,9 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
           </div>
         </div>
         <div className="flex items-center gap-2 md:gap-3">
+          <button onClick={onViewRekap} className="p-3 bg-amber-500/20 text-amber-400 rounded-xl hover:bg-amber-500/30 hover:text-amber-300 transition-colors flex items-center justify-center shadow-sm backdrop-blur-md border border-amber-500/20" title="Rekap Semua Proyek">
+             <FileSpreadsheet size={20} />
+          </button>
           <button onClick={onSelectMaster} className="p-3 bg-blue-500/20 text-blue-400 rounded-xl hover:bg-blue-500/30 hover:text-blue-300 transition-colors flex items-center justify-center shadow-sm backdrop-blur-md border border-blue-500/20" title="Buka Peta Induk">
              <Globe2 size={20} />
           </button>
@@ -2881,10 +2888,9 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
 };
 
 // --- VIEW BARU: DAFTAR PILIH KAMAR PROYEK ---
-const ProjectSelectionListView = ({ projects, onSelectProject, onBack, onAddProject, onDeleteProject }) => {
+const ProjectSelectionListView = ({ projects, onSelectProject, onBack, onAddProject, onDeleteProject, onViewRekap }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('Semua'); // State baru untuk filter tab
-  const [showRekapModal, setShowRekapModal] = useState(false); // State Modal Rekap
 
   // UPDATE: Filter berdasarkan pencarian nama & filter tombol status
   const filteredProjects = projects.filter(p => {
@@ -2920,15 +2926,15 @@ const ProjectSelectionListView = ({ projects, onSelectProject, onBack, onAddProj
         <div className="flex w-full md:w-auto gap-2 md:gap-3 flex-wrap md:flex-nowrap">
            <div className="flex-1 md:w-64 flex items-center bg-slate-100 border border-slate-200 rounded-xl px-3 shadow-inner">
              <Search size={16} className="text-slate-400 shrink-0" />
-             <input type="text" placeholder="Cari nama proyek..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full py-3 px-2 outline-none text-xs font-bold bg-transparent text-slate-700" />
-           </div>
-           
-           {/* TOMBOL REKAP TOTAL */}
-           <button onClick={() => setShowRekapModal(true)} className="bg-blue-50 text-blue-600 border border-blue-100 px-4 py-3 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 shadow-sm hover:bg-blue-100 transition-all shrink-0">
-              <FileSpreadsheet size={16} /> <span className="hidden sm:inline">Rekap</span>
-           </button>
+           <input type="text" placeholder="Cari nama proyek..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full py-3 px-2 outline-none text-xs font-bold bg-transparent text-slate-700" />
+         </div>
+         
+         {/* TOMBOL REKAP TOTAL */}
+         <button onClick={onViewRekap} className="bg-amber-50 text-amber-600 border border-amber-200 px-4 py-3 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 shadow-sm hover:bg-amber-100 transition-all shrink-0">
+            <FileSpreadsheet size={16} /> <span className="hidden sm:inline">Rekap Data</span>
+         </button>
 
-           <button onClick={onAddProject} className="bg-emerald-600 text-white px-4 py-3 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 shadow-md hover:bg-emerald-700 transition-all shrink-0">
+         <button onClick={onAddProject} className="bg-emerald-600 text-white px-4 py-3 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 shadow-md hover:bg-emerald-700 transition-all shrink-0">
               <Plus size={16} /> <span className="hidden sm:inline">Baru</span>
            </button>
         </div>
@@ -2987,102 +2993,6 @@ const ProjectSelectionListView = ({ projects, onSelectProject, onBack, onAddProj
         </div>
       </div>
 
-      {/* MODAL REKAPITULASI KESELURUHAN PROYEK */}
-      {showRekapModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[5000] p-4">
-          <div className="bg-white rounded-[32px] p-6 md:p-8 w-full max-w-5xl shadow-2xl relative flex flex-col max-h-[90vh]">
-            <button onClick={() => setShowRekapModal(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-700 transition-colors bg-slate-100 rounded-full"><X size={20} /></button>
-            
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pr-12 border-b border-slate-100 pb-4 shrink-0">
-               <div>
-                  <h3 className="text-xl font-black text-slate-800 flex items-center gap-2"><FileSpreadsheet className="text-emerald-500" /> Rekapitulasi Keseluruhan Proyek</h3>
-                  <p className="text-xs text-slate-500 font-bold mt-1">Data total progres dan posisi termin terakhir untuk semua proyek</p>
-               </div>
-               <button onClick={() => {
-                  let csvContent = "data:text/csv;charset=utf-8,";
-                  csvContent += "No,Nama Pekerjaan,Status,Progress Fisik (%),Posisi Termin,Update Terakhir\n";
-                  projects.forEach((p, index) => {
-                    const prog = parseFloat(p.actual_progress || 0).toFixed(2);
-                    let termin = '1'; let tPct = '0';
-                    if ((p.termin_ke || '').toString().includes(',')) { [termin, tPct] = p.termin_ke.split(','); } else { termin = p.termin_ke || '1'; }
-                    const tglUpdate = p.updated_at ? new Date(p.updated_at).toLocaleDateString('id-ID') : (p.created_at ? new Date(p.created_at).toLocaleDateString('id-ID') : '-');
-                    const safeName = (p.pekerjaan || '').replace(/"/g, '""');
-                    csvContent += `"${index + 1}","${safeName}","${p.status}","${prog}","Termin ${termin} (${tPct}%)","${tglUpdate}"\n`;
-                  });
-                  const encodedUri = encodeURI(csvContent);
-                  const link = document.createElement("a");
-                  link.setAttribute("href", encodedUri);
-                  link.setAttribute("download", `Rekap_Proyek_${new Date().toLocaleDateString('id-ID').replace(/\//g,'-')}.csv`);
-                  document.body.appendChild(link);
-                  link.click(); document.body.removeChild(link);
-               }} className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase shadow-sm hover:bg-emerald-700 transition-all flex items-center gap-2 shrink-0">
-                  <Download size={14} /> Export CSV / Excel
-               </button>
-            </div>
-
-            <div className="flex-1 overflow-auto custom-scrollbar border border-slate-200 rounded-2xl">
-              <table className="w-full text-left border-collapse min-w-[800px]">
-                <thead className="bg-slate-50 sticky top-0 shadow-sm z-10">
-                  <tr className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
-                    <th className="p-4 border-b border-slate-200 w-12 text-center">No</th>
-                    <th className="p-4 border-b border-slate-200 max-w-[300px]">Nama Pekerjaan</th>
-                    <th className="p-4 border-b border-slate-200 text-center w-32">Status</th>
-                    <th className="p-4 border-b border-slate-200 text-center w-32">Progress Fisik</th>
-                    <th className="p-4 border-b border-slate-200 text-center w-40">Posisi Termin</th>
-                    <th className="p-4 border-b border-slate-200 text-center w-36">Update Terakhir</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {projects.length === 0 ? (
-                    <tr><td colSpan="6" className="p-10 text-center text-slate-400 font-bold text-xs">Belum ada proyek terdaftar.</td></tr>
-                  ) : (
-                    projects.map((p, idx) => {
-                      let termin = '1'; let tPct = '0';
-                      if ((p.termin_ke || '').toString().includes(',')) { [termin, tPct] = p.termin_ke.split(','); } else { termin = p.termin_ke || '1'; }
-                      const actualProg = parseFloat(p.actual_progress || 0);
-                      const isRunning = p.status === 'Running' || actualProg > 0;
-
-                      return (
-                        <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="p-4 text-center font-bold text-slate-400 text-xs">{idx + 1}</td>
-                          <td className="p-4">
-                            <div className="font-bold text-slate-800 text-xs line-clamp-2" title={p.pekerjaan}>{p.pekerjaan}</div>
-                          </td>
-                          <td className="p-4 text-center">
-                            <span className={`px-2 py-1 text-[9px] font-black uppercase tracking-widest rounded shadow-sm border ${isRunning ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
-                              {isRunning ? 'Pelaksanaan' : 'Persiapan'}
-                            </span>
-                          </td>
-                          <td className="p-4 text-center">
-                            <div className="flex flex-col items-center">
-                              <span className="font-black text-slate-800 text-sm">{actualProg.toFixed(1)}%</span>
-                              <div className="w-16 h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
-                                <div className={`h-full rounded-full ${isRunning ? 'bg-blue-500' : 'bg-slate-300'}`} style={{ width: `${actualProg}%` }}></div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-4 text-center">
-                             <div className="flex flex-col items-center">
-                                <span className="font-bold text-slate-800 text-xs">Termin {toRoman(termin)}</span>
-                                <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded mt-0.5 border border-slate-200">{tPct}% Terserap</span>
-                             </div>
-                          </td>
-                          <td className="p-4 text-center">
-                             <span className="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
-                               {p.updated_at ? new Date(p.updated_at).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'}) : (p.created_at ? new Date(p.created_at).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'}) : '-')}
-                             </span>
-                          </td>
-                        </tr>
-                      )
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 };
@@ -3112,6 +3022,7 @@ export default function App() {
   const [notification, setNotification] = useState(null);
 
   // --- Modal States ---
+  const [showGlobalRekap, setShowGlobalRekap] = useState(false);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [showEditProjectModal, setShowEditProjectModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -4369,6 +4280,104 @@ export default function App() {
 
   // --- ROUTING TINGKAT ATAS ---
 
+  const renderGlobalRekapModal = () => {
+    if (!showGlobalRekap) return null;
+    return (
+      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+        <div className="bg-white rounded-[32px] p-6 md:p-8 w-full max-w-5xl shadow-2xl relative flex flex-col max-h-[90vh]">
+          <button onClick={() => setShowGlobalRekap(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-700 transition-colors bg-slate-100 rounded-full"><X size={20} /></button>
+
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pr-12 border-b border-slate-100 pb-4 shrink-0">
+             <div>
+                <h3 className="text-xl font-black text-slate-800 flex items-center gap-2"><FileSpreadsheet className="text-amber-500" /> Rekapitulasi Semua Proyek</h3>
+                <p className="text-xs text-slate-500 font-bold mt-1">Data total progres dan posisi termin terakhir untuk semua proyek</p>
+             </div>
+             <button onClick={() => {
+                let csvContent = "data:text/csv;charset=utf-8,";
+                csvContent += "No,Nama Pekerjaan,Status,Progress Fisik (%),Posisi Termin,Update Terakhir\n";
+                masterProjects.forEach((p, index) => {
+                  const prog = parseFloat(p.actual_progress || 0).toFixed(2);
+                  let termin = '1'; let tPct = '0';
+                  if ((p.termin_ke || '').toString().includes(',')) { [termin, tPct] = p.termin_ke.split(','); } else { termin = p.termin_ke || '1'; }
+                  const tglUpdate = p.updated_at ? new Date(p.updated_at).toLocaleDateString('id-ID') : (p.created_at ? new Date(p.created_at).toLocaleDateString('id-ID') : '-');
+                  const safeName = (p.pekerjaan || '').replace(/"/g, '""');
+                  csvContent += `"${index + 1}","${safeName}","${p.status}","${prog}","Termin ${termin} (${tPct}%)","${tglUpdate}"\n`;
+                });
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `Rekap_Semua_Proyek_${new Date().toLocaleDateString('id-ID').replace(/\//g,'-')}.csv`);
+                document.body.appendChild(link);
+                link.click(); document.body.removeChild(link);
+             }} className="bg-amber-500 text-white px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase shadow-sm hover:bg-amber-600 transition-all flex items-center gap-2 shrink-0">
+                <Download size={14} /> Export CSV / Excel
+             </button>
+          </div>
+
+          <div className="flex-1 overflow-auto custom-scrollbar border border-slate-200 rounded-2xl">
+            <table className="w-full text-left border-collapse min-w-[800px]">
+              <thead className="bg-slate-50 sticky top-0 shadow-sm z-10">
+                <tr className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
+                  <th className="p-4 border-b border-slate-200 w-12 text-center">No</th>
+                  <th className="p-4 border-b border-slate-200 max-w-[300px]">Nama Pekerjaan</th>
+                  <th className="p-4 border-b border-slate-200 text-center w-32">Status</th>
+                  <th className="p-4 border-b border-slate-200 text-center w-32">Progress Fisik</th>
+                  <th className="p-4 border-b border-slate-200 text-center w-40">Posisi Termin</th>
+                  <th className="p-4 border-b border-slate-200 text-center w-36">Update Terakhir</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {masterProjects.length === 0 ? (
+                  <tr><td colSpan="6" className="p-10 text-center text-slate-400 font-bold text-xs">Belum ada proyek terdaftar.</td></tr>
+                ) : (
+                  masterProjects.map((p, idx) => {
+                    let termin = '1'; let tPct = '0';
+                    if ((p.termin_ke || '').toString().includes(',')) { [termin, tPct] = p.termin_ke.split(','); } else { termin = p.termin_ke || '1'; }
+                    const actualProg = parseFloat(p.actual_progress || 0);
+                    const isRunning = p.status === 'Running' || actualProg > 0;
+
+                    return (
+                      <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="p-4 text-center font-bold text-slate-400 text-xs">{idx + 1}</td>
+                        <td className="p-4">
+                          <div className="font-bold text-slate-800 text-xs line-clamp-2" title={p.pekerjaan}>{p.pekerjaan}</div>
+                        </td>
+                        <td className="p-4 text-center">
+                          <span className={`px-2 py-1 text-[9px] font-black uppercase tracking-widest rounded shadow-sm border ${isRunning ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                            {isRunning ? 'Pelaksanaan' : 'Persiapan'}
+                          </span>
+                        </td>
+                        <td className="p-4 text-center">
+                          <div className="flex flex-col items-center">
+                            <span className="font-black text-slate-800 text-sm">{actualProg.toFixed(1)}%</span>
+                            <div className="w-16 h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                              <div className={`h-full rounded-full ${isRunning ? 'bg-blue-500' : 'bg-slate-300'}`} style={{ width: `${actualProg}%` }}></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-4 text-center">
+                           <div className="flex flex-col items-center">
+                              <span className="font-bold text-slate-800 text-xs">Termin {toRoman(termin)}</span>
+                              <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded mt-0.5 border border-slate-200">{tPct}% Terserap</span>
+                           </div>
+                        </td>
+                        <td className="p-4 text-center">
+                           <span className="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
+                             {p.updated_at ? new Date(p.updated_at).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'}) : (p.created_at ? new Date(p.created_at).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'}) : '-')}
+                           </span>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (appMode === 'login') {
      return <LoginView onLogin={handleLogin} error={authError} isProcessing={isProcessing} />;
   }
@@ -4388,6 +4397,7 @@ export default function App() {
             onLogout={handleLogout}
             onViewAbsensi={() => setAppMode('absensi')}
             onAddProject={() => setShowNewProjectModal(true)}
+            onViewRekap={() => setShowGlobalRekap(true)}
          />
          {showNewProjectModal && (
           <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[5000] p-4">
@@ -4413,6 +4423,7 @@ export default function App() {
             </div>
           </div>
          )}
+         {renderGlobalRekapModal()}
        </>
      );
   }
@@ -4431,6 +4442,7 @@ export default function App() {
             onBack={() => setAppMode('selection')}
             onAddProject={() => setShowNewProjectModal(true)}
             onDeleteProject={(proj) => setDeleteConfig({ id: proj.id, type: 'project', name: proj.pekerjaan })}
+            onViewRekap={() => setShowGlobalRekap(true)}
          />
          {/* Modals for new/delete project (reused from master) */}
          {showNewProjectModal && (
@@ -4470,6 +4482,7 @@ export default function App() {
             </div>
           </div>
          )}
+         {renderGlobalRekapModal()}
        </>
      );
   }
@@ -4567,6 +4580,7 @@ export default function App() {
             onSelectProject={handleSelectProject} 
             onAddProject={() => setShowNewProjectModal(true)} 
             onBackToSelection={handleBackToSelection}
+            onViewRekap={() => setShowGlobalRekap(true)}
         />
 
         {showNewProjectModal && (
@@ -4606,6 +4620,7 @@ export default function App() {
             </div>
           </div>
         )}
+        {renderGlobalRekapModal()}
       </>
     );
   }
@@ -6031,6 +6046,9 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* GLOBAL REKAP MODAL */}
+      {renderGlobalRekapModal()}
 
     </div>
   );
