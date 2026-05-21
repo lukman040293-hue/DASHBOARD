@@ -3061,6 +3061,30 @@ export default function App() {
   const [themeSetting, setThemeSetting] = useState('auto');
   const [isDarkMode, setIsDarkMode] = useState(false);
 
+  useEffect(() => {
+    const applyTheme = () => {
+      if (themeSetting === 'dark') {
+        setIsDarkMode(true);
+      } else if (themeSetting === 'light') {
+        setIsDarkMode(false);
+      } else {
+        const hour = new Date().getHours();
+        // Mode gelap aktif dari jam 18:00 malam hingga 05:59 pagi
+        setIsDarkMode(hour >= 18 || hour < 6);
+      }
+    };
+    
+    applyTheme();
+    
+    // Cek secara berkala setiap 1 menit jika menggunakan mode 'auto'
+    let interval;
+    if (themeSetting === 'auto') {
+      interval = setInterval(applyTheme, 60000);
+    }
+    
+    return () => { if (interval) clearInterval(interval); };
+  }, [themeSetting]);
+
   // --- KUNCI KE FONT WINDOWS (SEGOE UI / ARIAL) ---
   useEffect(() => {
     let fontEl = document.getElementById('windows-font-style');
