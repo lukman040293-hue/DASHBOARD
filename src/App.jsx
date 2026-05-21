@@ -1213,27 +1213,25 @@ const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBac
         <MasterMapView allProjects={allProjects} onSelectProject={onSelectProject} mapType={mapType} />
       </div>
 
-      {/* TOMBOL TOGGLE HIDE/SHOW UI */}
-      <button
+      {/* LOGO & MENU TOGGLE (MENGAMBANG DI KIRI ATAS) */}
+      <div 
         onClick={() => setIsUIHidden(!isUIHidden)}
-        className="absolute top-0 left-1/2 -translate-x-1/2 z-[99999] pointer-events-auto bg-black/60 backdrop-blur-md hover:bg-black/80 text-white px-4 py-1 md:px-8 md:py-1.5 border-x border-b border-white/10 shadow-md rounded-b-xl transition-all flex items-center justify-center group cursor-pointer block"
-        title={isUIHidden ? "Tampilkan Menu Utama" : "Sembunyikan Menu (Layar Penuh)"}
+        className="absolute top-4 left-4 md:top-6 md:left-6 z-[99999] flex items-center gap-3 group cursor-pointer pointer-events-auto"
+        title={isUIHidden ? "Tampilkan Menu Utama" : "Sembunyikan Menu"}
       >
-        {isUIHidden ? <ChevronDown size={16} className="md:w-5 md:h-5 group-hover:translate-y-1 transition-transform" /> : <ChevronUp size={16} className="md:w-5 md:h-5 group-hover:-translate-y-1 transition-transform" />}
-      </button>
-
-      {/* FLOATING HEADER */}
-      <header className={`absolute top-4 left-4 right-4 md:top-8 md:left-6 md:right-6 z-20 flex justify-between items-start pointer-events-none transition-all duration-500 ease-in-out ${isUIHidden ? '-translate-y-32 opacity-0' : 'translate-y-0 opacity-100'}`}>
-         <div className="flex flex-col gap-4 pointer-events-auto">
-            {/* Logo Area */}
-            <div className="bg-black/60 backdrop-blur-md p-3 rounded-3xl shadow-lg border border-white/10 flex items-center justify-center">
-               <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-md shrink-0">
-                 <Activity size={20} />
-               </div>
-            </div>
+         <div className="w-12 h-12 bg-black/60 backdrop-blur-md border border-white/20 rounded-2xl flex items-center justify-center text-white shadow-lg group-hover:scale-105 group-hover:bg-black/80 transition-all relative overflow-hidden">
+            <Menu size={20} className={`absolute transition-all duration-500 ${!isUIHidden ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100'}`} />
+            <Activity size={20} className={`absolute transition-all duration-500 ${isUIHidden ? '-rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100'}`} />
          </div>
+         {/* Teks indikator Peta Induk */}
+         <div className="hidden sm:flex flex-col opacity-90 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10">
+           <h1 className="text-sm font-black tracking-tight text-white leading-none drop-shadow-md">Peta Induk</h1>
+           <p className="text-[8px] font-bold text-blue-400 uppercase tracking-widest mt-1 drop-shadow-md">{isUIHidden ? 'Klik Buka Menu' : 'Master Dashboard'}</p>
+         </div>
+      </div>
 
-         {/* Action Buttons Right */}
+      {/* FLOATING HEADER BUTTONS (KANAN ATAS) */}
+      <header className={`absolute top-4 right-4 md:top-6 md:right-6 z-20 flex justify-end items-start pointer-events-none transition-all duration-500 ease-in-out origin-right ${isUIHidden ? 'opacity-0 scale-95 translate-x-12' : 'opacity-100 scale-100 translate-x-0'}`}>
          <div className="flex flex-col md:flex-row items-end md:items-center gap-2 md:gap-3 pointer-events-auto">
              
              {/* Tombol Menu Utama */}
@@ -2769,46 +2767,50 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
   const [isUIHidden, setIsUIHidden] = useState(true);
 
   return (
-    <div className="flex flex-col h-screen w-full bg-slate-900 font-sans relative overflow-hidden">
+    <div className="flex flex-col h-screen w-full bg-[#151515] font-sans relative overflow-hidden">
       
-      {/* TOMBOL TOGGLE HIDE/SHOW UI (Diperbaiki area kliknya) */}
-      <button
-        onClick={() => setIsUIHidden(!isUIHidden)}
-        className="absolute top-0 left-1/2 -translate-x-1/2 z-[99999] pointer-events-auto bg-white/10 backdrop-blur-md hover:bg-white/20 text-slate-300 hover:text-white px-4 py-1 md:px-8 md:py-1.5 border-x border-b border-white/10 shadow-md rounded-b-xl transition-all flex items-center justify-center group cursor-pointer block"
-        title={isUIHidden ? "Tampilkan Header" : "Sembunyikan Header"}
-      >
-        {isUIHidden ? <ChevronDown size={16} className="md:w-5 md:h-5 group-hover:translate-y-1 transition-transform" /> : <ChevronUp size={16} className="md:w-5 md:h-5 group-hover:-translate-y-1 transition-transform" />}
-      </button>
+      {/* ORNAMEN BACKGROUND UNTUK MEMPERKUAT EFEK GLASS (BIAS CAHAYA) */}
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden flex items-center justify-center">
+         <div className="absolute top-[10%] left-[20%] w-[300px] h-[300px] bg-blue-500/20 rounded-full blur-[120px]"></div>
+         <div className="absolute bottom-[10%] right-[20%] w-[300px] h-[300px] bg-slate-400/10 rounded-full blur-[120px]"></div>
+      </div>
 
-      {/* Header */}
-      <header className={`absolute top-0 left-0 right-0 flex justify-between items-center px-6 md:px-10 py-6 bg-transparent shrink-0 z-20 transition-all duration-500 ease-in-out ${isUIHidden ? '-translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-md">
-            <Activity size={24} />
-          </div>
-          <div className="flex flex-col">
-            <h1 className="text-xl md:text-2xl font-normal tracking-tight text-white leading-none drop-shadow-sm">Dashboard</h1>
-            <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 drop-shadow-sm">Gerbang Akses Utama</p>
-          </div>
+      {/* LOGO & MENU TOGGLE (MENGAMBANG DI KIRI ATAS) */}
+      <div 
+        onClick={() => setIsUIHidden(!isUIHidden)}
+        className="absolute top-6 left-6 md:top-10 md:left-10 z-[99999] flex items-center gap-4 group cursor-pointer pointer-events-auto"
+        title={isUIHidden ? "Tampilkan Menu Akses" : "Sembunyikan Menu Akses"}
+      >
+        <div className="w-12 h-12 md:w-14 md:h-14 bg-blue-600/90 backdrop-blur-md rounded-2xl md:rounded-3xl flex items-center justify-center text-white shadow-[0_8px_30px_rgba(37,99,235,0.4)] group-hover:scale-105 group-hover:bg-blue-500 transition-all border border-blue-400/50 relative overflow-hidden">
+           <Menu size={24} className={`absolute transition-all duration-500 ${!isUIHidden ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100'}`} />
+           <Activity size={24} className={`absolute transition-all duration-500 ${isUIHidden ? '-rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100'}`} />
         </div>
-        <div className="flex items-center gap-2 md:gap-3">
-          <button onClick={onViewRekap} className="p-3 bg-amber-500/20 text-amber-400 rounded-xl hover:bg-amber-500/30 hover:text-amber-300 transition-colors flex items-center justify-center shadow-sm backdrop-blur-md border border-amber-500/20" title="Rekap Semua Proyek">
-             <FileSpreadsheet size={20} />
-          </button>
-          <button onClick={onSelectMaster} className="p-3 bg-blue-500/20 text-blue-400 rounded-xl hover:bg-blue-500/30 hover:text-blue-300 transition-colors flex items-center justify-center shadow-sm backdrop-blur-md border border-blue-500/20" title="Buka Peta Induk">
-             <Globe2 size={20} />
-          </button>
-          <button onClick={onViewAbsensi} className="p-3 bg-emerald-500/20 text-emerald-400 rounded-xl hover:bg-emerald-500/30 hover:text-emerald-300 transition-colors flex items-center justify-center shadow-sm backdrop-blur-md border border-emerald-500/20" title="Data Absensi">
-             <Fingerprint size={20} />
-          </button>
-          <button onClick={onLogout} className="p-3 bg-rose-500/20 text-rose-400 rounded-xl hover:bg-rose-500/30 hover:text-rose-300 transition-colors flex items-center justify-center shadow-sm backdrop-blur-md border border-rose-500/20" title="Keluar dari Sistem">
-             <LogOut size={20} />
-          </button>
+        <div className="flex flex-col opacity-90 group-hover:opacity-100 transition-opacity">
+          <h1 className="text-xl md:text-2xl font-normal tracking-tight text-white leading-none drop-shadow-md">Dashboard</h1>
+          <p className="text-[10px] md:text-xs font-bold text-slate-400 group-hover:text-blue-300 uppercase tracking-widest mt-1 drop-shadow-md transition-colors">
+            {isUIHidden ? 'Klik Buka Menu' : 'Gerbang Utama'}
+          </p>
         </div>
-      </header>
+      </div>
+
+      {/* HEADER AKSI KANAN (MUNCUL SAAT DIKLIK) */}
+      <div className={`absolute top-6 right-6 md:top-10 md:right-10 flex flex-wrap justify-end items-center gap-2 md:gap-3 z-[90000] transition-all duration-500 ease-out origin-right ${isUIHidden ? 'opacity-0 scale-95 pointer-events-none translate-x-12' : 'opacity-100 scale-100 translate-x-0'}`}>
+        <button onClick={onViewRekap} className="p-3 bg-amber-500/20 text-amber-400 rounded-2xl hover:bg-amber-500/30 hover:text-amber-300 transition-all hover:scale-105 flex items-center justify-center shadow-lg backdrop-blur-md border border-amber-500/30" title="Rekap Semua Proyek">
+           <FileSpreadsheet size={20} />
+        </button>
+        <button onClick={onSelectMaster} className="p-3 bg-blue-500/20 text-blue-400 rounded-2xl hover:bg-blue-500/30 hover:text-blue-300 transition-all hover:scale-105 flex items-center justify-center shadow-lg backdrop-blur-md border border-blue-500/30" title="Buka Peta Induk">
+           <Globe2 size={20} />
+        </button>
+        <button onClick={onViewAbsensi} className="p-3 bg-emerald-500/20 text-emerald-400 rounded-2xl hover:bg-emerald-500/30 hover:text-emerald-300 transition-all hover:scale-105 flex items-center justify-center shadow-lg backdrop-blur-md border border-emerald-500/30" title="Data Absensi">
+           <Fingerprint size={20} />
+        </button>
+        <button onClick={onLogout} className="p-3 bg-rose-500/20 text-rose-400 rounded-2xl hover:bg-rose-500/30 hover:text-rose-300 transition-all hover:scale-105 flex items-center justify-center shadow-lg backdrop-blur-md border border-rose-500/30" title="Keluar dari Sistem">
+           <LogOut size={20} />
+        </button>
+      </div>
 
       {/* Konten Utama */}
-      <div className={`flex-1 flex flex-col items-center justify-center p-6 md:p-10 relative z-10 transition-all duration-500 ${isUIHidden ? 'pt-6' : 'pt-32'}`}>
+      <div className={`flex-1 flex flex-col items-center justify-center p-6 md:p-10 relative z-10 transition-all duration-700 ease-in-out ${isUIHidden ? 'scale-105 opacity-100 pt-6' : 'scale-100 opacity-90 pt-32'}`}>
         <div className="text-center mb-8 max-w-lg">
            <h2 className="text-3xl font-black text-white tracking-tight drop-shadow-md">Pilih Akses</h2>
         </div>
