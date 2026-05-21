@@ -2997,6 +2997,7 @@ export default function App() {
 
   // --- Modal States ---
   const [showGlobalRekap, setShowGlobalRekap] = useState(false);
+  const [globalDocuments, setGlobalDocuments] = useState([]); // STATE BARU: Menyimpan semua dokumen untuk kebutuhan rekap audit
   // STATE BARU: Pilihan Opsi Kolom Tambahan untuk Rekap
   const [rekapOptions, setRekapOptions] = useState({
     status: false,     // Status Pekerjaan
@@ -3005,8 +3006,26 @@ export default function App() {
     dimensi: false,    // Panjang, Lebar, Saluran
     ppk: false,        // Nama PPK
     kontraktor: false, // Personil Kontraktor
-    konsultan: false   // Personil Konsultan
+    konsultan: false,  // Personil Konsultan
+    dokumen: false     // Cek File Dokumen Tertentu
   });
+  
+  const [rekapDocKeyword, setRekapDocKeyword] = useState('Kontrak'); // Keyword pencarian dokumen bawaan
+
+  // STATE BARU: Pilihan Spesifik Proyek yang akan direkap
+  const [selectedRekapProjects, setSelectedRekapProjects] = useState(new Set());
+
+  // Efek untuk menandai semua proyek saat modal rekap dibuka pertama kali & Mengambil data dokumen
+  useEffect(() => {
+    if (showGlobalRekap) {
+      if (masterProjects) setSelectedRekapProjects(new Set(masterProjects.map(p => p.id)));
+      if (supabaseClient) {
+        supabaseClient.from('documents').select('project_id, name, file_url').then(({data}) => {
+          if (data) setGlobalDocuments(data);
+        });
+      }
+    }
+  }, [showGlobalRekap, supabaseClient]);
   
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [showEditProjectModal, setShowEditProjectModal] = useState(false);
@@ -4319,9 +4338,14 @@ export default function App() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 pr-12 border-b border-slate-100 pb-4 shrink-0">
              <div>
                 <h3 className="text-xl font-black text-slate-800 flex items-center gap-2"><FileSpreadsheet className="text-amber-500" /> Rekapitulasi & Laporan Proyek</h3>
-                <p className="text-xs text-slate-500 font-bold mt-1">Data total progres dan posisi termin terakhir untuk semua proyek</p>
+                <p className="text-xs text-slate-500 font-bold mt-1">Pilih pekerjaan dan kolom data yang ingin Anda unduh</p>
              </div>
              <button onClick={() => {
+                if (selectedRekapProjects.size === 0) {
+                   showMsg("Pilih minimal satu proyek untuk diunduh", "warning");
+                   return;
+                }
+                
                 let csvContent = "data:text/csv;charset=utf-8,";
                 
                 // BUAT HEADER DINAMIS
@@ -4333,11 +4357,13 @@ export default function App() {
                 if (rekapOptions.ppk) header += ",Nama PPK";
                 if (rekapOptions.kontraktor) header += ",Personil Kontraktor";
                 if (rekapOptions.konsultan) header += ",Personil Konsultan";
+                if (rekapOptions.dokumen) header += `,Cek Dokumen (${rekapDocKeyword})`;
                 header += ",Update Terakhir";
                 csvContent += header + "\n";
 
-                // ISI BARIS DATA DINAMIS
-                masterProjects.forEach((p, index) => {
+                // ISI BARIS DATA DINAMIS HANYA UNTUK PROYEK YANG DICENTANG
+                const projectsToExport = masterProjects.filter(p => selectedRekapProjects.has(p.id));
+                projectsToExport.forEach((p, index) => {
                   const prog = parseFloat(p.actual_progress || 0).toFixed(2);
                   let termin = '1'; let tPct = '0';
                   if ((p.termin_ke || '').toString().includes(',')) { [termin, tPct] = p.termin_ke.split(','); } else { termin = p.termin_ke || '1'; }
@@ -4352,6 +4378,16 @@ export default function App() {
                   if (rekapOptions.ppk) row += `,"${getPPKName(p.dinas_data)}"`;
                   if (rekapOptions.kontraktor) row += `,"${getPersonilNames(p.kontraktor_data)}"`;
                   if (rekapOptions.konsultan) row += `,"${getPersonilNames(p.konsultan_data)}"`;
+                  
+                  if (rekapOptions.dokumen) {
+                    const docs = globalDocuments.filter(d => d.project_id === p.id && String(d.name).toLowerCase().includes(rekapDocKeyword.toLowerCase()));
+                    if (docs.length > 0) {
+                        row += `,"Ada (${docs.length} File)"`;
+                    } else {
+                        row += `,"Tidak Ada"`;
+                    }
+                  }
+
                   row += `,"${tglUpdate}"`;
                   
                   csvContent += row + "\n";
@@ -4399,12 +4435,34 @@ export default function App() {
                <input type="checkbox" checked={rekapOptions.konsultan} onChange={e => setRekapOptions({...rekapOptions, konsultan: e.target.checked})} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300" /> 
                Personil Konsultan
              </label>
+             <div className="flex items-center gap-2 text-xs font-bold text-slate-700 transition-colors">
+               <label className="flex items-center gap-2 cursor-pointer hover:text-blue-600">
+                 <input type="checkbox" checked={rekapOptions.dokumen} onChange={e => setRekapOptions({...rekapOptions, dokumen: e.target.checked})} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300" /> 
+                 Cek File Dokumen:
+               </label>
+               {rekapOptions.dokumen && (
+                 <input type="text" value={rekapDocKeyword} onChange={e => setRekapDocKeyword(e.target.value)} placeholder="Ketik kata kunci..." className="ml-1 border border-slate-300 rounded-lg px-2.5 py-1.5 text-[10px] w-32 outline-none focus:border-blue-500 font-black text-blue-600 shadow-inner" title="Ketik nama file yang ingin di cek (misal: Kontrak, MC, PHO)" />
+               )}
+             </div>
           </div>
 
           <div className="flex-1 overflow-auto custom-scrollbar border border-slate-200 rounded-2xl">
             <table className="w-full text-left border-collapse min-w-[800px]">
               <thead className="bg-slate-100 sticky top-0 shadow-sm z-10">
                 <tr className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
+                  <th className="p-4 border-b border-slate-200 w-12 text-center">
+                    <input 
+                       type="checkbox" 
+                       className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
+                       checked={masterProjects.length > 0 && selectedRekapProjects.size === masterProjects.length}
+                       ref={input => { if (input) input.indeterminate = selectedRekapProjects.size > 0 && selectedRekapProjects.size < masterProjects.length; }}
+                       onChange={(e) => {
+                         if (e.target.checked) setSelectedRekapProjects(new Set(masterProjects.map(p => p.id)));
+                         else setSelectedRekapProjects(new Set());
+                       }}
+                       title="Pilih Semua Pekerjaan"
+                    />
+                  </th>
                   <th className="p-4 border-b border-slate-200 w-12 text-center">No</th>
                   <th className="p-4 border-b border-slate-200 min-w-[200px]">Nama Pekerjaan</th>
                   
@@ -4417,13 +4475,14 @@ export default function App() {
                   {rekapOptions.ppk && <th className="p-4 border-b border-slate-200 border-l border-slate-200 bg-amber-50/50 w-48">Pejabat (PPK)</th>}
                   {rekapOptions.kontraktor && <th className="p-4 border-b border-slate-200 border-l border-slate-200 bg-emerald-50/50 w-48">Kontraktor</th>}
                   {rekapOptions.konsultan && <th className="p-4 border-b border-slate-200 border-l border-slate-200 bg-rose-50/50 w-48">Konsultan</th>}
+                  {rekapOptions.dokumen && <th className="p-4 border-b border-slate-200 border-l border-slate-200 bg-indigo-50/50 w-48">Audit File: {rekapDocKeyword || '-'}</th>}
                   
                   <th className="p-4 border-b border-slate-200 border-l border-slate-200 text-center w-36">Update Terakhir</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {masterProjects.length === 0 ? (
-                  <tr><td colSpan="12" className="p-10 text-center text-slate-400 font-bold text-xs">Belum ada proyek terdaftar.</td></tr>
+                  <tr><td colSpan="13" className="p-10 text-center text-slate-400 font-bold text-xs">Belum ada proyek terdaftar.</td></tr>
                 ) : (
                   masterProjects.map((p, idx) => {
                     let termin = '1'; let tPct = '0';
@@ -4432,7 +4491,20 @@ export default function App() {
                     const isRunning = p.status === 'Running' || actualProg > 0;
 
                     return (
-                      <tr key={p.id} className="hover:bg-slate-50/80 transition-colors group">
+                      <tr key={p.id} className={`transition-colors group ${selectedRekapProjects.has(p.id) ? 'bg-white hover:bg-slate-50/80' : 'bg-slate-50/40 opacity-60'}`}>
+                        <td className="p-4 text-center">
+                           <input 
+                             type="checkbox" 
+                             className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
+                             checked={selectedRekapProjects.has(p.id)}
+                             onChange={(e) => {
+                               const newSet = new Set(selectedRekapProjects);
+                               if (e.target.checked) newSet.add(p.id);
+                               else newSet.delete(p.id);
+                               setSelectedRekapProjects(newSet);
+                             }}
+                           />
+                        </td>
                         <td className="p-4 text-center font-bold text-slate-400 text-xs">{idx + 1}</td>
                         <td className="p-4">
                           <div className="font-bold text-slate-800 text-xs line-clamp-2 leading-snug group-hover:text-blue-600 transition-colors" title={p.pekerjaan}>{p.pekerjaan}</div>
@@ -4488,6 +4560,28 @@ export default function App() {
                         {rekapOptions.konsultan && (
                           <td className="p-4 border-l border-slate-100 bg-rose-50/20 text-[11px] font-bold text-rose-700 leading-snug">
                              {getPersonilNames(p.konsultan_data)}
+                          </td>
+                        )}
+
+                        {rekapOptions.dokumen && (
+                          <td className="p-4 border-l border-slate-100 bg-indigo-50/20 text-xs font-bold">
+                             {(() => {
+                                if (!rekapDocKeyword) return <span className="text-slate-400 text-[10px] italic">Ketik kata kunci...</span>;
+                                const docs = globalDocuments.filter(d => d.project_id === p.id && String(d.name).toLowerCase().includes(rekapDocKeyword.toLowerCase()));
+                                if (docs.length > 0) {
+                                   return (
+                                     <div className="flex flex-col gap-1.5">
+                                       <span className="text-emerald-600 flex items-center gap-1 font-black text-[10px] uppercase"><CheckCircle2 size={12}/> Ada ({docs.length} File)</span>
+                                       {docs.slice(0,2).map((d, i) => (
+                                         <a key={i} href={d.file_url} target="_blank" rel="noopener noreferrer" className="text-[9px] text-blue-600 hover:text-blue-800 hover:underline truncate max-w-[160px] block" title={d.name}>{d.name}</a>
+                                       ))}
+                                       {docs.length > 2 && <span className="text-[9px] text-slate-500 font-bold bg-slate-100 w-max px-1.5 py-0.5 rounded border border-slate-200">+{docs.length - 2} file lain</span>}
+                                     </div>
+                                   )
+                                } else {
+                                   return <span className="text-rose-500 flex items-center gap-1 font-black text-[10px] uppercase"><X size={12} strokeWidth={3}/> Tidak Ada</span>;
+                                }
+                             })()}
                           </td>
                         )}
 
