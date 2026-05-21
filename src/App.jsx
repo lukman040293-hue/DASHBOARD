@@ -3057,38 +3057,10 @@ export default function App() {
   // --- STATE BARU: SIDEBAR HIDE/SHOW ---
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  // --- TEMA GELAP / TERANG (Otomatis Sesuai Jam) ---
-  const [themeSetting, setThemeSetting] = useState('auto');
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
   // --- MENGUBAH JUDUL TAB BROWSER ---
   useEffect(() => {
     document.title = "SynxBuild - Command Center";
   }, []);
-
-  useEffect(() => {
-    const applyTheme = () => {
-      if (themeSetting === 'dark') {
-        setIsDarkMode(true);
-      } else if (themeSetting === 'light') {
-        setIsDarkMode(false);
-      } else {
-        const hour = new Date().getHours();
-        // Mode gelap aktif dari jam 18:00 malam hingga 05:59 pagi
-        setIsDarkMode(hour >= 18 || hour < 6);
-      }
-    };
-    
-    applyTheme();
-    
-    // Cek secara berkala setiap 1 menit jika menggunakan mode 'auto'
-    let interval;
-    if (themeSetting === 'auto') {
-      interval = setInterval(applyTheme, 60000);
-    }
-    
-    return () => { if (interval) clearInterval(interval); };
-  }, [themeSetting]);
 
   // --- KUNCI KE FONT WINDOWS (SEGOE UI / ARIAL) ---
   useEffect(() => {
@@ -3158,35 +3130,6 @@ export default function App() {
 
     return () => subscription.unsubscribe();
   }, [supabaseClient, appMode]);
-
-  useEffect(() => {
-    let styleEl = document.getElementById('dark-mode-style');
-    if (isDarkMode) {
-      if (!styleEl) {
-        styleEl = document.createElement('style');
-        styleEl.id = 'dark-mode-style';
-        styleEl.innerHTML = `
-          html {
-            filter: invert(0.93) hue-rotate(180deg);
-            background-color: #0f172a;
-          }
-          /* Kembalikan warna asli untuk gambar, video, iframe, peta, dan grafik */
-          img, video, iframe, .leaflet-container, .recharts-surface, .recharts-tooltip-wrapper, [style*="background-image"] {
-            filter: invert(1) hue-rotate(180deg);
-          }
-          /* Sedikit penyesuaian bayangan di mode gelap agar lebih natural dan tipis */
-          .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl, .shadow-2xl {
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4) !important;
-          }
-        `;
-        document.head.appendChild(styleEl);
-      }
-    } else {
-      if (styleEl) styleEl.remove();
-    }
-
-    return () => { if (styleEl) styleEl.remove(); };
-  }, [isDarkMode]);
 
   const docInputRef = useRef(null);
   const reportFileInputRef = useRef(null);
@@ -3399,9 +3342,9 @@ export default function App() {
         .select('*')
         .order('created_at', { ascending: false });
         
-      if (error) { setShowSQLModal(true); return; }
+      if (error) { showMsg("Gagal memuat daftar proyek: " + error.message, "error"); return; }
       setMasterProjects(projs || []);
-    } catch (e) { setShowSQLModal(true); }
+    } catch (e) { showMsg("Gagal memuat daftar proyek.", "error"); }
   };
 
   const fetchAttendances = async () => {
@@ -4693,58 +4636,40 @@ export default function App() {
         </div>
       )}
 
-      {/* TOMBOL BUKA SIDEBAR (Saat disembunyikan) */}
-      {!isSidebarOpen && (
-        <button
-          onClick={() => setIsSidebarOpen(true)}
-          className="hidden md:flex fixed top-1/2 left-0 -translate-y-1/2 z-[2000] bg-white border border-slate-200 p-2.5 rounded-r-2xl shadow-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all hover:pr-4 cursor-pointer"
-          title="Tampilkan Menu"
-        >
-          <ChevronRight size={24} />
-        </button>
-      )}
-
-      <aside className={`${isSidebarOpen ? 'hidden md:flex w-56' : 'hidden'} border-r border-slate-200 flex-col bg-white shrink-0 shadow-sm relative z-[100] pointer-events-auto transition-all duration-300`}>
+      <aside className={`hidden md:flex border-r border-slate-200 flex-col bg-white shrink-0 shadow-sm relative z-[100] pointer-events-auto transition-all duration-300 ${isSidebarOpen ? 'w-56' : 'w-[88px]'}`}>
         
-        {/* TOMBOL HIDE SIDEBAR PADA GARIS PEMBATAS DEKAT OVERVIEW */}
+        {/* TOMBOL TOGGLE SIDEBAR PADA GARIS PEMBATAS */}
         <button
-          onClick={() => setIsSidebarOpen(false)}
-          className="hidden md:flex absolute -right-3.5 top-[152px] p-1 bg-white border border-slate-200 rounded-full shadow-sm text-slate-400 hover:text-blue-600 hover:bg-blue-50 hover:scale-110 transition-all z-[200] cursor-pointer"
-          title="Sembunyikan Menu"
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="absolute -right-3.5 top-[152px] p-1 bg-white border border-slate-200 rounded-full shadow-sm text-slate-400 hover:text-blue-600 hover:bg-blue-50 hover:scale-110 transition-all z-[200] cursor-pointer"
+          title={isSidebarOpen ? "Perkecil Menu" : "Perbesar Menu"}
         >
-          <ChevronLeft size={16} strokeWidth={2.5} />
+          {isSidebarOpen ? <ChevronLeft size={16} strokeWidth={2.5} /> : <ChevronRight size={16} strokeWidth={2.5} />}
         </button>
 
-        <div className="p-5">
+        <div className={`flex flex-col h-full ${isSidebarOpen ? 'p-5' : 'p-4 items-center'}`}>
           {/* LOGO DI ATAS */}
-          <div className="flex items-center gap-2.5 mb-8 px-1">
+          <div className={`flex items-center ${isSidebarOpen ? 'gap-2.5 px-1 mb-8' : 'justify-center mb-8'} transition-all`}>
             <Activity size={24} className="text-blue-600 shrink-0" />
-            <h1 className="text-lg font-black tracking-tight text-slate-800">Synx<span className="text-blue-500">Build</span></h1>
+            {isSidebarOpen && <h1 className="text-lg font-black tracking-tight text-slate-800 animate-in fade-in duration-300">Synx<span className="text-blue-500">Build</span></h1>}
           </div>
 
-          {/* TOMBOL KEMBALI DITURUNKAN SEJAJAR DENGAN PERSIAPAN */}
-          <button type="button" onClick={handleBackFromProject} className="flex items-center gap-2 mb-6 text-[10px] uppercase tracking-widest font-black text-slate-500 hover:text-blue-600 transition-colors bg-white hover:bg-slate-50 px-4 py-3 rounded-xl border border-slate-200 shadow-sm hover:shadow-md cursor-pointer relative z-50 pointer-events-auto w-full justify-center">
-            <ArrowLeft size={16} /> {previousAppMode === 'master' ? 'Kembali ke Peta' : 'Ke Menu Utama'}
+          {/* TOMBOL KEMBALI */}
+          <button type="button" onClick={handleBackFromProject} className={`flex items-center ${isSidebarOpen ? 'gap-2 px-4 justify-start' : 'justify-center px-0'} mb-6 text-[10px] uppercase tracking-widest font-black text-slate-500 hover:text-blue-600 transition-colors bg-white hover:bg-slate-50 py-3 rounded-xl border border-slate-200 shadow-sm hover:shadow-md cursor-pointer relative z-50 pointer-events-auto w-full`} title={previousAppMode === 'master' ? 'Kembali ke Peta' : 'Ke Menu Utama'}>
+            <ArrowLeft size={16} className="shrink-0" />
+            {isSidebarOpen && <span className="truncate">{previousAppMode === 'master' ? 'Kembali ke Peta' : 'Ke Menu Utama'}</span>}
           </button>
 
-          <nav className="space-y-1.5">
-            <button onClick={() => setActiveMenu('dashboard')} className={`w-full flex items-center gap-3 px-3.5 py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'dashboard' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}><LayoutDashboard size={18} /> Overview</button>
-            <button onClick={() => setActiveMenu('map')} className={`w-full flex items-center gap-3 px-3.5 py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'map' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}><MapIcon size={18} /> Geo-Map</button>
-            <button onClick={() => setActiveMenu('schedule')} className={`w-full flex items-center gap-3 px-3.5 py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'schedule' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}><CalendarDays size={18} /> Jadwal</button>
-            <button onClick={() => setActiveMenu('contract')} className={`w-full flex items-center gap-3 px-3.5 py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'contract' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}><Briefcase size={18} /> Data Kontrak</button>
-            <button onClick={() => setActiveMenu('dokumentasi')} className={`w-full flex items-center gap-3 px-3.5 py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'dokumentasi' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}><ImageIcon size={18} /> Dokumentasi</button>
-            <button onClick={() => setActiveMenu('admin')} className={`w-full flex items-center gap-3 px-3.5 py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'admin' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}><FolderEdit size={18} /> Arsip Dokumen</button>
-            <button onClick={() => setActiveMenu('rab')} className={`w-full flex items-center gap-3 px-3.5 py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'rab' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}><Calculator size={18} /> RAB / BOQ</button>
-            <button onClick={() => setActiveMenu('presentation')} className={`w-full flex items-center gap-3 px-3.5 py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'presentation' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}><MonitorPlay size={18} /> Presentasi</button>
+          <nav className="space-y-1.5 w-full">
+            <button onClick={() => setActiveMenu('dashboard')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'dashboard' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Overview"><LayoutDashboard size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Overview</span>}</button>
+            <button onClick={() => setActiveMenu('map')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'map' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Geo-Map"><MapIcon size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Geo-Map</span>}</button>
+            <button onClick={() => setActiveMenu('schedule')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'schedule' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Jadwal"><CalendarDays size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Jadwal</span>}</button>
+            <button onClick={() => setActiveMenu('contract')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'contract' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Data Kontrak"><Briefcase size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Data Kontrak</span>}</button>
+            <button onClick={() => setActiveMenu('dokumentasi')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'dokumentasi' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Dokumentasi"><ImageIcon size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Dokumentasi</span>}</button>
+            <button onClick={() => setActiveMenu('admin')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'admin' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Arsip Dokumen"><FolderEdit size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Arsip Dokumen</span>}</button>
+            <button onClick={() => setActiveMenu('rab')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'rab' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="RAB / BOQ"><Calculator size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">RAB / BOQ</span>}</button>
+            <button onClick={() => setActiveMenu('presentation')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'presentation' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Presentasi"><MonitorPlay size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Presentasi</span>}</button>
           </nav>
-        </div>
-        <div className="mt-auto p-5 border-t border-slate-100 flex flex-col gap-3">
-          {/* Toggles Tema Gelap/Terang */}
-          <div className="flex bg-slate-50 p-1 rounded-xl">
-             <button onClick={() => setThemeSetting('light')} className={`flex-1 py-2 flex justify-center rounded-lg transition-all ${themeSetting === 'light' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`} title="Mode Terang"><Sun size={14} /></button>
-             <button onClick={() => setThemeSetting('auto')} className={`flex-1 py-2 flex justify-center rounded-lg transition-all ${themeSetting === 'auto' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`} title="Otomatis Sesuai Jam"><Clock size={14} /></button>
-             <button onClick={() => setThemeSetting('dark')} className={`flex-1 py-2 flex justify-center rounded-lg transition-all ${themeSetting === 'dark' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`} title="Mode Gelap"><Moon size={14} /></button>
-          </div>
         </div>
       </aside>
 
