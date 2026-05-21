@@ -2997,6 +2997,17 @@ export default function App() {
 
   // --- Modal States ---
   const [showGlobalRekap, setShowGlobalRekap] = useState(false);
+  // STATE BARU: Pilihan Opsi Kolom Tambahan untuk Rekap
+  const [rekapOptions, setRekapOptions] = useState({
+    status: false,     // Status Pekerjaan
+    progress: false,   // Progress Fisik
+    termin: false,     // Posisi Termin
+    dimensi: false,    // Panjang, Lebar, Saluran
+    ppk: false,        // Nama PPK
+    kontraktor: false, // Personil Kontraktor
+    konsultan: false   // Personil Konsultan
+  });
+  
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [showEditProjectModal, setShowEditProjectModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -4273,53 +4284,146 @@ export default function App() {
 
   const renderGlobalRekapModal = () => {
     if (!showGlobalRekap) return null;
+
+    // Helper Functions untuk Ekstraksi Data Spesifik dari JSON
+    const getPPKName = (dinasData) => {
+      if (!Array.isArray(dinasData)) return '-';
+      const ppk = dinasData.find(d => String(d.role || '').toLowerCase().includes('ppk') || String(d.role || '').toLowerCase().includes('pembuat komitmen'));
+      return ppk && ppk.name ? ppk.name : '-';
+    };
+
+    const getPersonilNames = (dataObj) => {
+      if (!dataObj) return '-';
+      let names = [];
+      // Coba ambil dari array personil (beserta jabatan)
+      if (Array.isArray(dataObj.personil) && dataObj.personil.length > 0) {
+        names = dataObj.personil.map(p => {
+           if (p.name && p.position) return `${p.name} (${p.position})`;
+           if (p.name) return p.name;
+           return null;
+        }).filter(Boolean);
+      }
+      // Jika personil kosong, coba cari dari fields (misal: Direktur)
+      if (names.length === 0 && Array.isArray(dataObj.fields)) {
+        const direktur = dataObj.fields.find(f => String(f.label || '').toLowerCase().includes('direktur'));
+        if (direktur && direktur.value) names.push(`${direktur.value} (Direktur)`);
+      }
+      return names.length > 0 ? names.join(', ') : '-';
+    };
+
     return (
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-        <div className="bg-white rounded-[32px] p-6 md:p-8 w-full max-w-5xl shadow-2xl relative flex flex-col max-h-[90vh]">
+        <div className="bg-white rounded-[32px] p-6 md:p-8 w-full max-w-7xl shadow-2xl relative flex flex-col max-h-[95vh]">
           <button onClick={() => setShowGlobalRekap(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-700 transition-colors bg-slate-100 rounded-full"><X size={20} /></button>
 
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pr-12 border-b border-slate-100 pb-4 shrink-0">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 pr-12 border-b border-slate-100 pb-4 shrink-0">
              <div>
-                <h3 className="text-xl font-black text-slate-800 flex items-center gap-2"><FileSpreadsheet className="text-amber-500" /> Rekapitulasi Semua Proyek</h3>
+                <h3 className="text-xl font-black text-slate-800 flex items-center gap-2"><FileSpreadsheet className="text-amber-500" /> Rekapitulasi & Laporan Proyek</h3>
                 <p className="text-xs text-slate-500 font-bold mt-1">Data total progres dan posisi termin terakhir untuk semua proyek</p>
              </div>
              <button onClick={() => {
                 let csvContent = "data:text/csv;charset=utf-8,";
-                csvContent += "No,Nama Pekerjaan,Status,Progress Fisik (%),Posisi Termin,Update Terakhir\n";
+                
+                // BUAT HEADER DINAMIS
+                let header = "No,Nama Pekerjaan";
+                if (rekapOptions.status) header += ",Status";
+                if (rekapOptions.progress) header += ",Progress Fisik (%)";
+                if (rekapOptions.termin) header += ",Posisi Termin";
+                if (rekapOptions.dimensi) header += ",Panjang Rencana,Lebar Rencana,Jenis Saluran";
+                if (rekapOptions.ppk) header += ",Nama PPK";
+                if (rekapOptions.kontraktor) header += ",Personil Kontraktor";
+                if (rekapOptions.konsultan) header += ",Personil Konsultan";
+                header += ",Update Terakhir";
+                csvContent += header + "\n";
+
+                // ISI BARIS DATA DINAMIS
                 masterProjects.forEach((p, index) => {
                   const prog = parseFloat(p.actual_progress || 0).toFixed(2);
                   let termin = '1'; let tPct = '0';
                   if ((p.termin_ke || '').toString().includes(',')) { [termin, tPct] = p.termin_ke.split(','); } else { termin = p.termin_ke || '1'; }
                   const tglUpdate = p.updated_at ? new Date(p.updated_at).toLocaleDateString('id-ID') : (p.created_at ? new Date(p.created_at).toLocaleDateString('id-ID') : '-');
-                  const safeName = (p.pekerjaan || '').replace(/"/g, '""');
-                  csvContent += `"${index + 1}","${safeName}","${p.status}","${prog}","Termin ${termin} (${tPct}%)","${tglUpdate}"\n`;
+                  const safeName = String(p.pekerjaan || '').replace(/"/g, '""'); // Escape quotes for CSV
+                  
+                  let row = `"${index + 1}","${safeName}"`;
+                  if (rekapOptions.status) row += `,"${p.status}"`;
+                  if (rekapOptions.progress) row += `,"${prog}"`;
+                  if (rekapOptions.termin) row += `,"Termin ${termin} (${tPct}%)"`;
+                  if (rekapOptions.dimensi) row += `,"${p.panjang_rencana || '-'}","${p.lebar_rencana || '-'}","${p.jenis_model || '-'}"`;
+                  if (rekapOptions.ppk) row += `,"${getPPKName(p.dinas_data)}"`;
+                  if (rekapOptions.kontraktor) row += `,"${getPersonilNames(p.kontraktor_data)}"`;
+                  if (rekapOptions.konsultan) row += `,"${getPersonilNames(p.konsultan_data)}"`;
+                  row += `,"${tglUpdate}"`;
+                  
+                  csvContent += row + "\n";
                 });
+
                 const encodedUri = encodeURI(csvContent);
                 const link = document.createElement("a");
                 link.setAttribute("href", encodedUri);
                 link.setAttribute("download", `Rekap_Semua_Proyek_${new Date().toLocaleDateString('id-ID').replace(/\//g,'-')}.csv`);
                 document.body.appendChild(link);
                 link.click(); document.body.removeChild(link);
-             }} className="bg-amber-500 text-white px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase shadow-sm hover:bg-amber-600 transition-all flex items-center gap-2 shrink-0">
-                <Download size={14} /> Export CSV / Excel
+             }} className="bg-amber-500 text-white px-4 py-3 rounded-xl text-xs font-black uppercase shadow-sm hover:bg-amber-600 transition-all flex items-center gap-2 shrink-0 border border-amber-600">
+                <Download size={16} /> Unduh CSV (Excel)
              </button>
+          </div>
+
+          {/* OPSI FILTER KOLOM TAMBAHAN */}
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mb-4 p-4 bg-slate-50/80 rounded-2xl border border-slate-200 shrink-0">
+             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 w-full sm:w-auto">Sertakan Kolom:</span>
+             <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer hover:text-blue-600 transition-colors">
+               <input type="checkbox" checked={rekapOptions.status} onChange={e => setRekapOptions({...rekapOptions, status: e.target.checked})} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300" /> 
+               Status Proyek
+             </label>
+             <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer hover:text-blue-600 transition-colors">
+               <input type="checkbox" checked={rekapOptions.progress} onChange={e => setRekapOptions({...rekapOptions, progress: e.target.checked})} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300" /> 
+               Progress Fisik
+             </label>
+             <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer hover:text-blue-600 transition-colors">
+               <input type="checkbox" checked={rekapOptions.termin} onChange={e => setRekapOptions({...rekapOptions, termin: e.target.checked})} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300" /> 
+               Posisi Termin
+             </label>
+             <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer hover:text-blue-600 transition-colors">
+               <input type="checkbox" checked={rekapOptions.dimensi} onChange={e => setRekapOptions({...rekapOptions, dimensi: e.target.checked})} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300" /> 
+               Panjang, Lebar & Saluran
+             </label>
+             <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer hover:text-blue-600 transition-colors">
+               <input type="checkbox" checked={rekapOptions.ppk} onChange={e => setRekapOptions({...rekapOptions, ppk: e.target.checked})} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300" /> 
+               Nama PPK
+             </label>
+             <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer hover:text-blue-600 transition-colors">
+               <input type="checkbox" checked={rekapOptions.kontraktor} onChange={e => setRekapOptions({...rekapOptions, kontraktor: e.target.checked})} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300" /> 
+               Personil Kontraktor
+             </label>
+             <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer hover:text-blue-600 transition-colors">
+               <input type="checkbox" checked={rekapOptions.konsultan} onChange={e => setRekapOptions({...rekapOptions, konsultan: e.target.checked})} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300" /> 
+               Personil Konsultan
+             </label>
           </div>
 
           <div className="flex-1 overflow-auto custom-scrollbar border border-slate-200 rounded-2xl">
             <table className="w-full text-left border-collapse min-w-[800px]">
-              <thead className="bg-slate-50 sticky top-0 shadow-sm z-10">
+              <thead className="bg-slate-100 sticky top-0 shadow-sm z-10">
                 <tr className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
                   <th className="p-4 border-b border-slate-200 w-12 text-center">No</th>
-                  <th className="p-4 border-b border-slate-200 max-w-[300px]">Nama Pekerjaan</th>
-                  <th className="p-4 border-b border-slate-200 text-center w-32">Status</th>
-                  <th className="p-4 border-b border-slate-200 text-center w-32">Progress Fisik</th>
-                  <th className="p-4 border-b border-slate-200 text-center w-40">Posisi Termin</th>
-                  <th className="p-4 border-b border-slate-200 text-center w-36">Update Terakhir</th>
+                  <th className="p-4 border-b border-slate-200 min-w-[200px]">Nama Pekerjaan</th>
+                  
+                  {/* HEADER KOLOM TAMBAHAN DINAMIS */}
+                  {rekapOptions.status && <th className="p-4 border-b border-slate-200 border-l border-slate-200 text-center w-32 bg-slate-50/50">Status</th>}
+                  {rekapOptions.progress && <th className="p-4 border-b border-slate-200 border-l border-slate-200 text-center w-32 bg-slate-50/50">Progress Fisik</th>}
+                  {rekapOptions.termin && <th className="p-4 border-b border-slate-200 border-l border-slate-200 text-center w-32 bg-slate-50/50">Posisi Termin</th>}
+                  
+                  {rekapOptions.dimensi && <th className="p-4 border-b border-slate-200 border-l border-slate-200 bg-blue-50/50 w-48">Dimensi & Saluran</th>}
+                  {rekapOptions.ppk && <th className="p-4 border-b border-slate-200 border-l border-slate-200 bg-amber-50/50 w-48">Pejabat (PPK)</th>}
+                  {rekapOptions.kontraktor && <th className="p-4 border-b border-slate-200 border-l border-slate-200 bg-emerald-50/50 w-48">Kontraktor</th>}
+                  {rekapOptions.konsultan && <th className="p-4 border-b border-slate-200 border-l border-slate-200 bg-rose-50/50 w-48">Konsultan</th>}
+                  
+                  <th className="p-4 border-b border-slate-200 border-l border-slate-200 text-center w-36">Update Terakhir</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {masterProjects.length === 0 ? (
-                  <tr><td colSpan="6" className="p-10 text-center text-slate-400 font-bold text-xs">Belum ada proyek terdaftar.</td></tr>
+                  <tr><td colSpan="12" className="p-10 text-center text-slate-400 font-bold text-xs">Belum ada proyek terdaftar.</td></tr>
                 ) : (
                   masterProjects.map((p, idx) => {
                     let termin = '1'; let tPct = '0';
@@ -4328,32 +4432,67 @@ export default function App() {
                     const isRunning = p.status === 'Running' || actualProg > 0;
 
                     return (
-                      <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
+                      <tr key={p.id} className="hover:bg-slate-50/80 transition-colors group">
                         <td className="p-4 text-center font-bold text-slate-400 text-xs">{idx + 1}</td>
                         <td className="p-4">
-                          <div className="font-bold text-slate-800 text-xs line-clamp-2" title={p.pekerjaan}>{p.pekerjaan}</div>
+                          <div className="font-bold text-slate-800 text-xs line-clamp-2 leading-snug group-hover:text-blue-600 transition-colors" title={p.pekerjaan}>{p.pekerjaan}</div>
                         </td>
-                        <td className="p-4 text-center">
-                          <span className={`px-2 py-1 text-[9px] font-black uppercase tracking-widest rounded shadow-sm border ${isRunning ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
-                            {isRunning ? 'Pelaksanaan' : 'Persiapan'}
-                          </span>
-                        </td>
-                        <td className="p-4 text-center">
-                          <div className="flex flex-col items-center">
-                            <span className="font-black text-slate-800 text-sm">{actualProg.toFixed(1)}%</span>
-                            <div className="w-16 h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
-                              <div className={`h-full rounded-full ${isRunning ? 'bg-blue-500' : 'bg-slate-300'}`} style={{ width: `${actualProg}%` }}></div>
+                        
+                        {/* KONTEN KOLOM TAMBAHAN DINAMIS */}
+                        {rekapOptions.status && (
+                          <td className="p-4 border-l border-slate-100 text-center">
+                            <span className={`px-2 py-1 text-[9px] font-black uppercase tracking-widest rounded shadow-sm border ${isRunning ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                              {isRunning ? 'Pelaksanaan' : 'Persiapan'}
+                            </span>
+                          </td>
+                        )}
+                        
+                        {rekapOptions.progress && (
+                          <td className="p-4 border-l border-slate-100 text-center">
+                            <div className="flex flex-col items-center w-24 mx-auto">
+                              <span className="font-black text-slate-800 text-sm">{actualProg.toFixed(1)}%</span>
+                              <div className="w-full h-1.5 bg-slate-200 rounded-full mt-1 overflow-hidden shadow-inner">
+                                <div className={`h-full rounded-full ${isRunning ? 'bg-blue-500' : 'bg-slate-400'}`} style={{ width: `${actualProg}%` }}></div>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="p-4 text-center">
-                           <div className="flex flex-col items-center">
-                              <span className="font-bold text-slate-800 text-xs">Termin {toRoman(termin)}</span>
-                              <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded mt-0.5 border border-slate-200">{tPct}% Terserap</span>
-                           </div>
-                        </td>
-                        <td className="p-4 text-center">
-                           <span className="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
+                          </td>
+                        )}
+
+                        {rekapOptions.termin && (
+                          <td className="p-4 border-l border-slate-100 text-center">
+                             <div className="flex flex-col items-center">
+                                <span className="font-bold text-slate-800 text-xs">Termin {toRoman(termin)}</span>
+                                <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded mt-0.5 border border-slate-200">{tPct}%</span>
+                             </div>
+                          </td>
+                        )}
+
+                        {rekapOptions.dimensi && (
+                          <td className="p-4 border-l border-slate-100 bg-blue-50/20 text-xs font-bold text-slate-600">
+                             <div className="flex flex-col gap-1">
+                               <span>P: {p.panjang_rencana || '-'}m | L: {p.lebar_rencana || '-'}m</span>
+                               <span className="text-[10px] text-blue-600 truncate">{p.jenis_model || '-'}</span>
+                             </div>
+                          </td>
+                        )}
+                        {rekapOptions.ppk && (
+                          <td className="p-4 border-l border-slate-100 bg-amber-50/20 text-xs font-bold text-amber-700 line-clamp-2">
+                             {getPPKName(p.dinas_data)}
+                          </td>
+                        )}
+                        {rekapOptions.kontraktor && (
+                          <td className="p-4 border-l border-slate-100 bg-emerald-50/20 text-[11px] font-bold text-emerald-700 leading-snug">
+                             {getPersonilNames(p.kontraktor_data)}
+                          </td>
+                        )}
+                        {rekapOptions.konsultan && (
+                          <td className="p-4 border-l border-slate-100 bg-rose-50/20 text-[11px] font-bold text-rose-700 leading-snug">
+                             {getPersonilNames(p.konsultan_data)}
+                          </td>
+                        )}
+
+                        <td className="p-4 border-l border-slate-100 text-center">
+                           <span className="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100 whitespace-nowrap">
                              {p.updated_at ? new Date(p.updated_at).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'}) : (p.created_at ? new Date(p.created_at).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'}) : '-')}
                            </span>
                         </td>
