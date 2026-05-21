@@ -3061,6 +3061,11 @@ export default function App() {
   const [themeSetting, setThemeSetting] = useState('auto');
   const [isDarkMode, setIsDarkMode] = useState(false);
 
+  // --- MENGUBAH JUDUL TAB BROWSER ---
+  useEffect(() => {
+    document.title = "SynxBuild - Command Center";
+  }, []);
+
   useEffect(() => {
     const applyTheme = () => {
       if (themeSetting === 'dark') {
