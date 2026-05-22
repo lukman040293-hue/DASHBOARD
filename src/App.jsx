@@ -1505,6 +1505,362 @@ const RABView = () => (
   </div>
 );
 
+const TwinViewer = () => {
+  const cesiumHtml = `<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIM / CIM Custom 3D Viewer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cesium/1.105.1/Widgets/widgets.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cesium/1.105.1/Cesium.js"></script>
+</head>
+<body class="bg-slate-900 text-white overflow-hidden m-0 p-0 w-full h-full">
+
+    <div id="map" class="absolute inset-0"></div>
+
+    <!-- WIDGET KOORDINAT MOUSE -->
+    <div id="coord-display" class="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur text-slate-800 px-5 py-2.5 rounded-2xl shadow-lg border border-slate-200 text-xs font-bold font-mono tracking-wider z-50 flex gap-4 pointer-events-none hidden transition-opacity">
+        <span>Lat : <span id="val-lat" class="text-blue-600">-</span></span>
+        <span>Long : <span id="val-lng" class="text-blue-600">-</span></span>
+    </div>
+
+    <div class="absolute top-4 left-4 z-10 w-80 bg-slate-800/95 backdrop-blur p-4 rounded-xl shadow-xl border border-slate-700">
+        <h1 class="text-sm font-bold mb-3 uppercase tracking-wider text-blue-400">Mapping & BIM Viewer 3D</h1>
+        
+        <label class="text-xs text-slate-400 block mb-1">Peta Dasar (Base Map):</label>
+        <select id="select-basemap" onchange="changeBasemap()" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-xs mb-3 text-slate-200">
+            <option value="satellite">Satelit (ArcGIS World Imagery) - Stabil</option>
+            <option value="street">Peta Jalan (CartoDB Voyager) - Stabil</option>
+        </select>
+
+        <label class="text-xs text-slate-400 block mb-1">URL MapTiler (XYZ):</label>
+        <div class="relative mb-3">
+            <input type="text" id="input-maptiler" placeholder="https://api.maptiler.com/tiles/.../{z}/{x}/{y}.png?key=..." class="w-full bg-slate-900 border border-slate-600 rounded p-2 pr-8 text-xs text-slate-200">
+            <button type="button" onclick="toggleLayer('maptiler', 'eye-maptiler')" id="eye-maptiler" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-blue-400 hover:text-white transition-colors cursor-pointer" title="Tampilkan/Sembunyikan Layer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+        </div>
+        
+        <label class="text-xs text-slate-400 block mb-1">URL Model 3D (.glb):</label>
+        <div class="relative mb-3">
+            <input type="text" id="input-url" value="https://lukman040293-hue.github.io/model-3d/gedung.glb" class="w-full bg-slate-900 border border-slate-600 rounded p-2 pr-8 text-xs text-slate-200">
+            <button type="button" onclick="toggleLayer('model', 'eye-url')" id="eye-url" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-blue-400 hover:text-white transition-colors cursor-pointer" title="Tampilkan/Sembunyikan 3D Model">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-2 mb-4">
+            <div>
+                <label class="text-[10px] text-slate-400 block mb-1">Latitude:</label>
+                <input type="number" id="input-lat" value="-0.4939" step="any" class="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-slate-200">
+            </div>
+            <div>
+                <label class="text-[10px] text-slate-400 block mb-1">Longitude:</label>
+                <input type="number" id="input-lng" value="117.1439" step="any" class="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-slate-200">
+            </div>
+            <div>
+                <label class="text-[10px] text-slate-400 block mb-1">Heading (Rotasi):</label>
+                <input type="number" id="input-heading" value="0" step="1" class="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-slate-200">
+            </div>
+            <div>
+                <label class="text-[10px] text-slate-400 block mb-1">Skala (Ukuran):</label>
+                <input type="number" id="input-scale" value="1.0" step="0.1" class="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-slate-200">
+            </div>
+        </div>
+        
+        <div class="mb-4 bg-slate-900/50 p-3 rounded border border-slate-700 shadow-inner">
+            <label class="text-[10px] text-slate-400 flex justify-between mb-2">
+                <span class="flex items-center gap-1">🌞 Simulasi Cahaya Matahari</span>
+                <span id="time-val" class="text-amber-400 font-bold bg-slate-800 px-1.5 py-0.5 rounded shadow-sm border border-slate-600">12:00</span>
+            </label>
+            <input type="range" id="input-time" min="0" max="23.99" step="0.25" value="12" oninput="updateTime()" class="w-full cursor-pointer accent-blue-500">
+        </div>
+        
+        <button onclick="visualizeAll()" class="w-full bg-blue-600 hover:bg-blue-500 py-2 rounded text-xs font-bold mb-2 transition-all duration-200">
+            TAMPILKAN DATA
+        </button>
+        <div class="flex gap-2">
+            <button onclick="saveSettings()" id="btn-save" class="w-2/3 bg-emerald-600 hover:bg-emerald-500 py-2 rounded text-[10px] font-bold transition-all duration-200 shadow-sm">
+                SIMPAN PENGATURAN
+            </button>
+            <button onclick="resetCamera()" class="w-1/3 bg-slate-700 hover:bg-slate-600 py-2 rounded text-[10px] font-bold transition-all duration-200 shadow-sm">
+                RESET
+            </button>
+        </div>
+        
+        <div class="mt-4 pt-3 border-t border-slate-700">
+            <p class="text-[10px] text-slate-400 font-semibold mb-1">💡 Tips Navigasi Bebas 360°:</p>
+            <ul class="text-[9px] text-slate-400 list-disc list-inside space-y-1">
+                <li>Tahan <span class="text-blue-400 font-bold">Klik Kiri</span> untuk menggeser peta.</li>
+                <li>Tahan <span class="text-blue-400 font-bold">Scroll Tengah</span> (Roda Mouse) untuk rotasi 3D bebas.</li>
+                <li>Tahan <span class="text-blue-400 font-bold">Klik Kanan</span> untuk memperbesar/memperkecil (Zoom).</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let viewer;
+        window.onload = function() {
+            loadSettings(); // Load pengaturan yang tersimpan
+
+            try {
+                const satelliteProvider = new Cesium.ArcGisMapServerImageryProvider({
+                    url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
+                });
+
+                viewer = new Cesium.Viewer('map', {
+                    baseLayerPicker: false, 
+                    geocoder: false, 
+                    homeButton: false, 
+                    infoBox: false,
+                    navigationHelpButton: true, 
+                    sceneModePicker: true,
+                    timeline: false,
+                    animation: false,
+                    shadows: true, // Mengaktifkan proyeksi bayangan 3D
+                    imageryProvider: satelliteProvider
+                });
+
+                // Mengaktifkan efek cahaya matahari pada globe bumi (Siang/Malam)
+                viewer.scene.globe.enableLighting = true; 
+                // Mengatur intensitas kegelapan bayangan agar tidak terlalu gelap pekat
+                viewer.scene.shadowMap.darkness = 0.4; 
+
+                viewer.scene.screenSpaceCameraController.enableTilt = true;
+                viewer.scene.screenSpaceCameraController.enableRotate = true;
+                viewer.scene.screenSpaceCameraController.enableZoom = true;
+                
+                // Terapkan jam default (jam 12 siang) saat peta pertama kali dimuat
+                updateTime();
+
+                // FITUR TRACKING KOORDINAT MOUSE
+                const coordDisplay = document.getElementById('coord-display');
+                const valLat = document.getElementById('val-lat');
+                const valLng = document.getElementById('val-lng');
+                
+                const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+                handler.setInputAction(function(movement) {
+                    // Dapatkan posisi dari perpotongan sinar kamera dengan globe (bumi)
+                    const cartesian = viewer.camera.pickEllipsoid(movement.endPosition, viewer.scene.globe.ellipsoid);
+                    if (cartesian) {
+                        const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+                        const lng = Cesium.Math.toDegrees(cartographic.longitude).toFixed(6);
+                        const lat = Cesium.Math.toDegrees(cartographic.latitude).toFixed(6);
+                        
+                        valLat.textContent = lat + '°S';
+                        valLng.textContent = lng + '°E';
+                        coordDisplay.classList.remove('hidden');
+                    } else {
+                        coordDisplay.classList.add('hidden');
+                    }
+                }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+            } catch(e) {
+                console.error("Gagal memuat Cesium:", e);
+            }
+        };
+
+        const svgEye = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+        const svgEyeOff = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>';
+
+        // Fungsi baru untuk menyembunyikan objek langsung dari Peta
+        function toggleLayer(type, btnId) {
+            if (!viewer) return;
+            const btn = document.getElementById(btnId);
+            let isVisible = false;
+
+            if (type === 'maptiler') {
+                if (viewer.imageryLayers.length > 1) {
+                    const layer = viewer.imageryLayers.get(1); // Layer 0 adalah basemap, Layer 1 adalah maptiler
+                    layer.show = !layer.show;
+                    isVisible = layer.show;
+                }
+            } else if (type === 'model') {
+                let anyEntity = false;
+                viewer.entities.values.forEach(ent => {
+                    ent.show = !ent.show;
+                    isVisible = ent.show;
+                    anyEntity = true;
+                });
+                if (!anyEntity) return; // Abaikan jika model belum dimuat
+            }
+
+            if (isVisible) {
+                btn.innerHTML = svgEye;
+                btn.classList.replace('text-rose-500', 'text-blue-400');
+            } else {
+                btn.innerHTML = svgEyeOff;
+                btn.classList.replace('text-blue-400', 'text-rose-500');
+            }
+        }
+
+        // Fungsi baru untuk mengatur pergerakan matahari berdasarkan slider
+        function updateTime() {
+            if(!viewer) return;
+            const val = parseFloat(document.getElementById('input-time').value);
+            const hours = Math.floor(val);
+            const minutes = Math.floor((val - hours) * 60);
+            
+            // Format angka ke teks 00:00
+            document.getElementById('time-val').innerText = 
+                String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+
+            // Ubah waktu Cesium (Matahari otomatis bergeser)
+            const d = new Date();
+            d.setHours(hours, minutes, 0, 0);
+            viewer.clock.currentTime = Cesium.JulianDate.fromDate(d);
+        }
+
+        function saveSettings() {
+            const settings = {
+                basemap: document.getElementById('select-basemap').value,
+                maptiler: document.getElementById('input-maptiler').value,
+                url: document.getElementById('input-url').value,
+                lat: document.getElementById('input-lat').value,
+                lng: document.getElementById('input-lng').value,
+                heading: document.getElementById('input-heading').value,
+                scale: document.getElementById('input-scale').value,
+                time: document.getElementById('input-time').value
+            };
+            localStorage.setItem('twin_3d_settings', JSON.stringify(settings));
+            
+            const btn = document.getElementById('btn-save');
+            btn.innerHTML = 'TERSIMPAN ✓';
+            btn.classList.replace('bg-emerald-600', 'bg-emerald-500');
+            setTimeout(() => {
+                btn.innerHTML = 'SIMPAN PENGATURAN';
+                btn.classList.replace('bg-emerald-500', 'bg-emerald-600');
+            }, 2000);
+        }
+
+        function loadSettings() {
+            const saved = localStorage.getItem('twin_3d_settings');
+            if (saved) {
+                try {
+                    const s = JSON.parse(saved);
+                    if(s.basemap) document.getElementById('select-basemap').value = s.basemap;
+                    if(s.maptiler) document.getElementById('input-maptiler').value = s.maptiler;
+                    if(s.url) document.getElementById('input-url').value = s.url;
+                    if(s.lat) document.getElementById('input-lat').value = s.lat;
+                    if(s.lng) document.getElementById('input-lng').value = s.lng;
+                    if(s.heading) document.getElementById('input-heading').value = s.heading;
+                    if(s.scale) document.getElementById('input-scale').value = s.scale;
+                    if(s.time) document.getElementById('input-time').value = s.time;
+                } catch(e) {}
+            }
+        }
+
+        function changeBasemap() {
+            if(!viewer) return;
+            const select = document.getElementById('select-basemap').value;
+            const layers = viewer.imageryLayers;
+            
+            layers.remove(layers.get(0));
+
+            let newProvider;
+            if (select === 'satellite') {
+                newProvider = new Cesium.ArcGisMapServerImageryProvider({
+                    url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
+                });
+            } else {
+                newProvider = new Cesium.UrlTemplateImageryProvider({
+                    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+                    subdomains: ['a', 'b', 'c', 'd']
+                });
+            }
+            layers.addImageryProvider(newProvider, 0);
+        }
+
+        function visualizeAll() {
+            if(!viewer) return;
+            
+            // Kembalikan ikon mata ke mode "Show" (biru) setiap kali load ulang data
+            document.getElementById('eye-maptiler').innerHTML = svgEye;
+            document.getElementById('eye-maptiler').classList.replace('text-rose-500', 'text-blue-400');
+            document.getElementById('eye-url').innerHTML = svgEye;
+            document.getElementById('eye-url').classList.replace('text-rose-500', 'text-blue-400');
+
+            while (viewer.imageryLayers.length > 1) {
+                viewer.imageryLayers.remove(viewer.imageryLayers.get(1));
+            }
+            viewer.entities.removeAll();
+
+            const maptilerUrl = document.getElementById('input-maptiler').value;
+            if (maptilerUrl) {
+                try {
+                    viewer.imageryLayers.addImageryProvider(new Cesium.UrlTemplateImageryProvider({ 
+                        url: maptilerUrl 
+                    }));
+                } catch (e) {
+                    console.warn("Format URL MapTiler tidak sesuai:", e);
+                }
+            }
+
+            const lat = parseFloat(document.getElementById('input-lat').value);
+            const lng = parseFloat(document.getElementById('input-lng').value);
+            const headingDeg = parseFloat(document.getElementById('input-heading').value) || 0;
+            const headingRad = Cesium.Math.toRadians(headingDeg);
+            const scaleVal = parseFloat(document.getElementById('input-scale').value) || 1.0;
+            
+            const position = Cesium.Cartesian3.fromDegrees(lng, lat, 0);
+            const orientation = Cesium.Transforms.headingPitchRollQuaternion(
+                position,
+                new Cesium.HeadingPitchRoll(headingRad, 0, 0)
+            );
+
+            const modelUrl = document.getElementById('input-url').value;
+            if(modelUrl) {
+                const modelEntity = viewer.entities.add({
+                    position: position,
+                    orientation: orientation,
+                    model: {
+                        uri: modelUrl,
+                        scale: scaleVal,
+                        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
+                    }
+                });
+                
+                viewer.zoomTo(modelEntity).catch(function(error) {
+                    console.log("Kamera zoom terinterupsi:", error);
+                });
+            } else {
+                viewer.camera.flyTo({
+                    destination : Cesium.Cartesian3.fromDegrees(lng, lat, 1000)
+                });
+            }
+        }
+
+        function resetCamera() {
+            if(!viewer) return;
+            if (viewer.entities.values.length > 0) {
+                viewer.flyTo(viewer.entities);
+            } else {
+                const lat = parseFloat(document.getElementById('input-lat').value);
+                const lng = parseFloat(document.getElementById('input-lng').value);
+                viewer.camera.flyTo({
+                    destination : Cesium.Cartesian3.fromDegrees(lng, lat, 1000)
+                });
+            }
+        }
+    </script>
+</body>
+</html>`;
+
+  return (
+    <div className="relative w-full h-full bg-slate-900 overflow-hidden">
+      {/* Iframe Map Full Area Tanpa Border */}
+      <iframe 
+        srcDoc={cesiumHtml}
+        title="3D BIM Viewer"
+        className="absolute inset-0 w-full h-full border-0 z-0"
+        allow="fullscreen; autocomplete; xr-spatial-tracking"
+      />
+    </div>
+  );
+};
+
 // --- KONFIGURASI WARNA TEMA GANTT CHART ---
 const THEME_COLORS = {
   amber: { plan: 'bg-amber-200 border-amber-300', actualBg: 'bg-amber-100 border-amber-300', actualFill: 'bg-amber-500', legendMarker: 'bg-amber-400 border-amber-500' },
@@ -4924,6 +5280,7 @@ export default function App() {
             <button onClick={() => setActiveMenu('schedule')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'schedule' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Jadwal"><CalendarDays size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Jadwal</span>}</button>
             <button onClick={() => setActiveMenu('contract')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'contract' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Data Kontrak"><Briefcase size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Data Kontrak</span>}</button>
             <button onClick={() => setActiveMenu('dokumentasi')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'dokumentasi' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Dokumentasi"><ImageIcon size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Dokumentasi</span>}</button>
+            <button onClick={() => setActiveMenu('3d-twin')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === '3d-twin' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="3D Digital Twin"><Globe2 size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">3D Digital Twin</span>}</button>
             <button onClick={() => setActiveMenu('admin')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'admin' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Arsip Dokumen"><FolderEdit size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Arsip Dokumen</span>}</button>
             <button onClick={() => setActiveMenu('rab')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'rab' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="RAB / BOQ"><Calculator size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">RAB / BOQ</span>}</button>
             <button onClick={() => setActiveMenu('presentation')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'presentation' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Presentasi"><MonitorPlay size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Presentasi</span>}</button>
@@ -4934,6 +5291,7 @@ export default function App() {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-200 flex justify-around items-center p-2 z-[200] pb-safe shadow-[0_-4px_24px_rgba(0,0,0,0.02)]">
         <button onClick={() => setActiveMenu('dashboard')} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeMenu === 'dashboard' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-700'}`}><LayoutDashboard size={20} /><span className="text-[8px] font-black uppercase tracking-widest">Overview</span></button>
         <button onClick={() => setActiveMenu('map')} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeMenu === 'map' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-700'}`}><MapIcon size={20} /><span className="text-[8px] font-black uppercase tracking-widest">Peta</span></button>
+        <button onClick={() => setActiveMenu('3d-twin')} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeMenu === '3d-twin' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-700'}`}><Globe2 size={20} /><span className="text-[8px] font-black uppercase tracking-widest">3D BIM</span></button>
         <button onClick={() => setActiveMenu('dokumentasi')} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeMenu === 'dokumentasi' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-700'}`}><ImageIcon size={20} /><span className="text-[8px] font-black uppercase tracking-widest">Galeri</span></button>
         <button onClick={() => setActiveMenu('admin')} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeMenu === 'admin' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-700'}`}><FolderEdit size={20} /><span className="text-[8px] font-black uppercase tracking-widest">Arsip</span></button>
       </nav>
@@ -5350,6 +5708,7 @@ export default function App() {
 
         {activeMenu === 'dokumentasi' && (<DokumentasiView feeds={safeFeeds} onView={setSelectedLog} onDelete={setDeleteConfig} />)}
         {activeMenu === 'map' && (<div className="h-full p-4 md:p-8"><SiteMapView projectData={projectData} onUpdateRoutes={handleRoutesUpdate} isUpdating={isProcessing} showMsg={showMsg} /></div>)}
+        {activeMenu === '3d-twin' && (<TwinViewer />)}
         {activeMenu === 'schedule' && (<GanttChartView projectData={projectData} onSaveSchedule={handleSaveSchedule} isProcessing={isProcessing} />)}
         {activeMenu === 'rab' && (<RABView />)}
 
