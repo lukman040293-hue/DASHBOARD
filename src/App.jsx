@@ -1515,8 +1515,14 @@ const TwinViewer = () => {
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/cesium/1.105.1/Widgets/widgets.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cesium/1.105.1/Cesium.js"></script>
+    <style>
+        /* Custom scrollbar untuk panel input */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
 </head>
-<body class="bg-slate-900 text-white overflow-hidden m-0 p-0 w-full h-full">
+<body class="bg-slate-900 text-slate-800 overflow-hidden m-0 p-0 w-full h-full">
 
     <div id="map" class="absolute inset-0"></div>
 
@@ -1526,84 +1532,115 @@ const TwinViewer = () => {
         <span>Long : <span id="val-lng" class="text-blue-600">-</span></span>
     </div>
 
-    <div class="absolute top-4 left-4 z-10 w-80 bg-slate-800/95 backdrop-blur p-4 rounded-xl shadow-xl border border-slate-700">
-        <h1 class="text-sm font-bold mb-3 uppercase tracking-wider text-blue-400">Mapping & BIM Viewer 3D</h1>
+    <!-- TOMBOL TOGGLE PANEL -->
+    <button onclick="toggleControlPanel()" class="absolute top-4 left-4 z-[60] bg-white/90 backdrop-blur-md p-3.5 rounded-2xl shadow-lg border border-white text-slate-600 hover:text-blue-600 hover:shadow-xl transition-all group" title="Buka/Tutup Pengaturan">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="group-hover:rotate-90 transition-transform duration-300"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+    </button>
+
+    <!-- PANEL PENGATURAN (PUTIH TRANSPARAN & BISA DI-HIDE) -->
+    <div id="control-panel-container" class="absolute top-20 left-4 z-[50] w-[320px] bg-white/85 backdrop-blur-xl p-5 rounded-3xl shadow-[0_16px_40px_rgba(0,0,0,0.1)] border border-white/60 transition-all duration-500 origin-top-left max-h-[80vh] overflow-y-auto">
         
-        <label class="text-xs text-slate-400 block mb-1">Peta Dasar (Base Map):</label>
-        <select id="select-basemap" onchange="changeBasemap()" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-xs mb-3 text-slate-200">
-            <option value="satellite">Satelit (ArcGIS World Imagery) - Stabil</option>
-            <option value="street">Peta Jalan (CartoDB Voyager) - Stabil</option>
+        <div class="flex justify-between items-center mb-4 border-b border-slate-200/60 pb-3">
+            <h1 class="text-sm font-black uppercase tracking-wider text-slate-800 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></svg>
+                Pengaturan 3D
+            </h1>
+            <button onclick="toggleControlPanel()" class="text-slate-400 hover:text-rose-500 transition-colors p-1.5 bg-slate-100/50 hover:bg-rose-50 rounded-xl" title="Tutup Panel"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+        </div>
+        
+        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Peta Dasar (Base Map)</label>
+        <select id="select-basemap" onchange="changeBasemap()" class="w-full bg-white/60 border border-slate-200 focus:border-blue-400 rounded-xl p-2.5 text-xs mb-3 text-slate-700 outline-none shadow-sm transition-colors cursor-pointer font-medium">
+            <option value="satellite">Satelit (ArcGIS World Imagery)</option>
+            <option value="street">Peta Jalan (CartoDB Voyager)</option>
         </select>
 
-        <label class="text-xs text-slate-400 block mb-1">URL MapTiler (XYZ):</label>
+        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">URL MapTiler (XYZ)</label>
         <div class="relative mb-3">
-            <input type="text" id="input-maptiler" placeholder="https://api.maptiler.com/tiles/.../{z}/{x}/{y}.png?key=..." class="w-full bg-slate-900 border border-slate-600 rounded p-2 pr-8 text-xs text-slate-200">
-            <button type="button" onclick="toggleLayer('maptiler', 'eye-maptiler')" id="eye-maptiler" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-blue-400 hover:text-white transition-colors cursor-pointer" title="Tampilkan/Sembunyikan Layer">
+            <input type="text" id="input-maptiler" placeholder="https://api.maptiler.com/tiles/.../{z}/{x}/{y}.png" class="w-full bg-white/60 border border-slate-200 focus:bg-white focus:border-blue-400 rounded-xl p-2.5 pr-9 text-xs text-slate-700 outline-none shadow-sm transition-colors font-medium">
+            <button type="button" onclick="toggleLayer('maptiler', 'eye-maptiler')" id="eye-maptiler" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-blue-500 hover:text-blue-700 bg-white p-1.5 rounded-lg shadow-sm border border-slate-100 transition-colors cursor-pointer" title="Tampilkan/Sembunyikan Layer">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
         </div>
         
-        <label class="text-xs text-slate-400 block mb-1">URL Model 3D (.glb):</label>
-        <div class="relative mb-3">
-            <input type="text" id="input-url" value="https://lukman040293-hue.github.io/model-3d/gedung.glb" class="w-full bg-slate-900 border border-slate-600 rounded p-2 pr-8 text-xs text-slate-200">
-            <button type="button" onclick="toggleLayer('model', 'eye-url')" id="eye-url" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-blue-400 hover:text-white transition-colors cursor-pointer" title="Tampilkan/Sembunyikan 3D Model">
+        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">URL Model 3D (.glb)</label>
+        <div class="relative mb-4">
+            <input type="text" id="input-url" value="https://lukman040293-hue.github.io/model-3d/gedung.glb" class="w-full bg-white/60 border border-slate-200 focus:bg-white focus:border-blue-400 rounded-xl p-2.5 pr-9 text-xs text-slate-700 outline-none shadow-sm transition-colors font-medium">
+            <button type="button" onclick="toggleLayer('model', 'eye-url')" id="eye-url" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-blue-500 hover:text-blue-700 bg-white p-1.5 rounded-lg shadow-sm border border-slate-100 transition-colors cursor-pointer" title="Tampilkan/Sembunyikan 3D Model">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
         </div>
         
-        <div class="grid grid-cols-2 gap-2 mb-4">
-            <div>
-                <label class="text-[10px] text-slate-400 block mb-1">Latitude:</label>
-                <input type="number" id="input-lat" value="-0.4939" step="any" class="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-slate-200">
+        <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="bg-slate-50/50 p-2 rounded-xl border border-slate-100 shadow-sm">
+                <label class="text-[9px] font-black text-slate-400 block mb-1.5 uppercase text-center">Latitude</label>
+                <input type="number" id="input-lat" value="-0.4939" step="any" class="w-full bg-white border border-slate-200 focus:border-blue-400 rounded-lg p-1.5 text-xs text-slate-700 text-center outline-none font-mono">
             </div>
-            <div>
-                <label class="text-[10px] text-slate-400 block mb-1">Longitude:</label>
-                <input type="number" id="input-lng" value="117.1439" step="any" class="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-slate-200">
+            <div class="bg-slate-50/50 p-2 rounded-xl border border-slate-100 shadow-sm">
+                <label class="text-[9px] font-black text-slate-400 block mb-1.5 uppercase text-center">Longitude</label>
+                <input type="number" id="input-lng" value="117.1439" step="any" class="w-full bg-white border border-slate-200 focus:border-blue-400 rounded-lg p-1.5 text-xs text-slate-700 text-center outline-none font-mono">
             </div>
-            <div>
-                <label class="text-[10px] text-slate-400 block mb-1">Heading (Rotasi):</label>
-                <input type="number" id="input-heading" value="0" step="1" class="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-slate-200">
+            <div class="bg-slate-50/50 p-2 rounded-xl border border-slate-100 shadow-sm">
+                <label class="text-[9px] font-black text-slate-400 block mb-1.5 uppercase text-center" title="Rotasi (Derajat)">Heading</label>
+                <input type="number" id="input-heading" value="0" step="1" class="w-full bg-white border border-slate-200 focus:border-blue-400 rounded-lg p-1.5 text-xs text-slate-700 text-center outline-none font-mono">
             </div>
-            <div>
-                <label class="text-[10px] text-slate-400 block mb-1">Skala (Ukuran):</label>
-                <input type="number" id="input-scale" value="1.0" step="0.1" class="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-slate-200">
+            <div class="bg-slate-50/50 p-2 rounded-xl border border-slate-100 shadow-sm">
+                <label class="text-[9px] font-black text-slate-400 block mb-1.5 uppercase text-center" title="Ukuran Benda">Skala</label>
+                <input type="number" id="input-scale" value="1.0" step="0.1" class="w-full bg-white border border-slate-200 focus:border-blue-400 rounded-lg p-1.5 text-xs text-slate-700 text-center outline-none font-mono">
             </div>
         </div>
         
-        <div class="mb-4 bg-slate-900/50 p-3 rounded border border-slate-700 shadow-inner">
-            <label class="text-[10px] text-slate-400 flex justify-between mb-2">
-                <span class="flex items-center gap-1">🌞 Simulasi Cahaya Matahari</span>
-                <span id="time-val" class="text-amber-400 font-bold bg-slate-800 px-1.5 py-0.5 rounded shadow-sm border border-slate-600">12:00</span>
+        <div class="mb-5 bg-amber-50/50 p-3.5 rounded-2xl border border-amber-100/60 shadow-inner">
+            <label class="text-[10px] font-bold text-slate-600 flex justify-between items-center mb-2.5">
+                <span class="flex items-center gap-1.5"><span class="text-amber-500 text-sm drop-shadow-sm">🌞</span> Simulasi Cahaya</span>
+                <span id="time-val" class="text-amber-700 font-black bg-white px-2 py-0.5 rounded-md shadow-sm border border-amber-200">12:00</span>
             </label>
-            <input type="range" id="input-time" min="0" max="23.99" step="0.25" value="12" oninput="updateTime()" class="w-full cursor-pointer accent-blue-500">
+            <input type="range" id="input-time" min="0" max="23.99" step="0.25" value="12" oninput="updateTime()" class="w-full cursor-pointer accent-amber-500 h-1.5 bg-slate-200 rounded-lg appearance-none">
         </div>
         
-        <button onclick="visualizeAll()" class="w-full bg-blue-600 hover:bg-blue-500 py-2 rounded text-xs font-bold mb-2 transition-all duration-200">
-            TAMPILKAN DATA
+        <button onclick="visualizeAll()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-xs font-black uppercase tracking-widest mb-3 transition-all shadow-md hover:shadow-lg transform active:scale-95 flex justify-center items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="7.5 4.21 12 6.81 16.5 4.21"/><polyline points="7.5 19.79 7.5 14.6 3 12"/><polyline points="21 12 16.5 14.6 16.5 19.79"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            TAMPILKAN 3D
         </button>
         <div class="flex gap-2">
-            <button onclick="saveSettings()" id="btn-save" class="w-2/3 bg-emerald-600 hover:bg-emerald-500 py-2 rounded text-[10px] font-bold transition-all duration-200 shadow-sm">
-                SIMPAN PENGATURAN
+            <button onclick="saveSettings()" id="btn-save" class="w-2/3 bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-sm">
+                Simpan
             </button>
-            <button onclick="resetCamera()" class="w-1/3 bg-slate-700 hover:bg-slate-600 py-2 rounded text-[10px] font-bold transition-all duration-200 shadow-sm">
-                RESET
+            <button onclick="resetCamera()" class="w-1/3 bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 hover:text-slate-800 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-sm">
+                Reset
             </button>
         </div>
         
-        <div class="mt-4 pt-3 border-t border-slate-700">
-            <p class="text-[10px] text-slate-400 font-semibold mb-1">💡 Tips Navigasi Bebas 360°:</p>
-            <ul class="text-[9px] text-slate-400 list-disc list-inside space-y-1">
-                <li>Tahan <span class="text-blue-400 font-bold">Klik Kiri</span> untuk menggeser peta.</li>
-                <li>Tahan <span class="text-blue-400 font-bold">Scroll Tengah</span> (Roda Mouse) untuk rotasi 3D bebas.</li>
-                <li>Tahan <span class="text-blue-400 font-bold">Klik Kanan</span> untuk memperbesar/memperkecil (Zoom).</li>
+        <div class="mt-5 pt-4 border-t border-slate-200/60">
+            <p class="text-[10px] text-slate-600 font-bold mb-2 flex items-center gap-1.5"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500"><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg> Navigasi Bebas 360°:</p>
+            <ul class="text-[9.5px] text-slate-500 space-y-1.5 ml-1">
+                <li class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0"></span> <span class="font-bold text-slate-700">Klik Kiri (Tahan):</span> Menggeser peta</li>
+                <li class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0"></span> <span class="font-bold text-slate-700">Scroll Tengah:</span> Tilt & Rotasi 3D</li>
+                <li class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0"></span> <span class="font-bold text-slate-700">Klik Kanan:</span> Memperbesar (Zoom)</li>
             </ul>
         </div>
     </div>
 
     <script>
         let viewer;
+        
+        // --- LOGIKA TOGGLE HIDE/SHOW PANEL ---
+        let isPanelOpen = true;
+        function toggleControlPanel() {
+            const panel = document.getElementById('control-panel-container');
+            isPanelOpen = !isPanelOpen;
+            if (isPanelOpen) {
+                panel.style.transform = 'scale(1) translateY(0)';
+                panel.style.opacity = '1';
+                panel.style.pointerEvents = 'auto';
+            } else {
+                panel.style.transform = 'scale(0.95) translateY(-10px)';
+                panel.style.opacity = '0';
+                panel.style.pointerEvents = 'none';
+            }
+        }
+        
         window.onload = function() {
-            loadSettings(); // Load pengaturan yang tersimpan
+            loadSettings(); 
 
             try {
                 const satelliteProvider = new Cesium.ArcGisMapServerImageryProvider({
@@ -1619,30 +1656,25 @@ const TwinViewer = () => {
                     sceneModePicker: true,
                     timeline: false,
                     animation: false,
-                    shadows: true, // Mengaktifkan proyeksi bayangan 3D
+                    shadows: true, 
                     imageryProvider: satelliteProvider
                 });
 
-                // Mengaktifkan efek cahaya matahari pada globe bumi (Siang/Malam)
                 viewer.scene.globe.enableLighting = true; 
-                // Mengatur intensitas kegelapan bayangan agar tidak terlalu gelap pekat
                 viewer.scene.shadowMap.darkness = 0.4; 
 
                 viewer.scene.screenSpaceCameraController.enableTilt = true;
                 viewer.scene.screenSpaceCameraController.enableRotate = true;
                 viewer.scene.screenSpaceCameraController.enableZoom = true;
                 
-                // Terapkan jam default (jam 12 siang) saat peta pertama kali dimuat
                 updateTime();
 
-                // FITUR TRACKING KOORDINAT MOUSE
                 const coordDisplay = document.getElementById('coord-display');
                 const valLat = document.getElementById('val-lat');
                 const valLng = document.getElementById('val-lng');
                 
                 const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
                 handler.setInputAction(function(movement) {
-                    // Dapatkan posisi dari perpotongan sinar kamera dengan globe (bumi)
                     const cartesian = viewer.camera.pickEllipsoid(movement.endPosition, viewer.scene.globe.ellipsoid);
                     if (cartesian) {
                         const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
@@ -1657,6 +1689,23 @@ const TwinViewer = () => {
                     }
                 }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
 
+                // --- AUTO VISUALIZE JIKA ADA DATA TERSIMPAN ---
+                // Mencegah tampilan bola bumi default jika user sudah pernah menyimpan koordinat/model
+                const savedData = localStorage.getItem('twin_3d_settings');
+                if (savedData) {
+                    try {
+                        const parsedData = JSON.parse(savedData);
+                        if (parsedData.lat && parsedData.lng) {
+                            // Beri jeda 800ms agar engine Cesium selesai inisialisasi awal sebelum memuat 3D
+                            setTimeout(() => {
+                                visualizeAll();
+                            }, 800);
+                        }
+                    } catch(err) {
+                        console.error("Gagal membaca auto-load 3D settings", err);
+                    }
+                }
+
             } catch(e) {
                 console.error("Gagal memuat Cesium:", e);
             }
@@ -1665,7 +1714,6 @@ const TwinViewer = () => {
         const svgEye = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
         const svgEyeOff = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>';
 
-        // Fungsi baru untuk menyembunyikan objek langsung dari Peta
         function toggleLayer(type, btnId) {
             if (!viewer) return;
             const btn = document.getElementById(btnId);
@@ -1673,7 +1721,7 @@ const TwinViewer = () => {
 
             if (type === 'maptiler') {
                 if (viewer.imageryLayers.length > 1) {
-                    const layer = viewer.imageryLayers.get(1); // Layer 0 adalah basemap, Layer 1 adalah maptiler
+                    const layer = viewer.imageryLayers.get(1); 
                     layer.show = !layer.show;
                     isVisible = layer.show;
                 }
@@ -1684,30 +1732,27 @@ const TwinViewer = () => {
                     isVisible = ent.show;
                     anyEntity = true;
                 });
-                if (!anyEntity) return; // Abaikan jika model belum dimuat
+                if (!anyEntity) return; 
             }
 
             if (isVisible) {
                 btn.innerHTML = svgEye;
-                btn.classList.replace('text-rose-500', 'text-blue-400');
+                btn.classList.replace('text-rose-500', 'text-blue-500');
             } else {
                 btn.innerHTML = svgEyeOff;
-                btn.classList.replace('text-blue-400', 'text-rose-500');
+                btn.classList.replace('text-blue-500', 'text-rose-500');
             }
         }
 
-        // Fungsi baru untuk mengatur pergerakan matahari berdasarkan slider
         function updateTime() {
             if(!viewer) return;
             const val = parseFloat(document.getElementById('input-time').value);
             const hours = Math.floor(val);
             const minutes = Math.floor((val - hours) * 60);
             
-            // Format angka ke teks 00:00
             document.getElementById('time-val').innerText = 
                 String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
 
-            // Ubah waktu Cesium (Matahari otomatis bergeser)
             const d = new Date();
             d.setHours(hours, minutes, 0, 0);
             viewer.clock.currentTime = Cesium.JulianDate.fromDate(d);
@@ -1728,10 +1773,12 @@ const TwinViewer = () => {
             
             const btn = document.getElementById('btn-save');
             btn.innerHTML = 'TERSIMPAN ✓';
-            btn.classList.replace('bg-emerald-600', 'bg-emerald-500');
+            btn.classList.replace('bg-emerald-50', 'bg-emerald-500');
+            btn.classList.replace('text-emerald-600', 'text-white');
             setTimeout(() => {
-                btn.innerHTML = 'SIMPAN PENGATURAN';
-                btn.classList.replace('bg-emerald-500', 'bg-emerald-600');
+                btn.innerHTML = 'Simpan';
+                btn.classList.replace('bg-emerald-500', 'bg-emerald-50');
+                btn.classList.replace('text-white', 'text-emerald-600');
             }, 2000);
         }
 
@@ -1776,11 +1823,10 @@ const TwinViewer = () => {
         function visualizeAll() {
             if(!viewer) return;
             
-            // Kembalikan ikon mata ke mode "Show" (biru) setiap kali load ulang data
             document.getElementById('eye-maptiler').innerHTML = svgEye;
-            document.getElementById('eye-maptiler').classList.replace('text-rose-500', 'text-blue-400');
+            document.getElementById('eye-maptiler').classList.replace('text-rose-500', 'text-blue-500');
             document.getElementById('eye-url').innerHTML = svgEye;
-            document.getElementById('eye-url').classList.replace('text-rose-500', 'text-blue-400');
+            document.getElementById('eye-url').classList.replace('text-rose-500', 'text-blue-500');
 
             while (viewer.imageryLayers.length > 1) {
                 viewer.imageryLayers.remove(viewer.imageryLayers.get(1));
@@ -1822,7 +1868,15 @@ const TwinViewer = () => {
                     }
                 });
                 
-                viewer.zoomTo(modelEntity).catch(function(error) {
+                // Zoom otomatis dengan animasi dan jarak yang diatur agar tidak terlalu dekat
+                viewer.flyTo(modelEntity, {
+                    duration: 2.0,
+                    offset: new Cesium.HeadingPitchRange(
+                        0, // Heading (Arah orientasi kamera)
+                        Cesium.Math.toRadians(-35), // Pitch (kamera sedikit menunduk agar enak dilihat)
+                        500 * scaleVal // Range (jarak aman kamera dari objek, disesuaikan dengan skala)
+                    )
+                }).catch(function(error) {
                     console.log("Kamera zoom terinterupsi:", error);
                 });
             } else {
@@ -1835,7 +1889,11 @@ const TwinViewer = () => {
         function resetCamera() {
             if(!viewer) return;
             if (viewer.entities.values.length > 0) {
-                viewer.flyTo(viewer.entities);
+                const scaleVal = parseFloat(document.getElementById('input-scale').value) || 1.0;
+                viewer.flyTo(viewer.entities, {
+                    duration: 1.5,
+                    offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-35), 500 * scaleVal)
+                });
             } else {
                 const lat = parseFloat(document.getElementById('input-lat').value);
                 const lng = parseFloat(document.getElementById('input-lng').value);
