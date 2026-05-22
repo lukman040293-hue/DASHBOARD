@@ -4332,10 +4332,10 @@ export default function App() {
 
     return (
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-        <div className="bg-white rounded-[32px] p-6 md:p-8 w-full max-w-7xl shadow-2xl relative flex flex-col max-h-[95vh]">
-          <button onClick={() => setShowGlobalRekap(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-700 transition-colors bg-slate-100 rounded-full"><X size={20} /></button>
+        <div className="bg-white/80 backdrop-blur-2xl border border-white/50 rounded-[32px] p-6 md:p-8 w-full max-w-7xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] relative flex flex-col max-h-[95vh]">
+          <button onClick={() => setShowGlobalRekap(false)} className="absolute top-6 right-6 p-2 text-slate-500 hover:text-rose-500 transition-colors bg-white/60 hover:bg-white/90 backdrop-blur-md border border-white shadow-sm rounded-full"><X size={20} /></button>
 
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 pr-12 border-b border-slate-100 pb-4 shrink-0">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 pr-12 border-b border-slate-300/40 pb-4 shrink-0">
              <div>
                 <h3 className="text-xl font-black text-slate-800 flex items-center gap-2"><FileSpreadsheet className="text-amber-500" /> Rekapitulasi & Laporan Proyek</h3>
                 <p className="text-xs text-slate-500 font-bold mt-1">Pilih pekerjaan dan kolom data yang ingin Anda unduh</p>
@@ -4405,7 +4405,7 @@ export default function App() {
           </div>
 
           {/* OPSI FILTER KOLOM TAMBAHAN */}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mb-4 p-4 bg-slate-50/80 rounded-2xl border border-slate-200 shrink-0">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mb-4 p-4 bg-white/50 backdrop-blur-md rounded-2xl border border-white/60 shadow-sm shrink-0">
              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 w-full sm:w-auto">Sertakan Kolom:</span>
              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer hover:text-blue-600 transition-colors">
                <input type="checkbox" checked={rekapOptions.status} onChange={e => setRekapOptions({...rekapOptions, status: e.target.checked})} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300" /> 
@@ -4446,10 +4446,10 @@ export default function App() {
              </div>
           </div>
 
-          <div className="flex-1 overflow-auto custom-scrollbar border border-slate-200 rounded-2xl">
+          <div className="flex-1 overflow-auto custom-scrollbar border border-white/60 bg-white/30 backdrop-blur-sm rounded-2xl shadow-inner">
             <table className="w-full text-left border-collapse min-w-[800px]">
-              <thead className="bg-slate-100 sticky top-0 shadow-sm z-10">
-                <tr className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
+              <thead className="bg-white/60 backdrop-blur-xl sticky top-0 shadow-sm z-10 border-b border-white/50">
+                <tr className="text-[10px] font-black uppercase text-slate-600 tracking-wider">
                   <th className="p-4 border-b border-slate-200 w-12 text-center">
                     <input 
                        type="checkbox" 
@@ -4480,9 +4480,9 @@ export default function App() {
                   <th className="p-4 border-b border-slate-200 border-l border-slate-200 text-center w-36">Update Terakhir</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-white/40">
                 {masterProjects.length === 0 ? (
-                  <tr><td colSpan="13" className="p-10 text-center text-slate-400 font-bold text-xs">Belum ada proyek terdaftar.</td></tr>
+                  <tr><td colSpan="13" className="p-10 text-center text-slate-500 font-bold text-xs">Belum ada proyek terdaftar.</td></tr>
                 ) : (
                   masterProjects.map((p, idx) => {
                     let termin = '1'; let tPct = '0';
@@ -4491,7 +4491,7 @@ export default function App() {
                     const isRunning = p.status === 'Running' || actualProg > 0;
 
                     return (
-                      <tr key={p.id} className={`transition-colors group ${selectedRekapProjects.has(p.id) ? 'bg-white hover:bg-slate-50/80' : 'bg-slate-50/40 opacity-60'}`}>
+                      <tr key={p.id} className={`transition-colors group ${selectedRekapProjects.has(p.id) ? 'bg-white/40 hover:bg-white/70' : 'bg-white/10 opacity-60'}`}>
                         <td className="p-4 text-center">
                            <input 
                              type="checkbox" 
@@ -4505,15 +4505,15 @@ export default function App() {
                              }}
                            />
                         </td>
-                        <td className="p-4 text-center font-bold text-slate-400 text-xs">{idx + 1}</td>
+                        <td className="p-4 text-center text-slate-600 text-xs">{idx + 1}</td>
                         <td className="p-4">
-                          <div className="font-bold text-slate-800 text-xs line-clamp-2 leading-snug group-hover:text-blue-600 transition-colors" title={p.pekerjaan}>{p.pekerjaan}</div>
+                          <div className="text-slate-800 text-xs line-clamp-2 leading-snug group-hover:text-blue-600 transition-colors" title={p.pekerjaan}>{p.pekerjaan}</div>
                         </td>
                         
                         {/* KONTEN KOLOM TAMBAHAN DINAMIS */}
                         {rekapOptions.status && (
                           <td className="p-4 border-l border-slate-100 text-center">
-                            <span className={`px-2 py-1 text-[9px] font-black uppercase tracking-widest rounded shadow-sm border ${isRunning ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                            <span className={`px-2 py-1 text-[9px] uppercase tracking-widest rounded shadow-sm border ${isRunning ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
                               {isRunning ? 'Pelaksanaan' : 'Persiapan'}
                             </span>
                           </td>
@@ -4522,7 +4522,7 @@ export default function App() {
                         {rekapOptions.progress && (
                           <td className="p-4 border-l border-slate-100 text-center">
                             <div className="flex flex-col items-center w-24 mx-auto">
-                              <span className="font-black text-slate-800 text-sm">{actualProg.toFixed(1)}%</span>
+                              <span className="text-slate-800 text-sm">{actualProg.toFixed(1)}%</span>
                               <div className="w-full h-1.5 bg-slate-200 rounded-full mt-1 overflow-hidden shadow-inner">
                                 <div className={`h-full rounded-full ${isRunning ? 'bg-blue-500' : 'bg-slate-400'}`} style={{ width: `${actualProg}%` }}></div>
                               </div>
@@ -4533,14 +4533,14 @@ export default function App() {
                         {rekapOptions.termin && (
                           <td className="p-4 border-l border-slate-100 text-center">
                              <div className="flex flex-col items-center">
-                                <span className="font-bold text-slate-800 text-xs">Termin {toRoman(termin)}</span>
-                                <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded mt-0.5 border border-slate-200">{tPct}%</span>
+                                <span className="text-slate-800 text-xs">Termin {toRoman(termin)}</span>
+                                <span className="text-[9px] text-slate-600 bg-slate-100 px-2 py-0.5 rounded mt-0.5 border border-slate-200">{tPct}%</span>
                              </div>
                           </td>
                         )}
 
                         {rekapOptions.dimensi && (
-                          <td className="p-4 border-l border-slate-100 bg-blue-50/20 text-xs font-bold text-slate-600">
+                          <td className="p-4 border-l border-slate-100 bg-blue-50/20 text-xs text-slate-700">
                              <div className="flex flex-col gap-1">
                                <span>P: {p.panjang_rencana || '-'}m | L: {p.lebar_rencana || '-'}m</span>
                                <span className="text-[10px] text-blue-600 truncate">{p.jenis_model || '-'}</span>
@@ -4548,45 +4548,45 @@ export default function App() {
                           </td>
                         )}
                         {rekapOptions.ppk && (
-                          <td className="p-4 border-l border-slate-100 bg-amber-50/20 text-xs font-bold text-amber-700 line-clamp-2">
+                          <td className="p-4 border-l border-slate-100 bg-amber-50/20 text-xs text-amber-800 line-clamp-2">
                              {getPPKName(p.dinas_data)}
                           </td>
                         )}
                         {rekapOptions.kontraktor && (
-                          <td className="p-4 border-l border-slate-100 bg-emerald-50/20 text-[11px] font-bold text-emerald-700 leading-snug">
+                          <td className="p-4 border-l border-slate-100 bg-emerald-50/20 text-[11px] text-emerald-800 leading-snug">
                              {getPersonilNames(p.kontraktor_data)}
                           </td>
                         )}
                         {rekapOptions.konsultan && (
-                          <td className="p-4 border-l border-slate-100 bg-rose-50/20 text-[11px] font-bold text-rose-700 leading-snug">
+                          <td className="p-4 border-l border-slate-100 bg-rose-50/20 text-[11px] text-rose-800 leading-snug">
                              {getPersonilNames(p.konsultan_data)}
                           </td>
                         )}
 
                         {rekapOptions.dokumen && (
-                          <td className="p-4 border-l border-slate-100 bg-indigo-50/20 text-xs font-bold">
+                          <td className="p-4 border-l border-slate-100 bg-indigo-50/20 text-xs">
                              {(() => {
                                 if (!rekapDocKeyword) return <span className="text-slate-400 text-[10px] italic">Ketik kata kunci...</span>;
                                 const docs = globalDocuments.filter(d => d.project_id === p.id && String(d.name).toLowerCase().includes(rekapDocKeyword.toLowerCase()));
                                 if (docs.length > 0) {
                                    return (
                                      <div className="flex flex-col gap-1.5">
-                                       <span className="text-emerald-600 flex items-center gap-1 font-black text-[10px] uppercase"><CheckCircle2 size={12}/> Ada ({docs.length} File)</span>
+                                       <span className="text-emerald-600 flex items-center gap-1 font-medium text-[10px] uppercase"><CheckCircle2 size={12}/> Ada ({docs.length} File)</span>
                                        {docs.slice(0,2).map((d, i) => (
                                          <a key={i} href={d.file_url} target="_blank" rel="noopener noreferrer" className="text-[9px] text-blue-600 hover:text-blue-800 hover:underline truncate max-w-[160px] block" title={d.name}>{d.name}</a>
                                        ))}
-                                       {docs.length > 2 && <span className="text-[9px] text-slate-500 font-bold bg-slate-100 w-max px-1.5 py-0.5 rounded border border-slate-200">+{docs.length - 2} file lain</span>}
+                                       {docs.length > 2 && <span className="text-[9px] text-slate-600 bg-slate-100 w-max px-1.5 py-0.5 rounded border border-slate-200">+{docs.length - 2} file lain</span>}
                                      </div>
                                    )
                                 } else {
-                                   return <span className="text-rose-500 flex items-center gap-1 font-black text-[10px] uppercase"><X size={12} strokeWidth={3}/> Tidak Ada</span>;
+                                   return <span className="text-rose-500 flex items-center gap-1 font-medium text-[10px] uppercase"><X size={12} strokeWidth={3}/> Tidak Ada</span>;
                                 }
                              })()}
                           </td>
                         )}
 
                         <td className="p-4 border-l border-slate-100 text-center">
-                           <span className="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100 whitespace-nowrap">
+                           <span className="text-[10px] text-slate-600 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100 whitespace-nowrap">
                              {p.updated_at ? new Date(p.updated_at).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'}) : (p.created_at ? new Date(p.created_at).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'}) : '-')}
                            </span>
                         </td>
