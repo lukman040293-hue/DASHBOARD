@@ -607,15 +607,15 @@ const SChartTooltip = ({ active, payload, label }) => {
 
     return (
       <div className="bg-white border border-slate-100 p-4 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.08)] text-left z-50 relative">
-        <p className="text-xs font-bold text-slate-800 mb-3 tracking-widest border-b border-slate-100 pb-2 uppercase">{displayLabel}</p>
+        <p className="text-sm font-bold text-slate-800 mb-3 tracking-widest border-b border-slate-100 pb-2 uppercase">{displayLabel}</p>
         <div className="space-y-2">
-          <div className="flex justify-between gap-8 text-[11px]"><span className="text-slate-400 font-bold uppercase tracking-tighter">Rencana:</span><span className="font-bold text-slate-700">{Number(plan).toFixed(2)}%</span></div>
+          <div className="flex justify-between gap-8 text-xs"><span className="text-slate-500 font-normal uppercase tracking-tighter">Rencana:</span><span className="font-normal text-slate-700">{Number(plan).toFixed(2)}%</span></div>
           {hasActual ? (
             <>
-              <div className="flex justify-between gap-8 text-[11px]"><span className="text-blue-500 font-bold uppercase tracking-tighter">Progres:</span><span className="font-bold text-slate-800">{Number(actual).toFixed(2)}%</span></div>
-              <div className="pt-2 mt-2 border-t border-slate-100 flex justify-between gap-8 text-[11px]"><span className="text-slate-400 font-bold uppercase tracking-tighter">Deviasi:</span><span className={`font-black ${devColor}`}>{devSign}{dev}%</span></div>
+              <div className="flex justify-between gap-8 text-xs"><span className="text-blue-500 font-normal uppercase tracking-tighter">Progres:</span><span className="font-normal text-slate-800">{Number(actual).toFixed(2)}%</span></div>
+              <div className="pt-2 mt-2 border-t border-slate-100 flex justify-between gap-8 text-xs"><span className="text-slate-500 font-normal uppercase tracking-tighter">Deviasi:</span><span className={`font-medium ${devColor}`}>{devSign}{dev}%</span></div>
             </>
-          ) : (<div className="pt-2 mt-2 border-t border-slate-100 flex justify-between gap-8 text-[11px]"><span className="text-slate-400 font-bold uppercase tracking-tighter italic">Progres belum diupdate</span></div>)}
+          ) : (<div className="pt-2 mt-2 border-t border-slate-100 flex justify-between gap-8 text-xs"><span className="text-slate-400 font-normal uppercase tracking-tighter italic">Progres belum diupdate</span></div>)}
         </div>
       </div>
     );
@@ -1391,8 +1391,8 @@ const PresentationView = ({ projectData, processedSCurveData, photos, actualProg
            <div className="flex-1 w-full bg-slate-800/50 rounded-[32px] p-6 border border-slate-700 shadow-xl max-w-6xl flex flex-col">
               <div className="flex justify-between items-center mb-6 shrink-0">
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Progres Saat Ini</span>
-                  <span className="text-4xl font-black text-emerald-400">{Number(actualProg !== null ? actualProg : (projectData?.actual_progress || 0)).toFixed(2)}%</span>
+                  <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Progres Saat Ini</span>
+                  <span className="text-5xl font-black text-emerald-400">{Number(actualProg !== null ? actualProg : (projectData?.actual_progress || 0)).toFixed(2)}%</span>
                 </div>
               </div>
               <div className="flex-1 min-h-0 w-full -ml-4">
@@ -1409,8 +1409,8 @@ const PresentationView = ({ projectData, processedSCurveData, photos, actualProg
                        </linearGradient>
                      </defs>
                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                     <XAxis dataKey="n" stroke="#94a3b8" fontSize={12} fontWeight="bold" axisLine={false} tickLine={false} />
-                     <YAxis domain={[0, 100]} stroke="#94a3b8" fontSize={12} fontWeight="bold" axisLine={false} tickLine={false} tickFormatter={(value) => `${value}%`} />
+                     <XAxis dataKey="n" stroke="#94a3b8" fontSize={14} fontWeight="normal" axisLine={false} tickLine={false} />
+                     <YAxis domain={[0, 100]} stroke="#94a3b8" fontSize={14} fontWeight="normal" axisLine={false} tickLine={false} tickFormatter={(value) => `${value}%`} />
                      <Tooltip contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc', borderRadius: '12px' }} itemStyle={{ fontWeight: 'bold' }} />
                      <Area type="monotone" dataKey="r" stroke="#06b6d4" strokeWidth={3} fill="url(#colorRencanaPres)" name="Rencana" dot={{ r: 4, strokeWidth: 2, fill: '#1e293b' }} />
                      <Area type="monotone" dataKey="a" stroke="#3b82f6" strokeWidth={4} fill="url(#colorRealisasiPres)" name="Realisasi" dot={{ r: 5, strokeWidth: 2, fill: '#1e293b' }} />
@@ -5136,7 +5136,7 @@ export default function App() {
                       
                       {/* KURVA S (KIRI 7 KOLOM) */}
                       <div className="lg:col-span-7 bg-white p-6 md:p-8 rounded-[32px] border border-slate-100 shadow-sm flex flex-col h-[450px] lg:h-full min-h-0 overflow-hidden">
-                        <div className="flex justify-between items-center mb-6 shrink-0"><h3 className="text-base font-bold">Kurva S Pekerjaan</h3><button onClick={() => setShowEditProjectModal(true)} className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-2"><TrendingUp size={12} /> Input Kurva</button></div>
+                        <div className="flex justify-between items-center mb-6 shrink-0"><h3 className="text-lg font-bold text-slate-800">Kurva S Pekerjaan</h3><button onClick={() => setShowEditProjectModal(true)} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl text-xs font-bold uppercase flex items-center gap-2"><TrendingUp size={14} /> Input Kurva</button></div>
                         <div className="flex-1 w-full -ml-4 min-h-0">
                           <ResponsiveContainer width="100%" height="100%">
                             <ComposedChart data={processedSCurveData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
@@ -5151,13 +5151,13 @@ export default function App() {
                                 </linearGradient>
                               </defs>
                               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                              <XAxis dataKey="n" stroke="#000000" fontSize={10} fontWeight="bold" axisLine={false} tickLine={false} />
-                              <YAxis domain={[0, 100]} stroke="#000000" fontSize={10} fontWeight="bold" axisLine={false} tickLine={false} tickFormatter={(value) => `${value}%`} />
+                              <XAxis dataKey="n" stroke="#475569" fontSize={12} fontWeight="normal" axisLine={false} tickLine={false} />
+                              <YAxis domain={[0, 100]} stroke="#475569" fontSize={12} fontWeight="normal" axisLine={false} tickLine={false} tickFormatter={(value) => `${value}%`} />
                               <Tooltip content={(props) => <SChartTooltip {...props} />} />
                               <Legend verticalAlign="bottom" align="center" content={(p) => (
                                 <div className="flex flex-col items-center pt-6">
-                                  <div className="flex gap-6 mb-2">{(p.payload || []).map((entry, index) => (<div key={index} className="flex items-center gap-2"><span className="block w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }}></span><span className="text-[10px] uppercase font-bold text-slate-900">{safeRender(entry.value)}</span></div>))}</div>
-                                  <p className="text-[9px] text-slate-400 mt-2 font-bold uppercase">Update terakhir: {projectData?.updated_at ? new Date(projectData.updated_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</p>
+                                  <div className="flex gap-6 mb-2">{(p.payload || []).map((entry, index) => (<div key={index} className="flex items-center gap-2"><span className="block w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }}></span><span className="text-xs uppercase font-bold text-slate-700">{safeRender(entry.value)}</span></div>))}</div>
+                                  <p className="text-xs text-slate-500 mt-2 font-normal uppercase">Update terakhir: {projectData?.updated_at ? new Date(projectData.updated_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</p>
                                 </div>
                               )} />
                               <Area type="monotone" dataKey="r" stroke="#06b6d4" strokeWidth={2} fill="url(#colorRencanaDash)" name="Rencana (M=Mingguan)" dot={{ r: 3, strokeWidth: 2, fill: '#ffffff' }} />
@@ -5188,32 +5188,32 @@ export default function App() {
                               <table className="w-full text-left border-collapse">
                                 <thead className="sticky top-0 bg-white/40 backdrop-blur-md z-20">
                                   <tr className="border-b border-slate-200/60">
-                                    <th className="pb-3 pr-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] w-full">Item Pekerjaan</th>
-                                    <th className="pb-3 px-3 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-right whitespace-nowrap">Hari Ini</th>
-                                    <th className="pb-3 px-3 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-right whitespace-nowrap">Total</th>
-                                    <th className="pb-3 px-3 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-right whitespace-nowrap">Sat.</th>
-                                    <th className="pb-3 pl-3 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-right whitespace-nowrap">Progress</th>
+                                    <th className="pb-3 pr-2 text-xs font-black text-slate-500 uppercase tracking-widest w-full">Item Pekerjaan</th>
+                                    <th className="pb-3 px-2 text-xs font-black text-slate-500 uppercase tracking-widest text-right whitespace-nowrap">Hari Ini</th>
+                                    <th className="pb-3 px-2 text-xs font-black text-slate-500 uppercase tracking-widest text-right whitespace-nowrap">Total</th>
+                                    <th className="pb-3 px-2 text-xs font-black text-slate-500 uppercase tracking-widest text-right whitespace-nowrap">Sat.</th>
+                                    <th className="pb-3 pl-2 text-xs font-black text-slate-500 uppercase tracking-widest text-right whitespace-nowrap">Progress</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100/50">
                                   {projectData.item_utama_data.map((item, idx) => (
                                     <tr key={item.id || idx} className="hover:bg-blue-50/40 transition-colors group border-b border-slate-50 last:border-0">
-                                      <td className="py-4 pr-4">
-                                        <span className="text-[12px] font-normal text-slate-800 leading-tight block truncate uppercase" title={item.nama}>
+                                      <td className="py-4 pr-2">
+                                        <span className="text-sm font-normal text-slate-800 leading-tight block truncate uppercase" title={item.nama}>
                                           {item.nama}
                                         </span>
                                       </td>
-                                      <td className="py-4 px-3 text-right text-[12px] font-normal text-slate-600">
+                                      <td className="py-4 px-2 text-right text-sm font-normal text-slate-600">
                                         {item.bobot || '-'}
                                       </td>
-                                      <td className="py-4 px-3 text-right text-[12px] font-normal text-slate-600">
+                                      <td className="py-4 px-2 text-right text-sm font-normal text-slate-600">
                                         {item.nilai || '-'}
                                       </td>
-                                      <td className="py-4 px-3 text-right text-[12px] font-normal text-slate-600 uppercase">
+                                      <td className="py-4 px-2 text-right text-sm font-normal text-slate-600 uppercase">
                                         {item.satuan || '-'}
                                       </td>
-                                      <td className="py-4 pl-3 text-right">
-                                        <span className="text-[13px] font-black text-blue-600 drop-shadow-sm">{item.persen}%</span>
+                                      <td className="py-4 pl-2 text-right">
+                                        <span className="text-base font-black text-blue-600 drop-shadow-sm">{item.persen}%</span>
                                       </td>
                                     </tr>
                                   ))}
