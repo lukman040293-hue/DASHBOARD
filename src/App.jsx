@@ -1226,7 +1226,7 @@ const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBac
          {/* Teks indikator Peta Induk */}
          <div className="hidden sm:flex flex-col opacity-90 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10">
            <h1 className="text-sm font-black tracking-tight text-white leading-none drop-shadow-md">Peta Induk</h1>
-           <p className="text-[8px] font-bold text-blue-400 uppercase tracking-widest mt-1 drop-shadow-md">{isUIHidden ? 'Klik Buka Menu' : 'Master Dashboard'}</p>
+           <p className="text-[8px] font-bold text-blue-400 uppercase tracking-widest mt-1 drop-shadow-md">Master Dashboard</p>
          </div>
       </div>
 
@@ -2709,6 +2709,7 @@ const ContractTable = ({ title, icon, dataArray, colorClass, bgClass }) => {
 const LoginView = ({ onLogin, error, isProcessing }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // State baru untuk toggle password
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -2730,7 +2731,7 @@ const LoginView = ({ onLogin, error, isProcessing }) => {
           <Activity size={40} strokeWidth={2.5} />
         </div>
         <h1 className="text-3xl font-black text-slate-800 tracking-tight mb-2">Dashboard</h1>
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-8 text-center">Command Center Management</p>
+        <p className="text-xs font-normal text-slate-500 uppercase tracking-widest mb-8 text-center">Command Center Management</p>
 
         {error && (
           <div className="w-full bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold p-4 rounded-xl mb-6 flex items-center gap-3">
@@ -2742,16 +2743,31 @@ const LoginView = ({ onLogin, error, isProcessing }) => {
           <div>
              <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400"><User size={18} /></div>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email Terdaftar" className="w-full pl-11 pr-4 py-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-sm font-bold outline-none focus:border-blue-500 focus:bg-white transition-all" required />
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email Terdaftar" className="w-full pl-11 pr-4 py-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-sm font-normal outline-none focus:border-blue-500 focus:bg-white transition-all" required />
              </div>
           </div>
           <div>
              <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400"><Lock size={18} /></div>
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" className="w-full pl-11 pr-4 py-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-sm font-bold outline-none focus:border-blue-500 focus:bg-white transition-all" required />
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  value={password} 
+                  onChange={e => setPassword(e.target.value)} 
+                  placeholder="Password" 
+                  className="w-full pl-11 pr-12 py-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-sm font-normal outline-none focus:border-blue-500 focus:bg-white transition-all" 
+                  required 
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setShowPassword(!showPassword)} 
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-blue-600 transition-colors"
+                  title={showPassword ? "Sembunyikan Password" : "Lihat Password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
              </div>
           </div>
-          <button type="submit" disabled={isProcessing} className="w-full bg-blue-600 text-white py-4 rounded-2xl text-sm font-black uppercase tracking-widest shadow-lg hover:bg-blue-500 transition-colors mt-4 flex items-center justify-center gap-2">
+          <button type="submit" disabled={isProcessing} className="w-full bg-blue-600 text-white py-4 rounded-2xl text-sm font-normal uppercase tracking-widest shadow-lg hover:bg-blue-500 transition-colors mt-4 flex items-center justify-center gap-2">
             {isProcessing ? <Loader2 size={18} className="animate-spin" /> : 'LOGIN'}
           </button>
         </form>
@@ -2788,7 +2804,7 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
         <div className="flex flex-col opacity-90 group-hover:opacity-100 transition-opacity">
           <h1 className="text-xl md:text-2xl font-normal tracking-tight text-white leading-none drop-shadow-md">Dashboard</h1>
           <p className="text-[10px] md:text-xs font-bold text-slate-400 group-hover:text-blue-300 uppercase tracking-widest mt-1 drop-shadow-md transition-colors">
-            {isUIHidden ? 'Klik Buka Menu' : 'Gerbang Utama'}
+            Gerbang Utama
           </p>
         </div>
       </div>
@@ -4331,8 +4347,8 @@ export default function App() {
     };
 
     return (
-      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-        <div className="bg-white/80 backdrop-blur-2xl border border-white/50 rounded-[32px] p-6 md:p-8 w-full max-w-7xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] relative flex flex-col max-h-[95vh]">
+      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-start justify-center z-[9999] p-4 pt-24 md:p-8 md:pt-32">
+        <div className="bg-white/80 backdrop-blur-2xl border border-white/50 rounded-[32px] p-6 md:p-8 w-full max-w-7xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] relative flex flex-col max-h-[calc(100vh-7rem)] md:max-h-[calc(100vh-10rem)]">
           <button onClick={() => setShowGlobalRekap(false)} className="absolute top-6 right-6 p-2 text-slate-500 hover:text-rose-500 transition-colors bg-white/60 hover:bg-white/90 backdrop-blur-md border border-white shadow-sm rounded-full"><X size={20} /></button>
 
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 pr-12 border-b border-slate-300/40 pb-4 shrink-0">
