@@ -1538,7 +1538,7 @@ const TwinViewer = () => {
     </button>
 
     <!-- PANEL PENGATURAN (PUTIH TRANSPARAN & BISA DI-HIDE) -->
-    <div id="control-panel-container" class="absolute top-20 left-4 z-[50] w-[320px] bg-white/85 backdrop-blur-xl p-5 rounded-3xl shadow-[0_16px_40px_rgba(0,0,0,0.1)] border border-white/60 transition-all duration-500 origin-top-left max-h-[80vh] overflow-y-auto">
+    <div id="control-panel-container" class="absolute top-20 left-4 z-[50] w-[320px] bg-white/85 backdrop-blur-xl p-5 rounded-3xl shadow-[0_16px_40px_rgba(0,0,0,0.1)] border border-white/60 transition-all duration-500 origin-top-left max-h-[80vh] overflow-y-auto" style="transform: scale(0.95) translateY(-10px); opacity: 0; pointer-events: none;">
         
         <div class="flex justify-between items-center mb-4 border-b border-slate-200/60 pb-3">
             <h1 class="text-sm font-black uppercase tracking-wider text-slate-800 flex items-center gap-2">
@@ -1624,7 +1624,7 @@ const TwinViewer = () => {
         let viewer;
         
         // --- LOGIKA TOGGLE HIDE/SHOW PANEL ---
-        let isPanelOpen = true;
+        let isPanelOpen = false;
         function toggleControlPanel() {
             const panel = document.getElementById('control-panel-container');
             isPanelOpen = !isPanelOpen;
