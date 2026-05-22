@@ -4058,7 +4058,14 @@ export default function App() {
       // UPDATE OPTIMISTIS: Langsung hilangkan dari layar tanpa harus menunggu loading database
       if (deletedType === 'media') setFeeds(prev => prev.filter(f => f.id !== deletedId));
       else if (deletedType === 'doc') setDocuments(prev => prev.filter(d => d.id !== deletedId));
-      else if (deletedType === 'project') setMasterProjects(prev => prev.filter(p => p.id !== deletedId));
+      else if (deletedType === 'project') {
+          setMasterProjects(prev => prev.filter(p => p.id !== deletedId));
+          // Jika proyek yang dihapus adalah proyek yang sedang aktif dibuka
+          if (projectData && projectData.id === deletedId) {
+              setAppMode(previousAppMode || 'selection');
+              setProjectData(null);
+          }
+      }
 
       showMsg("Data berhasil dihapus!", "success"); 
       setDeleteConfig(null); 
@@ -4066,7 +4073,7 @@ export default function App() {
       // Re-fetch untuk mensinkronkan ulang data total di belakang layar
       if (deletedType === 'project') fetchAllProjects();
       else if (deletedType === 'employee') fetchEmployees();
-      else fetchProjectDetails(projectData.id);
+      else if (projectData && projectData.id !== deletedId) fetchProjectDetails(projectData.id);
       
     } catch (err) { showMsg(err.message, "error"); } finally { setIsProcessing(false); }
   };
@@ -5732,7 +5739,14 @@ export default function App() {
                 </div>
               </div>
 
-              <button type="submit" disabled={isProcessing} className="w-full bg-blue-600 text-white py-4 rounded-2xl text-xs font-bold uppercase mt-4 shadow-md">{isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Simpan Perubahan'}</button>
+              <div className="flex gap-3 mt-6 border-t border-slate-200 pt-6">
+                <button type="button" onClick={() => { setShowEditProjectModal(false); setDeleteConfig({ id: projectData.id, type: 'project', name: projectData.pekerjaan }); }} className="w-1/3 bg-rose-50 text-rose-600 py-4 rounded-2xl text-xs font-bold uppercase shadow-sm hover:bg-rose-100 transition-colors flex justify-center items-center gap-2">
+                  <Trash size={16} /> <span className="hidden sm:inline">Hapus Proyek</span>
+                </button>
+                <button type="submit" disabled={isProcessing} className="w-2/3 bg-blue-600 text-white py-4 rounded-2xl text-xs font-bold uppercase shadow-md flex justify-center items-center gap-2">
+                  {isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Simpan Perubahan'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -6248,9 +6262,15 @@ export default function App() {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[2000] p-4">
           <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-2xl relative text-center">
             <div className="mx-auto w-14 h-14 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-5"><AlertCircle size={28} /></div>
-            <h3 className="text-xl font-black mb-2 text-slate-800">Apakah Anda Yakin?</h3>
-            <p className="text-xs text-slate-500 mb-8 font-medium leading-relaxed">
-               Data atau foto ini akan dihapus secara permanen dan tidak dapat dikembalikan lagi.
+            <h3 className="text-xl font-black mb-2 text-slate-800">
+               {deleteConfig.type === 'project' ? 'Hapus Proyek?' : 'Apakah Anda Yakin?'}
+            </h3>
+            <p className={`text-xs mb-8 font-medium leading-relaxed ${deleteConfig.type === 'project' ? 'text-rose-600 bg-rose-50 p-3 rounded-xl border border-rose-100' : 'text-slate-500'}`}>
+               {deleteConfig.type === 'project' ? (
+                   <>Kamar proyek <b>{deleteConfig.name}</b> dan seluruh data didalamnya akan dihapus permanen!</>
+               ) : (
+                   'Data atau foto ini akan dihapus secara permanen dan tidak dapat dikembalikan lagi.'
+               )}
             </p>
             <div className="flex gap-3">
               <button onClick={() => setDeleteConfig(null)} className="flex-1 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors">Batal</button>
