@@ -4902,7 +4902,7 @@ export default function App() {
           {/* LOGO DI ATAS */}
           <div className={`flex items-center ${isSidebarOpen ? 'gap-2.5 px-1 mb-8' : 'justify-center mb-8'} transition-all`}>
             <Activity size={24} className="text-blue-600 shrink-0" />
-            {isSidebarOpen && <h1 className="text-lg font-black tracking-tight text-slate-800 animate-in fade-in duration-300">Synx<span className="text-blue-500">Build</span></h1>}
+            {isSidebarOpen && <h1 className="text-lg font-black tracking-tight text-slate-800 animate-in fade-in duration-300">Dashboard</h1>}
           </div>
 
           {/* TOMBOL KEMBALI */}
