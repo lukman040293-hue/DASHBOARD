@@ -5188,28 +5188,28 @@ export default function App() {
                               <table className="w-full text-left border-collapse">
                                 <thead className="sticky top-0 bg-white/40 backdrop-blur-md z-20">
                                   <tr className="border-b border-slate-200/60">
-                                    <th className="pb-3 pr-2 text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Item Pekerjaan</th>
-                                    <th className="pb-3 px-1 text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Renc. Hari Ini</th>
-                                    <th className="pb-3 px-1 text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Total</th>
-                                    <th className="pb-3 px-1 text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Sat.</th>
-                                    <th className="pb-3 pl-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] text-right">Progress</th>
+                                    <th className="pb-3 pr-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] w-full">Item Pekerjaan</th>
+                                    <th className="pb-3 px-3 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-right whitespace-nowrap">Hari Ini</th>
+                                    <th className="pb-3 px-3 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-right whitespace-nowrap">Total</th>
+                                    <th className="pb-3 px-3 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-right whitespace-nowrap">Sat.</th>
+                                    <th className="pb-3 pl-3 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-right whitespace-nowrap">Progress</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100/50">
                                   {projectData.item_utama_data.map((item, idx) => (
                                     <tr key={item.id || idx} className="hover:bg-blue-50/40 transition-colors group border-b border-slate-50 last:border-0">
-                                      <td className="py-4 pr-2 max-w-[120px]">
-                                        <span className="text-[11px] font-black text-slate-800 leading-tight block truncate uppercase" title={item.nama}>
+                                      <td className="py-4 pr-4">
+                                        <span className="text-[12px] font-normal text-slate-800 leading-tight block truncate uppercase" title={item.nama}>
                                           {item.nama}
                                         </span>
                                       </td>
-                                      <td className="py-4 px-1 text-center text-[11px] font-bold text-slate-600">
+                                      <td className="py-4 px-3 text-right text-[12px] font-normal text-slate-600">
                                         {item.bobot || '-'}
                                       </td>
-                                      <td className="py-4 px-1 text-center text-[11px] font-bold text-slate-600">
+                                      <td className="py-4 px-3 text-right text-[12px] font-normal text-slate-600">
                                         {item.nilai || '-'}
                                       </td>
-                                      <td className="py-4 px-1 text-center text-[11px] font-bold text-slate-600">
+                                      <td className="py-4 px-3 text-right text-[12px] font-normal text-slate-600 uppercase">
                                         {item.satuan || '-'}
                                       </td>
                                       <td className="py-4 pl-3 text-right">
