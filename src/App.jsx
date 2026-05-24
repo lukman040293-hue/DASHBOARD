@@ -1284,9 +1284,9 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
               const coords = seg.points.map(pt => [parseFloat(pt.lat), parseFloat(pt.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
               
               // GABUNGKAN TITIK AKHIR (BOUNDARY) AGAR GARIS TERBENTUK MESKI 2 TITIK
-              if (coords.length === 1 && seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
-                  coords.push([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)]);
-              }
+              // if (coords.length === 1 && seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
+              //     coords.push([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)]);
+              // }
 
               if (coords.length > 0) {
                 if (coords.length > 1) {
@@ -3136,9 +3136,9 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }
         const coords = seg.points.map(p => [parseFloat(p.lat), parseFloat(p.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
         
         // GABUNGKAN TITIK AKHIR (BOUNDARY) JIKA ADA AGAR GARIS TERBENTUK UNTUK 2 TITIK SAJA
-        if (coords.length === 1 && seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
-            coords.push([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)]);
-        }
+        // if (coords.length === 1 && seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
+        //     coords.push([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)]);
+        // }
 
         if (coords.length > 0) {
           
@@ -3233,14 +3233,14 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }
                             <div class="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity z-[10000] pointer-events-none whitespace-nowrap bg-white text-slate-800 text-[10px] font-bold py-1.5 px-2.5 rounded-lg shadow-xl border border-slate-200">
                                 ${new Date(feed.created_at).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'})}
                             </div>
-                            <div class="w-[96px] h-[64px] bg-white p-1 rounded-xl shadow-[0_5px_15px_rgba(0,0,0,0.25)] relative z-10 group-hover:scale-[1.6] group-hover:-translate-y-2 transition-transform duration-300 origin-bottom border border-slate-200/80 overflow-hidden">
+                            <div class="w-[160px] h-[110px] bg-white p-1.5 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.3)] relative z-10 group-hover:scale-[1.4] group-hover:-translate-y-2 transition-transform duration-300 origin-bottom border border-slate-200/80 overflow-hidden">
                                 ${isVid ? 
                                     `<video src="${firstImage}" class="w-full h-full object-cover rounded-lg bg-slate-800"></video>
-                                     <div class="absolute inset-0 flex items-center justify-center pointer-events-none"><svg width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></div>` : 
+                                     <div class="absolute inset-0 flex items-center justify-center pointer-events-none"><svg width="24" height="24" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></div>` : 
                                     `<img src="${firstImage}" loading="lazy" class="w-full h-full object-cover rounded-lg bg-slate-100" />`
                                 }
                             </div>
-                            <div class="w-3.5 h-3.5 bg-white rotate-45 -mt-2 shadow-[2px_2px_5px_rgba(0,0,0,0.15)] relative z-0 border-r border-b border-slate-200/80"></div>
+                            <div class="w-4 h-4 bg-white rotate-45 -mt-2.5 shadow-[2px_2px_5px_rgba(0,0,0,0.15)] relative z-0 border-r border-b border-slate-200/80"></div>
                         </div>
                      `;
                      window.L.marker([lat, lng], {
@@ -3896,6 +3896,8 @@ export default function App() {
   const [employeeForm, setEmployeeForm] = useState({ id: null, employee_id: '', name: '', role: 'Pelaksana', pin: '' });
   const [appendRouteForm, setAppendRouteForm] = useState({ targetType: 'actual', segmentName: 'Segmen 1', lat: '', lng: '', note: '' }); // DITAMBAHKAN targetType
   const [appendRouteFiles, setAppendRouteFiles] = useState([]); // STATE BARU: Foto Rute Realisasi
+  const [renameRouteConfig, setRenameRouteConfig] = useState({ isEditing: false, newName: '' });
+  const [deleteRouteConfirm, setDeleteRouteConfirm] = useState(false);
 
   // --- File & Upload States ---
   const [repFiles, setRepFiles] = useState([]);
@@ -4830,6 +4832,75 @@ export default function App() {
        fetchProjectDetails(projectData.id);
 
     } catch (err) { showMsg("Error: " + err.message, "error"); } finally { setIsProcessing(false); }
+  };
+
+  const handleRenameRouteTarget = async () => {
+       if (!renameRouteConfig.newName || !projectData) return;
+       setIsProcessing(true);
+       try {
+           const isActual = appendRouteForm.targetType === 'actual';
+           const oldName = appendRouteForm.segmentName;
+           let dbUpdatePayload = {};
+
+           if (isActual) {
+               let newSegments = [...(projectData.actual_segments_data || [])];
+               let idx = newSegments.findIndex(s => s.name === oldName);
+               if (idx >= 0) newSegments[idx].name = renameRouteConfig.newName;
+               dbUpdatePayload.actual_segments_data = newSegments;
+           } else {
+               let newPlans = [...(projectData.planned_path || [])];
+               let idx = newPlans.findIndex(s => s.name === oldName);
+               if (idx >= 0) newPlans[idx].name = renameRouteConfig.newName;
+               dbUpdatePayload.planned_path = newPlans;
+           }
+
+           dbUpdatePayload.updated_at = new Date().toISOString();
+           const { error } = await supabaseClient.from('projects').update(dbUpdatePayload).eq('id', projectData.id);
+           if (error) throw error;
+
+           setProjectData(prev => ({ ...prev, ...dbUpdatePayload }));
+           setAppendRouteForm(p => ({ ...p, segmentName: renameRouteConfig.newName }));
+           setRenameRouteConfig({ isEditing: false, newName: '' });
+           showMsg("Nama berhasil diubah", "success");
+       } catch(e) {
+           showMsg("Gagal mengubah nama: " + e.message, "error");
+       } finally {
+           setIsProcessing(false);
+       }
+  };
+
+  const handleDeleteRouteTarget = async () => {
+       if (!projectData) return;
+       setIsProcessing(true);
+       try {
+           const isActual = appendRouteForm.targetType === 'actual';
+           const oldName = appendRouteForm.segmentName;
+           let dbUpdatePayload = {};
+           let nextName = '';
+
+           if (isActual) {
+               let newSegments = (projectData.actual_segments_data || []).filter(s => s.name !== oldName);
+               dbUpdatePayload.actual_segments_data = newSegments;
+               if(newSegments.length > 0) nextName = newSegments[0].name;
+           } else {
+               let newPlans = (projectData.planned_path || []).filter(s => s.name !== oldName);
+               dbUpdatePayload.planned_path = newPlans;
+               if(newPlans.length > 0) nextName = newPlans[0].name;
+           }
+
+           dbUpdatePayload.updated_at = new Date().toISOString();
+           const { error } = await supabaseClient.from('projects').update(dbUpdatePayload).eq('id', projectData.id);
+           if (error) throw error;
+
+           setProjectData(prev => ({ ...prev, ...dbUpdatePayload }));
+           setAppendRouteForm(p => ({ ...p, segmentName: nextName || (isActual ? 'Segmen 1' : 'Jalur 1') }));
+           setDeleteRouteConfirm(false);
+           showMsg("Jalur/Segmen berhasil dihapus", "success");
+       } catch(e) {
+           showMsg("Gagal menghapus: " + e.message, "error");
+       } finally {
+           setIsProcessing(false);
+       }
   };
 
   const getAppendGPS = () => {
@@ -7051,25 +7122,47 @@ export default function App() {
                
                <SurveyInputRow label="Tipe Jalur Target">
                   <div className="flex gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-100">
-                     <button type="button" onClick={() => setAppendRouteForm(p => ({ ...p, targetType: 'actual', segmentName: projectData?.actual_segments_data?.[0]?.name || 'Segmen 1' }))} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-all shadow-sm ${appendRouteForm.targetType === 'actual' ? 'bg-blue-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-100'}`}>Realisasi</button>
-                     <button type="button" onClick={() => setAppendRouteForm(p => ({ ...p, targetType: 'plan', segmentName: projectData?.planned_path?.[0]?.name || 'Jalur 1' }))} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-all shadow-sm ${appendRouteForm.targetType === 'plan' ? 'bg-amber-500 text-white' : 'bg-white text-slate-500 hover:bg-slate-100'}`}>Sketsa</button>
+                     <button type="button" onClick={() => { setAppendRouteForm(p => ({ ...p, targetType: 'actual', segmentName: projectData?.actual_segments_data?.[0]?.name || 'Segmen 1' })); setRenameRouteConfig({isEditing:false, newName:''}); setDeleteRouteConfirm(false); }} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-all shadow-sm ${appendRouteForm.targetType === 'actual' ? 'bg-blue-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-100'}`}>Realisasi</button>
+                     <button type="button" onClick={() => { setAppendRouteForm(p => ({ ...p, targetType: 'plan', segmentName: projectData?.planned_path?.[0]?.name || 'Jalur 1' })); setRenameRouteConfig({isEditing:false, newName:''}); setDeleteRouteConfirm(false); }} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-all shadow-sm ${appendRouteForm.targetType === 'plan' ? 'bg-amber-500 text-white' : 'bg-white text-slate-500 hover:bg-slate-100'}`}>Sketsa</button>
                   </div>
                </SurveyInputRow>
 
                <SurveyInputRow label="Pilih Segmen / Jalur Target">
-                  <select value={appendRouteForm.segmentName} onChange={e => setAppendRouteForm(p => ({ ...p, segmentName: e.target.value }))} className="w-full p-3.5 rounded-xl border border-slate-200 bg-white focus:border-emerald-400 outline-none text-sm font-bold text-slate-700">
-                     {appendRouteForm.targetType === 'actual' ? (
-                        <>
-                           {projectData?.actual_segments_data?.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                           {(!projectData?.actual_segments_data || projectData.actual_segments_data.length === 0) && <option value="Segmen 1">Segmen 1 (Baru)</option>}
-                        </>
-                     ) : (
-                        <>
-                           {projectData?.planned_path?.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                           {(!projectData?.planned_path || projectData.planned_path.length === 0) && <option value="Jalur 1">Jalur 1 (Baru)</option>}
-                        </>
-                     )}
-                  </select>
+                  {!renameRouteConfig.isEditing ? (
+                     <div className="flex gap-2 items-center">
+                        <select value={appendRouteForm.segmentName} onChange={e => setAppendRouteForm(p => ({ ...p, segmentName: e.target.value }))} className="w-full p-3.5 rounded-xl border border-slate-200 bg-white focus:border-emerald-400 outline-none text-sm font-bold text-slate-700">
+                           {appendRouteForm.targetType === 'actual' ? (
+                              <>
+                                 {projectData?.actual_segments_data?.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                 {(!projectData?.actual_segments_data || projectData.actual_segments_data.length === 0) && <option value="Segmen 1">Segmen 1 (Baru)</option>}
+                              </>
+                           ) : (
+                              <>
+                                 {projectData?.planned_path?.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                 {(!projectData?.planned_path || projectData.planned_path.length === 0) && <option value="Jalur 1">Jalur 1 (Baru)</option>}
+                              </>
+                           )}
+                        </select>
+                        <button type="button" onClick={() => setRenameRouteConfig({ isEditing: true, newName: appendRouteForm.segmentName })} className="p-3.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors shadow-sm shrink-0" title="Edit Nama"><Edit3 size={18} /></button>
+                        <button type="button" onClick={() => setDeleteRouteConfirm(true)} className="p-3.5 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-100 transition-colors shadow-sm shrink-0" title="Hapus Segmen"><Trash size={18} /></button>
+                     </div>
+                  ) : (
+                     <div className="flex gap-2 items-center">
+                        <input type="text" value={renameRouteConfig.newName} onChange={e => setRenameRouteConfig(p => ({ ...p, newName: e.target.value }))} className="w-full p-3.5 rounded-xl border border-slate-200 bg-white focus:border-blue-400 outline-none text-sm font-bold text-slate-700" autoFocus />
+                        <button type="button" onClick={handleRenameRouteTarget} disabled={isProcessing} className="p-3.5 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors shadow-sm shrink-0" title="Simpan"><CheckCircle2 size={18} /></button>
+                        <button type="button" onClick={() => setRenameRouteConfig({ isEditing: false, newName: '' })} className="p-3.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-colors shadow-sm shrink-0" title="Batal"><X size={18} /></button>
+                     </div>
+                  )}
+
+                  {deleteRouteConfirm && (
+                     <div className="mt-2 p-3 bg-rose-50 border border-rose-200 rounded-xl flex flex-col gap-2 animate-in fade-in zoom-in-95 shadow-sm">
+                        <span className="text-[10px] font-bold text-rose-600">Yakin ingin menghapus <b>{appendRouteForm.segmentName}</b>? Seluruh titik didalamnya akan ikut terhapus.</span>
+                        <div className="flex gap-2">
+                           <button type="button" onClick={handleDeleteRouteTarget} disabled={isProcessing} className="flex-1 py-2 bg-rose-500 hover:bg-rose-600 transition-colors text-white text-[10px] font-black rounded-lg shadow-sm">Ya, Hapus</button>
+                           <button type="button" onClick={() => setDeleteRouteConfirm(false)} className="flex-1 py-2 bg-white border border-slate-200 hover:bg-slate-100 transition-colors text-slate-700 text-[10px] font-black rounded-lg shadow-sm">Batal</button>
+                        </div>
+                     </div>
+                  )}
                </SurveyInputRow>
                
                <SurveyInputRow label="Kordinat Lokasi Anda">
