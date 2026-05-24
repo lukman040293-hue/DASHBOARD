@@ -144,7 +144,30 @@ const getFileIconInfo = (filename) => {
   return { bg: 'bg-blue-100', color: 'text-blue-600', icon: FileText };
 };
 
-const compressImage = async (file) => file; // Placeholder fungsi kompresi
+const compressImage = async (file) => {
+  return new Promise((resolve) => {
+    if (!file || !file.type.startsWith('image/')) return resolve(file);
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1280; const MAX_HEIGHT = 1280;
+        let width = img.width; let height = img.height;
+        if (width > height) { if (width > MAX_WIDTH) { height = Math.round((height *= MAX_WIDTH / width)); width = MAX_WIDTH; } } 
+        else { if (height > MAX_HEIGHT) { width = Math.round((width *= MAX_HEIGHT / height)); height = MAX_HEIGHT; } }
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
+        }, 'image/jpeg', 0.75); // Kompresi kualitas 75%
+      };
+    };
+  });
+};
 
 // --- GENERATOR PDF ---
 const generateDailyReportReceipt = async (reportData, projectData, reporterName = 'Admin Command Center') => {
@@ -1188,6 +1211,21 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
         const plannedPath = p.planned_path || [];
         const actualSegments = p.actual_segments_data || [];
 
+        // Formatting data untuk kompatibilitas ke belakang (Migrasi Garis Lurus Awal & Akhir)
+        let actualSegsToRender = [];
+        actualSegments.forEach(seg => {
+            let pts = seg.points || [];
+            let bEnd = seg.boundary_end;
+            if (pts.length === 2 && !bEnd) {
+                pts = [seg.points[0]];
+                bEnd = seg.points[1];
+            } else if (!seg.points) {
+                if (seg.startLat && seg.startLng) pts.push({lat: parseFloat(seg.startLat), lng: parseFloat(seg.startLng)});
+                if (seg.endLat && seg.endLng) bEnd = {lat: parseFloat(seg.endLat), lng: parseFloat(seg.endLng)};
+            }
+            actualSegsToRender.push({ ...seg, points: pts, boundary_end: bEnd });
+        });
+
         // A. GAMBAR SKETSA / JALUR RENCANA
         if (showPaths && plannedPath.length > 0) {
           plannedPath.forEach((pathObj) => {
@@ -1240,8 +1278,8 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
         }
 
         // B. GAMBAR JALUR REALISASI (AKTUAL LAPANGAN)
-        if (showPaths && actualSegments.length > 0) {
-          actualSegments.forEach(seg => {
+        if (showPaths && actualSegsToRender.length > 0) {
+          actualSegsToRender.forEach(seg => {
             if (seg.points && seg.points.length > 0) {
               const coords = seg.points.map(pt => [parseFloat(pt.lat), parseFloat(pt.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
               if (coords.length > 0) {
@@ -1251,13 +1289,23 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
                 
                 if (showSketchPoints) {
                   window.L.marker(coords[0], { icon: createActualMarker('Blue', 'Awal', `${p.pekerjaan.substring(0, 20)}... - ${seg.name}`, coords[0][0], coords[0][1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
-                  if (coords.length > 1) {
-                    const lastIdx = coords.length - 1;
-                    window.L.marker(coords[lastIdx], { icon: createActualMarker('Red', 'Akhir', `${p.pekerjaan.substring(0, 20)}... - ${seg.name}`, coords[lastIdx][0], coords[lastIdx][1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+                  
+                  let endPt = null;
+                  if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
+                      endPt = [parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)];
+                  } else if (coords.length > 1) {
+                      endPt = coords[coords.length - 1];
+                  }
+
+                  if (endPt) {
+                    window.L.marker(endPt, { icon: createActualMarker('Red', 'Akhir', `${p.pekerjaan.substring(0, 20)}... - ${seg.name}`, endPt[0], endPt[1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
                   }
                 }
                 
                 coords.forEach(c => bounds.extend(c));
+                if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
+                    bounds.extend([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)]);
+                }
                 hasData = true;
 
                 if (showDistances && coords.length > 1) {
@@ -2770,9 +2818,9 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg }) => {
 
           kml += `      <Placemark>\n        <name>Awal ${seg.name}</name>\n        <Point><coordinates>${seg.points[0].lng},${seg.points[0].lat},0</coordinates></Point>\n      </Placemark>\n`;
 
-          if (seg.points.length > 1) {
-             const lastPt = seg.points[seg.points.length - 1];
-             kml += `      <Placemark>\n        <name>Akhir ${seg.name}</name>\n        <Point><coordinates>${lastPt.lng},${lastPt.lat},0</coordinates></Point>\n      </Placemark>\n`;
+          let endPt = seg.boundary_end || (seg.points.length > 1 ? seg.points[seg.points.length - 1] : null);
+          if (endPt) {
+             kml += `      <Placemark>\n        <name>Akhir ${seg.name}</name>\n        <Point><coordinates>${endPt.lng},${endPt.lat},0</coordinates></Point>\n      </Placemark>\n`;
           }
         }
       });
@@ -2818,18 +2866,26 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg }) => {
       if (projectData.actual_segments_data && Array.isArray(projectData.actual_segments_data)) {
         // Konversi format lama (startLat, startLng, dll) menjadi array points
         const formattedSegs = projectData.actual_segments_data.map(seg => {
-            if (seg.points) return seg; // Sudah format baru
+            if (seg.points) {
+                // Auto-Migrasi: Pisahkan Akhir ke boundary_end jika itu hanya garis survei lurus
+                if (seg.points.length === 2 && !seg.boundary_end) {
+                    return { ...seg, points: [seg.points[0]], boundary_end: seg.points[1] };
+                }
+                return seg;
+            }
             const pts = [];
+            let boundaryEnd = null;
             if (seg.startLat && seg.startLng) pts.push({lat: parseFloat(seg.startLat), lng: parseFloat(seg.startLng)});
-            if (seg.endLat && seg.endLng) pts.push({lat: parseFloat(seg.endLat), lng: parseFloat(seg.endLng)});
-            return { ...seg, points: pts };
+            if (seg.endLat && seg.endLng) boundaryEnd = {lat: parseFloat(seg.endLat), lng: parseFloat(seg.endLng)};
+            return { ...seg, points: pts, boundary_end: boundaryEnd };
         });
         setActualSegments(formattedSegs);
       } else {
         const pts = [];
+        let boundaryEnd = null;
         if (projectData.start_lat && projectData.start_lng) pts.push({lat: parseFloat(projectData.start_lat), lng: parseFloat(projectData.start_lng)});
-        if (projectData.end_lat && projectData.end_lng) pts.push({lat: parseFloat(projectData.end_lat), lng: parseFloat(projectData.end_lng)});
-        setActualSegments([{ id: 1, name: 'Segmen 1', points: pts }]);
+        if (projectData.end_lat && projectData.end_lng) boundaryEnd = {lat: parseFloat(projectData.end_lat), lng: parseFloat(projectData.end_lng)};
+        setActualSegments([{ id: 1, name: 'Segmen 1', points: pts, boundary_end: boundaryEnd }]);
       }
     }
   }, [projectData]);
@@ -3068,7 +3124,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg }) => {
         const coords = seg.points.map(p => [parseFloat(p.lat), parseFloat(p.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
         if (coords.length > 0) {
           
-          // Gambar Garis Realisasi jika lebih dari 1 titik
+          // Gambar Garis Realisasi JIKA ADA pergerakan rute (lebih dari 1 titik)
           if (coords.length > 1) {
              const actualShape = window.L.polyline(coords, {
                color: '#3b82f6', // Biru Realisasi
@@ -3089,17 +3145,35 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg }) => {
                   })
                 }).addTo(surveyLayerRef.current);
              }
+          } else if (showSketchLabels && coords.length === 1 && seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
+             // Jika belum ada pergerakan garis, tetap tampilkan label di tengah antara Awal & Akhir dengan border putus-putus
+             const center = [(coords[0][0] + parseFloat(seg.boundary_end.lat)) / 2, (coords[0][1] + parseFloat(seg.boundary_end.lng)) / 2];
+             window.L.marker(center, {
+                interactive: false,
+                zIndexOffset: 110,
+                icon: window.L.divIcon({
+                  className: 'bg-transparent border-0 overflow-visible',
+                  html: `<div style="transform: translate(-50%, 50%); background-color: rgba(255,255,255,0.95); color: #2563eb; border: 2px dashed #3b82f6;" class="w-max px-3 py-1.5 rounded-xl text-[10px] font-black whitespace-nowrap shadow-lg uppercase tracking-wider backdrop-blur-md">${seg.name || 'Segmen Realisasi'}</div>`,
+                  iconSize: [0, 0]
+                })
+             }).addTo(surveyLayerRef.current);
           }
 
           // Marker Awal
           window.L.marker(coords[0], { icon: createMarker('Blue', `Awal`, seg.name, coords[0][0], coords[0][1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
           actualBounds.extend(coords[0]);
           
-          // Marker Akhir
-          if (coords.length > 1) {
-            const lastIdx = coords.length - 1;
-            window.L.marker(coords[lastIdx], { icon: createMarker('Red', `Akhir`, seg.name, coords[lastIdx][0], coords[lastIdx][1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
-            actualBounds.extend(coords[lastIdx]);
+          // Marker Akhir (Menyisihkan dari titik boundary agar garis tidak membentang ke tujuan secara otomatis)
+          let endPt = null;
+          if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
+              endPt = [parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)];
+          } else if (coords.length > 1) {
+              endPt = coords[coords.length - 1];
+          }
+
+          if (endPt) {
+            window.L.marker(endPt, { icon: createMarker('Red', `Akhir`, seg.name, endPt[0], endPt[1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+            actualBounds.extend(endPt);
           }
 
           // Tambahkan label jarak antar titik realisasi jika showDistances aktif
@@ -3734,6 +3808,7 @@ export default function App() {
   const [showDocModal, setShowDocModal] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
+  const [showAppendRouteModal, setShowAppendRouteModal] = useState(false); // STATE BARU: Modal Tambah Titik Rute
 
   // --- Form States ---
   const [reportTab, setReportTab] = useState('harian'); // State baru untuk Tab Modal Laporan
@@ -3761,6 +3836,8 @@ export default function App() {
   const [uForm, setUForm] = useState({ tanggal: new Date().toISOString().split('T')[0], namaSegmen: '', points: [{lat: '', lng: ''}, {lat: '', lng: ''}], panjang: '', lebar: '', jenis_model_awal: '', noteDesc: '' });
   const [masterForm, setMasterForm] = useState({ dinas: JSON.parse(JSON.stringify(INITIAL_DINAS_DATA)), kontraktor: { fields: initialKontraktorFields, personil: [] }, konsultan: { fields: initialKonsultanFields, personil: [] } });
   const [employeeForm, setEmployeeForm] = useState({ id: null, employee_id: '', name: '', role: 'Pelaksana', pin: '' });
+  const [appendRouteForm, setAppendRouteForm] = useState({ segmentName: 'Segmen 1', lat: '', lng: '', note: '' }); // FORM BARU
+  const [appendRouteFiles, setAppendRouteFiles] = useState([]); // STATE BARU: Foto Rute Realisasi
 
   // --- File & Upload States ---
   const [repFiles, setRepFiles] = useState([]);
@@ -4003,6 +4080,16 @@ export default function App() {
         fetchEmployees();
      }
   }, [supabaseClient, isLoggedIn]);
+
+  // EFEK BARU: Set Nama Segmen Default untuk Modal Append Rute
+  useEffect(() => {
+    if (showAppendRouteModal && projectData?.actual_segments_data) {
+       const segs = projectData.actual_segments_data;
+       if (segs.length > 0) {
+          setAppendRouteForm(p => ({ ...p, segmentName: segs[segs.length - 1].name || 'Segmen 1' }));
+       }
+    }
+  }, [showAppendRouteModal, projectData]);
 
   // --- MENGAKTIFKAN FITUR POLLING (PENGGANTI REAL-TIME) ---
   useEffect(() => {
@@ -4568,6 +4655,87 @@ export default function App() {
     }
   };
 
+  // --- FUNGSI UPDATE RUTE REALISASI (GROWING PATH) ---
+  const handleAppendRouteSubmit = async (e) => {
+    e.preventDefault(); if (!projectData) return; setIsProcessing(true);
+    try {
+       const parseCoord = (val) => {
+          if (!val) return null; let str = String(val).replace(/\s+/g, '');
+          if (str.includes(',') && str.split(',').length === 2) { const parts = str.split(','); const lat = parseFloat(parts[0]); if (!isNaN(lat)) return lat; }
+          const num = parseFloat(str.replace(',', '.')); return isNaN(num) ? null : num;
+       };
+
+       const lat = parseCoord(appendRouteForm.lat);
+       const lng = parseCoord(appendRouteForm.lng);
+       if (lat === null || lng === null) throw new Error("Format kordinat tidak valid");
+
+       let newSegments = Array.isArray(projectData.actual_segments_data) ? [...projectData.actual_segments_data] : [];
+       const segName = appendRouteForm.segmentName || 'Segmen 1';
+       let existingSegIdx = newSegments.findIndex(s => String(s.name).toLowerCase() === segName.toLowerCase());
+
+       // MENYAMBUNGKAN TITIK (APPEND) KE SEGMEN YANG SUDAH ADA
+       if (existingSegIdx >= 0) {
+          const existingPoints = newSegments[existingSegIdx].points || [];
+          newSegments[existingSegIdx] = { ...newSegments[existingSegIdx], points: [...existingPoints, { lat, lng }] };
+       } else {
+          // BUAT SEGMEN BARU JIKA BELUM ADA
+          newSegments.push({ id: Date.now(), name: segName, points: [{ lat, lng }] });
+       }
+
+       const { error } = await supabaseClient.from('projects').update({
+          actual_segments_data: newSegments,
+          updated_at: new Date().toISOString()
+       }).eq('id', projectData.id);
+
+       if (error) throw error;
+
+       // UPLOAD MEDIA JIKA ADA
+       let publicUrl = null;
+       if (appendRouteFiles && appendRouteFiles.length > 0) {
+          showMsg(`Mengompresi & mengunggah ${appendRouteFiles.length} foto...`, "info");
+          const uploadedUrls = [];
+          for (let i = 0; i < appendRouteFiles.length; i++) {
+             let fileToUpload = appendRouteFiles[i];
+             if (fileToUpload.type.startsWith('image/')) { fileToUpload = await compressImage(fileToUpload); }
+             const fileName = `${Date.now()}_route_${i}.${fileToUpload.name.split('.').pop()}`;
+             await supabaseClient.storage.from('project-media').upload(`reports/${fileName}`, fileToUpload);
+             const { data: urlData } = supabaseClient.storage.from('project-media').getPublicUrl(`reports/${fileName}`);
+             uploadedUrls.push(urlData.publicUrl);
+          }
+          publicUrl = uploadedUrls.join(',');
+       }
+
+       await supabaseClient.from('field_reports').insert([{
+          project_id: projectData.id,
+          title: 'Update Progress Rute',
+          description: `Penambahan titik rute realisasi baru pada ${segName}.\nKordinat Baru: Lat ${lat}, Lng ${lng}\nCatatan: ${appendRouteForm.note || '-'}`,
+          media_url: publicUrl,
+          is_problem: false
+       }]);
+
+       setProjectData(prev => ({ ...prev, actual_segments_data: newSegments }));
+       showMsg("Titik progress rute berhasil ditambahkan!", "success");
+       setShowAppendRouteModal(false);
+       setAppendRouteForm({ segmentName: segName, lat: '', lng: '', note: '' });
+       setAppendRouteFiles([]);
+       fetchProjectDetails(projectData.id);
+
+    } catch (err) { showMsg("Error: " + err.message, "error"); } finally { setIsProcessing(false); }
+  };
+
+  const getAppendGPS = () => {
+    if (!navigator.geolocation) { showMsg("GPS tidak didukung oleh perangkat", "error"); return; }
+    showMsg("Mencari sinyal GPS...", "info");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setAppendRouteForm(p => ({ ...p, lat: pos.coords.latitude, lng: pos.coords.longitude }));
+        showMsg("Sinyal GPS Terkunci!", "success");
+      },
+      (err) => { showMsg("Gagal ambil GPS: " + err.message, "error"); },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  };
+
   // --- FUNGSI BUKA MODAL SURVEI (AUTO-CONNECT TITIK) ---
   const handleOpenSurveyModal = () => {
     let initialPoints = [{ lat: '', lng: '' }, { lat: '', lng: '' }];
@@ -4578,9 +4746,14 @@ export default function App() {
       let lastValidPoint = null;
 
       for (let i = segments.length - 1; i >= 0; i--) {
+        // Prioritaskan Akhir / boundary_end terlebih dahulu
+        if (segments[i].boundary_end && segments[i].boundary_end.lat) {
+           lastValidPoint = segments[i].boundary_end;
+           break;
+        }
         const pts = segments[i].points;
         if (pts && pts.length > 0) {
-          lastValidPoint = pts[pts.length - 1]; // Ambil titik paling akhir
+          lastValidPoint = pts[pts.length - 1]; // Fallback ke titik progress paling akhir
           break;
         }
       }
@@ -4623,6 +4796,9 @@ export default function App() {
           return null;
       }).filter(Boolean);
 
+      const startPt = validPoints.length > 0 ? validPoints[0] : null;
+      const endPt = validPoints.length > 1 ? validPoints[1] : null;
+
       const updatePayload = { panjang_rencana: uForm.panjang, lebar_rencana: uForm.lebar, jenis_model: uForm.jenis_model_awal, updated_at: new Date().toISOString() };
 
       let newSegments = Array.isArray(projectData.actual_segments_data) ? [...projectData.actual_segments_data] : [];
@@ -4633,18 +4809,22 @@ export default function App() {
       if (segName) { existingSegIdx = newSegments.findIndex(s => String(s.name).toLowerCase() === segName.toLowerCase()); }
       else { let count = 1; while (newSegments.find(s => String(s.name).toLowerCase() === `segmen ${count}`)) { count++; } segName = `Segmen ${count}`; }
 
-      if (validPoints.length > 0) {
-        if (existingSegIdx >= 0) { newSegments[existingSegIdx] = { ...newSegments[existingSegIdx], points: validPoints }; }
-        else { newSegments.push({ id: Date.now(), name: segName, points: validPoints }); }
+      if (startPt) {
+        if (existingSegIdx >= 0) { 
+            newSegments[existingSegIdx].points = [startPt]; 
+            newSegments[existingSegIdx].boundary_end = endPt;
+        } else { 
+            newSegments.push({ id: Date.now(), name: segName, points: [startPt], boundary_end: endPt }); 
+        }
         updatePayload.actual_segments_data = newSegments;
         
         const isMasterCoordEmpty = !projectData.start_lat || projectData.start_lat === '-';
         if (isMasterCoordEmpty || newSegments.length === 1) {
-          updatePayload.start_lat = validPoints[0].lat;
-          updatePayload.start_lng = validPoints[0].lng;
-          if (validPoints.length > 1) {
-             updatePayload.end_lat = validPoints[validPoints.length - 1].lat;
-             updatePayload.end_lng = validPoints[validPoints.length - 1].lng;
+          updatePayload.start_lat = startPt.lat;
+          updatePayload.start_lng = startPt.lng;
+          if (endPt) {
+             updatePayload.end_lat = endPt.lat;
+             updatePayload.end_lng = endPt.lng;
           }
         }
       }
@@ -5716,6 +5896,15 @@ export default function App() {
                   </button>
 
                   <button type="button" onClick={() => setShowEditProjectModal(true)} className="relative z-50 p-2 text-slate-400 hover:text-blue-600 transition-colors bg-white hover:bg-blue-50 rounded-xl shadow-sm border border-slate-200 cursor-pointer pointer-events-auto" title="Pengaturan Proyek"><Settings size={16} /></button>
+
+                  {/* TOMBOL BARU KHUSUS UPDATE RUTE DI TAHAP PELAKSANAAN */}
+                  {currentPhase === 'pelaksanaan' && (
+                     <button type="button" onClick={() => setShowAppendRouteModal(true)} className="bg-emerald-600 text-white px-3 py-2 md:px-4 md:py-2.5 rounded-xl text-[10px] font-bold uppercase flex items-center justify-center gap-1.5 md:gap-2 hover:bg-emerald-700 transition-colors shadow-md cursor-pointer relative z-50 pointer-events-auto" title="Tambah Progress Rute Realisasi">
+                       <MapPin size={14} className="md:w-4 md:h-4" />
+                       <span className="hidden sm:inline">Update Rute</span>
+                       <span className="sm:hidden">Rute</span>
+                     </button>
+                  )}
 
                   <button
                     type="button"
@@ -6826,37 +7015,42 @@ export default function App() {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-start justify-center z-[1000] p-4 overflow-y-auto">
           <div className="bg-white rounded-[32px] p-8 w-full max-w-2xl shadow-2xl relative my-auto">
             <button onClick={() => setShowUnifiedModal(false)} className="absolute top-6 right-6 p-2"><X size={20} /></button>
-            <h3 className="text-xl font-black mb-6">Input Data Survei</h3>
+            <h3 className="text-xl font-black mb-6">Input Data Survei (Awal)</h3>
             <form onSubmit={handleUnifiedSubmit} className="space-y-4">
               <SurveyInputRow label="Tanggal"><input type="date" value={uForm.tanggal} onChange={e => setUForm(p => ({ ...p, tanggal: e.target.value }))} className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
               <SurveyInputRow label="Nama Jln/Gg./Blok"><input type="text" value={uForm.namaSegmen} onChange={e => setUForm(p => ({ ...p, namaSegmen: e.target.value }))} placeholder="Misal: Jl. Mawar / Segmen 1" className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
               
-              <SurveyInputRow label="Titik Koordinat (Jalur Realisasi Lapangan)">
-                <div className="space-y-2">
-                   {uForm.points.map((pt, i) => (
-                      <div key={i} className="flex gap-2 items-center bg-slate-50 p-2 rounded-xl border border-slate-100">
-                         <span className="text-[10px] font-black text-slate-500 w-10 text-center shrink-0 uppercase tracking-widest">
-                            {i === 0 ? 'Awal' : (i === uForm.points.length - 1 ? 'Akhir' : `T${i+1}`)}
-                         </span>
-                         <input type="text" placeholder="Lat" value={pt.lat} onChange={e => {
-                            const n = [...uForm.points]; n[i].lat = e.target.value; setUForm(p => ({...p, points: n}));
-                         }} className="flex-1 p-2 text-xs rounded-lg border bg-white focus:outline-blue-400" />
-                         <input type="text" placeholder="Lng" value={pt.lng} onChange={e => {
-                            const n = [...uForm.points]; n[i].lng = e.target.value; setUForm(p => ({...p, points: n}));
-                         }} className="flex-1 p-2 text-xs rounded-lg border bg-white focus:outline-blue-400" />
-                         <button type="button" onClick={() => getUnifiedGPS(i)} className="px-3 py-2 bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors font-bold rounded-lg text-[10px] shadow-sm">GPS</button>
-                         {uForm.points.length > 2 && (
-                            <button type="button" onClick={() => {
-                               const n = [...uForm.points]; n.splice(i, 1); setUForm(p => ({...p, points: n}));
-                            }} className="px-2 py-2 bg-rose-50 hover:bg-rose-100 text-rose-500 font-bold rounded-lg transition-colors"><Trash size={14}/></button>
-                         )}
-                      </div>
-                   ))}
-                   <button type="button" onClick={() => {
-                      setUForm(p => ({...p, points: [...p.points, {lat: '', lng: ''}]}));
-                   }} className="w-full mt-2 py-2 border border-dashed border-blue-300 text-blue-600 bg-blue-50/50 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 hover:bg-blue-50 hover:border-blue-400 transition-colors">
-                      <Plus size={14} /> Tambah Titik Jalur Berikutnya
-                   </button>
+              <SurveyInputRow label="Titik Koordinat Batas Pekerjaan (Awal & Akhir)">
+                <div className="space-y-3">
+                   {/* Titik Awal */}
+                   <div className="flex gap-2 items-center bg-slate-50 p-2 rounded-xl border border-slate-100">
+                      <span className="text-[10px] font-black text-slate-500 w-10 text-center shrink-0 uppercase tracking-widest">Awal</span>
+                      <input type="text" placeholder="Lat" value={uForm.points[0]?.lat || ''} onChange={e => {
+                         const n = [...uForm.points]; n[0].lat = e.target.value; setUForm(p => ({...p, points: n}));
+                      }} className="flex-1 p-2 text-xs rounded-lg border bg-white focus:outline-blue-400" />
+                      <input type="text" placeholder="Lng" value={uForm.points[0]?.lng || ''} onChange={e => {
+                         const n = [...uForm.points]; n[0].lng = e.target.value; setUForm(p => ({...p, points: n}));
+                      }} className="flex-1 p-2 text-xs rounded-lg border bg-white focus:outline-blue-400" />
+                      <button type="button" onClick={() => getUnifiedGPS(0)} className="px-3 py-2 bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors font-bold rounded-lg text-[10px] shadow-sm">GPS</button>
+                   </div>
+                   
+                   {/* Titik Akhir */}
+                   <div className="flex gap-2 items-center bg-slate-50 p-2 rounded-xl border border-slate-100">
+                      <span className="text-[10px] font-black text-slate-500 w-10 text-center shrink-0 uppercase tracking-widest">Akhir</span>
+                      <input type="text" placeholder="Lat" value={uForm.points[1]?.lat || ''} onChange={e => {
+                         const n = [...uForm.points]; n[1].lat = e.target.value; setUForm(p => ({...p, points: n}));
+                      }} className="flex-1 p-2 text-xs rounded-lg border bg-white focus:outline-blue-400" />
+                      <input type="text" placeholder="Lng" value={uForm.points[1]?.lng || ''} onChange={e => {
+                         const n = [...uForm.points]; n[1].lng = e.target.value; setUForm(p => ({...p, points: n}));
+                      }} className="flex-1 p-2 text-xs rounded-lg border bg-white focus:outline-blue-400" />
+                      <button type="button" onClick={() => getUnifiedGPS(1)} className="px-3 py-2 bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors font-bold rounded-lg text-[10px] shadow-sm">GPS</button>
+                   </div>
+
+                   <div className="bg-blue-50/50 p-3 rounded-xl border border-dashed border-blue-200">
+                     <p className="text-[10px] text-blue-600 font-bold leading-relaxed">
+                       ℹ️ Cukup isi Titik Awal dan Akhir di lapangan. Admin di dashboard dapat menggambar detail lekukan rutenya secara manual melalui <span className="uppercase text-blue-700">Geo-Map &gt; Editor Rute</span> berdasarkan batas titik ini.
+                     </p>
+                   </div>
                 </div>
               </SurveyInputRow>
 
@@ -6878,6 +7072,84 @@ export default function App() {
                 {uMedia.length > 0 && <div className="text-[10px] mt-1.5 text-blue-600 font-bold">{uMedia.length} file siap diunggah</div>}
               </SurveyInputRow>
               <button type="submit" disabled={isProcessing} className="w-full bg-blue-600 text-white py-4 rounded-2xl text-sm font-bold uppercase">{isProcessing ? 'Menyimpan...' : 'Simpan Data'}</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL BARU: UPDATE JALUR REALISASI --- */}
+      {showAppendRouteModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-start justify-center z-[1000] p-4 overflow-y-auto">
+          <div className="bg-white rounded-[32px] p-8 w-full max-w-md shadow-2xl relative my-auto">
+            <button onClick={() => setShowAppendRouteModal(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X size={20} /></button>
+            <h3 className="text-xl font-black mb-2 text-emerald-600 flex items-center gap-2"><MapPin size={24} strokeWidth={2.5}/> Update Progress Rute</h3>
+            <p className="text-[10px] font-bold text-slate-500 mb-6 bg-emerald-50 p-3.5 rounded-xl border border-emerald-100 leading-relaxed">
+              Gunakan fitur ini di lapangan untuk <b>memperpanjang garis realisasi</b> secara otomatis berdasarkan posisi GPS Anda saat ini.
+            </p>
+
+            <form onSubmit={handleAppendRouteSubmit} className="space-y-4">
+               <SurveyInputRow label="Pilih Segmen / Jalur Target">
+                  <select value={appendRouteForm.segmentName} onChange={e => setAppendRouteForm(p => ({ ...p, segmentName: e.target.value }))} className="w-full p-3.5 rounded-xl border border-slate-200 bg-white focus:border-emerald-400 outline-none text-sm font-bold text-slate-700">
+                     {projectData?.actual_segments_data?.map(s => (
+                        <option key={s.id} value={s.name}>{s.name}</option>
+                     ))}
+                     {(!projectData?.actual_segments_data || projectData.actual_segments_data.length === 0) && (
+                        <option value="Segmen 1">Segmen 1 (Baru)</option>
+                     )}
+                  </select>
+               </SurveyInputRow>
+               
+               <SurveyInputRow label="Kordinat Lokasi Anda">
+                  <div className="flex gap-2">
+                     <input type="text" placeholder="Latitude" value={appendRouteForm.lat} onChange={e => setAppendRouteForm(p => ({...p, lat: e.target.value}))} className="w-full p-3 rounded-xl border border-slate-200 bg-white text-xs font-mono outline-none focus:border-emerald-400 shadow-inner" required />
+                     <input type="text" placeholder="Longitude" value={appendRouteForm.lng} onChange={e => setAppendRouteForm(p => ({...p, lng: e.target.value}))} className="w-full p-3 rounded-xl border border-slate-200 bg-white text-xs font-mono outline-none focus:border-emerald-400 shadow-inner" required />
+                  </div>
+                  <button type="button" onClick={getAppendGPS} className="w-full mt-3 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-2 shadow-sm border border-emerald-200">
+                     <MapPin size={16} /> Kunci Sinyal GPS
+                  </button>
+               </SurveyInputRow>
+
+               <SurveyInputRow label="Keterangan Rute (Opsional)">
+                  <input type="text" value={appendRouteForm.note} onChange={e => setAppendRouteForm(p => ({ ...p, note: e.target.value }))} placeholder="Misal: Pengecoran hari ini sampai titik ini..." className="w-full p-3.5 rounded-xl border border-slate-200 bg-white text-sm font-normal outline-none focus:border-emerald-400" />
+               </SurveyInputRow>
+
+               <SurveyInputRow label="Dokumentasi Foto Lapangan (Opsional)">
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
+                     {/* Preview Foto */}
+                     {appendRouteFiles && appendRouteFiles.map((file, idx) => (
+                        <div key={idx} className="relative aspect-square rounded-xl border border-emerald-200 overflow-hidden group bg-white flex items-center justify-center shadow-sm">
+                           <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" alt={`preview-${idx}`} />
+                           <button type="button" onClick={() => setAppendRouteFiles(p => p.filter((_, i) => i !== idx))} className="absolute top-1 right-1 p-1 bg-rose-500 text-white rounded-md shadow-md hover:bg-rose-600 transition-all z-10" title="Hapus Foto">
+                               <Trash size={10}/>
+                           </button>
+                        </div>
+                     ))}
+                     
+                     {/* Tombol Tambah */}
+                     <label className="aspect-square rounded-xl border-2 border-dashed border-emerald-300 flex flex-col items-center justify-center cursor-pointer hover:border-emerald-500 hover:bg-emerald-50 transition-all text-emerald-600 bg-white group shadow-sm">
+                         <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-full mb-1 group-hover:scale-110 transition-transform">
+                             <Plus size={16} />
+                         </div>
+                         <span className="text-[9px] font-black uppercase mt-0.5">Foto</span>
+                         <input
+                           type="file"
+                           multiple
+                           accept="image/*"
+                           className="hidden"
+                           onChange={(e) => {
+                             const files = Array.from(e.target.files);
+                             setAppendRouteFiles(prev => [...prev, ...files]);
+                             e.target.value = null;
+                           }}
+                         />
+                     </label>
+                  </div>
+               </SurveyInputRow>
+
+               <button type="submit" disabled={isProcessing} className="w-full bg-emerald-600 text-white py-4 rounded-2xl text-xs font-black tracking-widest uppercase mt-6 hover:bg-emerald-700 shadow-md transition-colors flex justify-center items-center gap-2">
+                 {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Save size={16}/>}
+                 {isProcessing ? 'Menyimpan...' : 'Simpan Titik Progress'}
+               </button>
             </form>
           </div>
         </div>
