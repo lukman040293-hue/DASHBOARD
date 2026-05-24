@@ -1029,12 +1029,38 @@ const AbsensiView = ({ attendances, onBack, onDelete, isProcessing, onRefresh, e
 
 const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
   const [isMapLoaded, setIsMapLoaded] = useState(false);
-  const [isMapReady, setIsMapReady] = useState(false); // State baru untuk memastikan map sudah diinisialisasi
+  const [isMapReady, setIsMapReady] = useState(false);
+  
+  // STATE BARU: Preferensi Tampilan Layer di Peta Induk (Disimpan ke Local Storage)
+  const [showPaths, setShowPaths] = useState(() => {
+    const saved = localStorage.getItem('master_showPaths');
+    return saved !== null ? JSON.parse(saved) : true; // Default Tampil Jalur
+  });
+  const [showDistances, setShowDistances] = useState(() => {
+    const saved = localStorage.getItem('master_showDistances');
+    return saved !== null ? JSON.parse(saved) : false; // Default Sembunyi Jarak agar Master Map tidak terlalu ramai
+  });
+  const [showSketchLabels, setShowSketchLabels] = useState(() => {
+    const saved = localStorage.getItem('master_showSketchLabels');
+    return saved !== null ? JSON.parse(saved) : false; // Default Sembunyi Label
+  });
+  const [showSketchPoints, setShowSketchPoints] = useState(() => {
+    const saved = localStorage.getItem('master_showSketchPoints');
+    return saved !== null ? JSON.parse(saved) : false; // Default Sembunyi Titik
+  });
+
+  useEffect(() => { localStorage.setItem('master_showPaths', JSON.stringify(showPaths)); }, [showPaths]);
+  useEffect(() => { localStorage.setItem('master_showDistances', JSON.stringify(showDistances)); }, [showDistances]);
+  useEffect(() => { localStorage.setItem('master_showSketchLabels', JSON.stringify(showSketchLabels)); }, [showSketchLabels]);
+  useEffect(() => { localStorage.setItem('master_showSketchPoints', JSON.stringify(showSketchPoints)); }, [showSketchPoints]);
+
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markerLayerRef = useRef(null);
-  const tileLayerRef = useRef(null); // Ref baru untuk TileLayer
-  const isInitialFitDone = useRef(false); // State penanda agar map tidak auto zoom-out berulang kali
+  const routeLayerRef = useRef(null); // LAYER BARU UNTUK JALUR RENCANA
+  const surveyLayerRef = useRef(null); // LAYER BARU UNTUK JALUR REALISASI
+  const tileLayerRef = useRef(null); 
+  const isInitialFitDone = useRef(false);
 
   useEffect(() => {
     const checkLeaflet = setInterval(() => {
@@ -1046,16 +1072,14 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
   useEffect(() => {
     if (isMapLoaded && mapContainerRef.current && !mapInstanceRef.current) {
       mapInstanceRef.current = window.L.map(mapContainerRef.current, { zoomControl: false }).setView([-0.4948, 117.1492], 12);
-      
-      // Pindahkan zoom control ke kanan bawah agar tidak tertutup UI floating
       window.L.control.zoom({ position: 'bottomright' }).addTo(mapInstanceRef.current);
       
       markerLayerRef.current = window.L.featureGroup().addTo(mapInstanceRef.current);
+      routeLayerRef.current = window.L.layerGroup().addTo(mapInstanceRef.current);
+      surveyLayerRef.current = window.L.layerGroup().addTo(mapInstanceRef.current);
       
       setIsMapReady(true);
 
-      // FIX PETA BLANK: Menunda kalkulasi ulang ukuran map (invalidateSize) 
-      // untuk memberi waktu CSS Leaflet & Kontainer React dirender sepenuhnya.
       setTimeout(() => {
         if (mapInstanceRef.current) {
           mapInstanceRef.current.invalidateSize();
@@ -1064,132 +1088,248 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
     }
   }, [isMapLoaded]);
 
-  // UPDATE: Effect khusus untuk TileLayer agar dapat berganti secara dinamis
   useEffect(() => {
     if (isMapReady && mapInstanceRef.current) {
       if (tileLayerRef.current) mapInstanceRef.current.removeLayer(tileLayerRef.current);
       
-      let url = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}&apistyle=s.t%3A2%7Cp.v%3Aoff'; // Satelit Default
+      let url = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}&apistyle=s.t%3A2%7Cp.v%3Aoff'; 
       let attribution = '';
 
       if (mapType === 'roadmap') {
         url = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&apistyle=s.t%3A2%7Cp.v%3Aoff';
       } else if (mapType === 'osm') {
-        url = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'; // OpenStreetMap
+        url = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'; 
         attribution = '&copy; OpenStreetMap contributors';
       } else if (mapType === 'esri') {
-        url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'; // Esri World Imagery
-        attribution = 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community';
+        url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'; 
+        attribution = 'Tiles &copy; Esri';
       } else if (mapType === 'carto') {
-        url = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'; // CartoDB Positron
-        attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+        url = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'; 
+        attribution = '&copy; OSM contributors & CARTO';
       }
 
       tileLayerRef.current = window.L.tileLayer(url, { maxNativeZoom: 19, maxZoom: 22, attribution }).addTo(mapInstanceRef.current);
     }
   }, [isMapReady, mapType]);
 
-  // --- UPDATE: Menampilkan Pin Master Map Tanpa Tooltip Info ---
+  // --- LOGIKA UTAMA RENDER PETA INDUK (MARKER + JALUR) ---
   useEffect(() => {
-    if (isMapReady && mapInstanceRef.current && markerLayerRef.current) {
+    if (isMapReady && mapInstanceRef.current && markerLayerRef.current && routeLayerRef.current && surveyLayerRef.current) {
       markerLayerRef.current.clearLayers();
+      routeLayerRef.current.clearLayers();
+      surveyLayerRef.current.clearLayers();
+      
       let bounds = window.L.latLngBounds();
-      let hasMarkers = false;
+      let hasData = false;
 
+      // 1. Fungsi Gambar Marker Titik Pusat Proyek
       const createProjectMarker = (proj) => {
         const actualProg = parseFloat(proj.actual_progress || 0);
         const isRunning = proj.status === 'Running' || actualProg > 0;
         const statusText = isRunning ? 'Pelaksanaan' : 'Persiapan';
-        
-        // Menggunakan format RGB untuk radial-gradient agar efek cahaya bulat sempurna (tidak ada efek kotak dari blur)
-        const rgbColor = isRunning ? '59, 130, 246' : '244, 63, 94'; // Biru (Blue 500) atau Merah Pink (Rose 500)
+        const rgbColor = isRunning ? '59, 130, 246' : '244, 63, 94';
         const hexColor = isRunning ? '#3b82f6' : '#f43f5e';
 
         return window.L.divIcon({
           className: 'bg-transparent border-0 overflow-visible',
           html: `
               <div class="relative flex items-center justify-center pointer-events-auto cursor-pointer group" style="transform: translate(-50%, -50%); width: 48px; height: 48px; z-index: 1000;">
-                  
-                  <!-- TOOLTIP POP-UP KETERANGAN PROYEK (LEBIH DINAMIS & MODERN) -->
                   <div class="absolute bottom-full mb-3 opacity-0 group-hover:opacity-100 translate-y-3 group-hover:translate-y-0 transition-all duration-300 ease-out w-max max-w-[240px] z-[9999] pointer-events-none flex flex-col items-center">
-                     
-                     <!-- Card Utama (Transparan 80%, Teks Tegas, Blur 70px) -->
                      <div class="bg-white/80 backdrop-blur-[70px] rounded-2xl shadow-2xl border border-white/60 overflow-hidden relative w-full p-4">
-                        <h3 class="text-[11px] font-black text-slate-800 leading-relaxed text-left mb-3 line-clamp-3 uppercase tracking-wider">
-                           ${proj.pekerjaan}
-                        </h3>
-                        
+                        <h3 class="text-[11px] font-black text-slate-800 leading-relaxed text-left mb-3 line-clamp-3 uppercase tracking-wider">${proj.pekerjaan}</h3>
                         <div class="flex justify-between items-end border-t border-slate-300/40 pt-3">
-                           <div class="flex flex-col text-left">
-                              <span class="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Status</span>
-                              <span class="text-[10px] font-black uppercase tracking-widest" style="color: ${hexColor}">${statusText}</span>
-                           </div>
-                           <div class="flex flex-col text-right pl-6">
-                              <span class="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Progress</span>
-                              <span class="text-2xl font-black leading-none drop-shadow-sm" style="color: ${hexColor}">${actualProg.toFixed(1)}<span class="text-sm">%</span></span>
-                           </div>
+                           <div class="flex flex-col text-left"><span class="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Status</span><span class="text-[10px] font-black uppercase tracking-widest" style="color: ${hexColor}">${statusText}</span></div>
+                           <div class="flex flex-col text-right pl-6"><span class="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Progress</span><span class="text-2xl font-black leading-none drop-shadow-sm" style="color: ${hexColor}">${actualProg.toFixed(1)}<span class="text-sm">%</span></span></div>
                         </div>
                      </div>
-                     
-                     <!-- Segitiga Bawah (Pointer) Blur 70px -->
                      <div class="w-4 h-4 rotate-45 -mt-2.5 z-[-1] shadow-sm" style="background: rgba(255,255,255,0.8); backdrop-filter: blur(70px); border-right: 1px solid rgba(255,255,255,0.5); border-bottom: 1px solid rgba(255,255,255,0.5);"></div>
                   </div>
-
-                  <!-- LINGKARAN CAHAYA (SOFT GLOW) - DISESUAIKAN -->
-                  <div class="absolute w-[25px] h-[25px] rounded-full opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500" 
-                       style="background: radial-gradient(circle, rgba(${rgbColor}, 0.8) 0%, rgba(${rgbColor}, 0.4) 50%, rgba(${rgbColor}, 0) 80%);">
-                  </div>
-                  
-                  <!-- TITIK POIN KECIL (INTI) DIPROPORSIONAKAN (15px) -->
-                  <div class="w-[15px] h-[15px] rounded-full z-10 relative group-hover:scale-110 transition-transform duration-300 shadow-sm" 
-                       style="background-color: ${hexColor}; border: 2px solid white; box-shadow: 0 0 4px 1px rgba(${rgbColor}, 0.6);">
-                  </div>
+                  <div class="absolute w-[25px] h-[25px] rounded-full opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500" style="background: radial-gradient(circle, rgba(${rgbColor}, 0.8) 0%, rgba(${rgbColor}, 0.4) 50%, rgba(${rgbColor}, 0) 80%);"></div>
+                  <div class="w-[15px] h-[15px] rounded-full z-10 relative group-hover:scale-110 transition-transform duration-300 shadow-sm" style="background-color: ${hexColor}; border: 2px solid white; box-shadow: 0 0 4px 1px rgba(${rgbColor}, 0.6);"></div>
               </div>
             `,
           iconSize: [0, 0]
         });
       };
 
+      // 2. Fungsi Gambar Label Jarak
+      const createDistLabel = (text, isTotal, colorHex) => window.L.divIcon({
+        className: 'bg-transparent border-0 overflow-visible',
+        html: `<div style="transform: translate(-50%, ${isTotal ? '-150%' : '-50%'}); background-color: ${isTotal ? colorHex : 'rgba(0,0,0,0.8)'}; color: #fff; border: 1px solid ${colorHex};" class="w-max px-2.5 py-1 rounded-lg text-[9px] font-black whitespace-nowrap shadow-sm backdrop-blur-md">${isTotal ? 'Total: ' : ''}${text}</div>`,
+        iconSize: [0, 0]
+      });
+
+      // 3. Fungsi Gambar Titik Realisasi
+      const createActualMarker = (theme, prefix, segName, lat, lng) => {
+        const gradId = theme === 'Blue' ? `gB-${Math.random()}` : `gR-${Math.random()}`;
+        const stop1 = theme === 'Blue' ? '#38bdf8' : '#fb7185';
+        const stop2 = theme === 'Blue' ? '#2563eb' : '#e11d48';
+        const textColor = theme === 'Blue' ? 'text-blue-600' : 'text-rose-600';
+        return window.L.divIcon({
+          className: 'bg-transparent border-0 overflow-visible',
+          html: `<div class="relative flex flex-col items-center group cursor-pointer pointer-events-auto" style="transform: translate(-50%, -100%);">
+                   <div class="absolute bottom-full mb-2.5 px-3 py-1.5 bg-white/95 backdrop-blur-md rounded-xl shadow-[0_8px_20px_rgba(0,0,0,0.15)] border border-slate-200/50 whitespace-nowrap text-center z-[9999] opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100 transition-all duration-300 pointer-events-none origin-bottom">
+                      <div class="text-[9px] font-black uppercase tracking-wide leading-tight text-slate-800"><span class="${textColor}">${prefix}</span><br/>${segName}</div>
+                   </div>
+                   <div class="relative origin-bottom group-hover:-translate-y-1 group-hover:scale-110 transition-all duration-300">
+                      <svg width="24" height="32" viewBox="0 0 384 512" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5));">
+                        <defs><linearGradient id="${gradId}" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="${stop1}" /><stop offset="100%" stop-color="${stop2}" /></linearGradient></defs>
+                        <circle cx="192" cy="192" r="80" fill="white" />
+                        <path d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0zM192 272c44.183 0 80-35.817 80-80s-35.817-80-80-80-80 35.817-80 80 35.817 80 80 80z" fill="url(#${gradId})" />
+                      </svg>
+                   </div>
+                 </div>`,
+          iconSize: [0, 0]
+        });
+      };
+
+      // --- LOOP SELURUH PROYEK ---
       allProjects.forEach(p => {
+        const plannedPath = p.planned_path || [];
+        const actualSegments = p.actual_segments_data || [];
+
+        // A. GAMBAR SKETSA / JALUR RENCANA
+        if (showPaths && plannedPath.length > 0) {
+          plannedPath.forEach((pathObj) => {
+            if (!pathObj || !pathObj.points || pathObj.points.length === 0) return;
+            const coords = pathObj.points.map(pt => [parseFloat(pt.lat), parseFloat(pt.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
+            
+            if (coords.length > 0) {
+              const isPolygon = pathObj.type === 'polygon';
+              let shape;
+              if (isPolygon) {
+                shape = window.L.polygon(coords, { color: pathObj.color || '#10b981', weight: 3, fillColor: pathObj.color || '#10b981', fillOpacity: 0.3, dashArray: pathObj.isDashed ? '10, 10' : null }).addTo(routeLayerRef.current);
+              } else {
+                shape = window.L.polyline(coords, { color: pathObj.color || '#f59e0b', weight: 4, opacity: 0.8, dashArray: pathObj.isDashed ? '10, 10' : null }).addTo(routeLayerRef.current);
+              }
+              
+              coords.forEach(c => bounds.extend(c));
+              hasData = true;
+
+              // Label Nama Sketsa
+              if (showSketchLabels) {
+                const center = shape.getBounds().getCenter();
+                window.L.marker(center, { interactive: false, zIndexOffset: 100, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `<div style="transform: translate(-50%, -150%); background-color: rgba(0,0,0,0.8); color: ${pathObj.color || (isPolygon ? '#34d399' : '#fbbf24')}; border: 1px ${pathObj.isDashed ? 'dashed' : 'solid'} ${pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')};" class="w-max px-3 py-1.5 rounded-xl text-[9px] font-black whitespace-nowrap shadow-lg uppercase tracking-wider backdrop-blur-md">${p.pekerjaan.substring(0, 15)}... - ${pathObj.name || (isPolygon ? 'Poligon' : 'Sketsa')}</div>`, iconSize: [0, 0] }) }).addTo(routeLayerRef.current);
+              }
+
+              // Kalkulasi Jarak & Titik Koordinat Sketsa
+              let segmentTotalDist = 0;
+              for (let i = 0; i < coords.length; i++) {
+                if (showSketchPoints) {
+                  window.L.marker([coords[i][0], coords[i][1]], { interactive: false, zIndexOffset: 150, icon: window.L.divIcon({ className: 'bg-transparent border-0', html: `<div style="transform: translate(-50%, -50%); background-color: ${pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')};" class="w-2.5 h-2.5 border border-white rounded-full shadow-md"></div>`, iconSize: [0, 0] }) }).addTo(routeLayerRef.current);
+                }
+                if (i < coords.length - 1) {
+                  const pt1 = window.L.latLng(coords[i][0], coords[i][1]); const pt2 = window.L.latLng(coords[i + 1][0], coords[i + 1][1]);
+                  const dist = pt1.distanceTo(pt2); segmentTotalDist += dist;
+                  if (showDistances) window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')) }).addTo(routeLayerRef.current);
+                }
+                if (showDistances && i === coords.length - 1 && i > 0) {
+                  let closeDist = 0;
+                  if (isPolygon && coords.length > 2) {
+                      const ptStart = window.L.latLng(coords[0][0], coords[0][1]);
+                      const ptEnd = window.L.latLng(coords[i][0], coords[i][1]);
+                      closeDist = ptStart.distanceTo(ptEnd);
+                      window.L.marker([(ptStart.lat + ptEnd.lat) / 2, (ptStart.lng + ptEnd.lng) / 2], { interactive: false, zIndexOffset: 200, icon: createDistLabel(closeDist > 1000 ? `${(closeDist / 1000).toFixed(2)} km` : `${Math.round(closeDist)} m`, false, pathObj.color || '#10b981') }).addTo(routeLayerRef.current);
+                  }
+                  const finalDist = segmentTotalDist + closeDist;
+                  window.L.marker([coords[i][0], coords[i][1]], { interactive: false, zIndexOffset: 200, icon: createDistLabel(finalDist > 1000 ? `${(finalDist / 1000).toFixed(2)} km` : `${Math.round(finalDist)} m${isPolygon?' (Keliling)':''}`, true, pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')) }).addTo(routeLayerRef.current);
+                }
+              }
+            }
+          });
+        }
+
+        // B. GAMBAR JALUR REALISASI (AKTUAL LAPANGAN)
+        if (showPaths && actualSegments.length > 0) {
+          actualSegments.forEach(seg => {
+            if (seg.points && seg.points.length > 0) {
+              const coords = seg.points.map(pt => [parseFloat(pt.lat), parseFloat(pt.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
+              if (coords.length > 0) {
+                if (coords.length > 1) {
+                  window.L.polyline(coords, { color: '#3b82f6', weight: 5, opacity: 0.9 }).addTo(surveyLayerRef.current);
+                }
+                
+                if (showSketchPoints) {
+                  window.L.marker(coords[0], { icon: createActualMarker('Blue', 'Awal', `${p.pekerjaan.substring(0, 20)}... - ${seg.name}`, coords[0][0], coords[0][1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+                  if (coords.length > 1) {
+                    const lastIdx = coords.length - 1;
+                    window.L.marker(coords[lastIdx], { icon: createActualMarker('Red', 'Akhir', `${p.pekerjaan.substring(0, 20)}... - ${seg.name}`, coords[lastIdx][0], coords[lastIdx][1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+                  }
+                }
+                
+                coords.forEach(c => bounds.extend(c));
+                hasData = true;
+
+                if (showDistances && coords.length > 1) {
+                  let segmentTotalDist = 0;
+                  for (let i = 0; i < coords.length - 1; i++) {
+                     const pt1 = window.L.latLng(coords[i][0], coords[i][1]); 
+                     const pt2 = window.L.latLng(coords[i + 1][0], coords[i + 1][1]);
+                     const dist = pt1.distanceTo(pt2); segmentTotalDist += dist;
+                     window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, '#3b82f6') }).addTo(surveyLayerRef.current);
+                  }
+                  const lastPt = coords[coords.length - 1];
+                  window.L.marker([lastPt[0], lastPt[1]], { interactive: false, zIndexOffset: 200, icon: createDistLabel(segmentTotalDist > 1000 ? `${(segmentTotalDist / 1000).toFixed(2)} km` : `${Math.round(segmentTotalDist)} m`, true, '#3b82f6') }).addTo(surveyLayerRef.current);
+                }
+              }
+            }
+          });
+        }
+
+        // C. GAMBAR TITIK PUSAT (MARKER UTAMA PROYEK)
         const lat = parseFloat(p.start_lat);
         const lng = parseFloat(p.start_lng);
         if (!isNaN(lat) && !isNaN(lng)) {
           const actualProg = parseFloat(p.actual_progress || 0);
           const isRunning = p.status === 'Running' || actualProg > 0;
           
-          // AREA BUNDARAN STATIS (Ukuran Pixel Tetap di Layar) Tanpa Garis
           const areaCircle = window.L.circleMarker([lat, lng], {
-            radius: 25,
-            stroke: false, // Menghilangkan garis tepi sepenuhnya
-            fillColor: isRunning ? '#3b82f6' : '#f43f5e',
-            fillOpacity: 0.2, // Fill sedikit ditebalkan agar area tetap terlihat samar
-            className: 'animate-pulse' // Animasi kedap-kedip notif
+            radius: 25, stroke: false, fillColor: isRunning ? '#3b82f6' : '#f43f5e', fillOpacity: 0.2, className: 'animate-pulse' 
           }).addTo(markerLayerRef.current);
           
-          // Klik pada area putus-putus juga dapat membuka proyek
           areaCircle.on('click', () => onSelectProject(p));
 
-      const marker = window.L.marker([lat, lng], { icon: createProjectMarker(p) }).addTo(markerLayerRef.current);
-      marker.on('click', () => onSelectProject(p));
-      bounds.extend([lat, lng]);
-      hasMarkers = true;
-    }
-  });
+          const marker = window.L.marker([lat, lng], { icon: createProjectMarker(p) }).addTo(markerLayerRef.current);
+          marker.on('click', () => onSelectProject(p));
+          bounds.extend([lat, lng]);
+          hasData = true;
+        }
+      });
 
-  if (hasMarkers && bounds.isValid()) {
-    // UPDATE: Menambahkan batas zoom maksimal (maxZoom: 13) agar peta sebaran proyek 
-    // tidak menukik terlalu dalam saat memfokuskan titik lokasi.
-    // HANYA fitBounds sekali saat awal dimuat agar tidak auto zoom-out saat sinkronisasi data
-    if (!isInitialFitDone.current) {
-      mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
-      isInitialFitDone.current = true;
+      if (hasData && bounds.isValid() && !isInitialFitDone.current) {
+        // Pada Master Map kita atur maxZoom agar view awal lebih luas saat melihat seluruh proyek
+        mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+        isInitialFitDone.current = true;
+      }
     }
-  }
-}
-}, [isMapReady, allProjects, onSelectProject]);
+  }, [isMapReady, allProjects, onSelectProject, showPaths, showDistances, showSketchLabels, showSketchPoints]);
 
-return (
-<div ref={mapContainerRef} className="absolute inset-0 z-0 bg-slate-100" style={{ height: '100%', width: '100%' }} />
+  return (
+    <>
+      <div ref={mapContainerRef} className="absolute inset-0 z-0 bg-slate-900" style={{ height: '100%', width: '100%' }} />
+      
+      {/* FLOATING TOGGLE LAYERS PETA INDUK (KANAN BAWAH) */}
+      <div className="absolute bottom-6 right-4 md:right-6 z-[9999] flex flex-col items-end gap-2 pointer-events-auto">
+          <button onClick={() => setShowPaths(!showPaths)} className={`bg-black/60 backdrop-blur-md p-2 sm:px-3 sm:py-2.5 sm:w-[150px] rounded-2xl shadow-lg text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center sm:justify-start gap-2 border border-white/10 hover:bg-black/80 transition-all ${!showPaths ? 'text-slate-400' : 'text-white border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]'}`} title="Tampilkan/Sembunyikan Jalur Rencana & Realisasi Seluruh Proyek">
+            {showPaths ? <Eye size={16} className="text-blue-400" /> : <EyeOff size={16} />} 
+            <span className="hidden sm:inline truncate">Jalur Proyek</span>
+          </button>
+          
+          {showPaths && (
+             <>
+              <button onClick={() => setShowSketchPoints(!showSketchPoints)} className={`bg-black/60 backdrop-blur-md p-2 sm:px-3 sm:py-2.5 sm:w-[150px] rounded-2xl shadow-lg text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center sm:justify-start gap-2 border border-white/10 hover:bg-black/80 transition-all ${!showSketchPoints ? 'text-slate-400' : 'text-white border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]'}`}>
+                <MapPin size={16} className={showSketchPoints ? "text-emerald-400" : ""} /> <span className="hidden sm:inline truncate">Titik Lokasi</span>
+              </button>
+              <button onClick={() => setShowSketchLabels(!showSketchLabels)} className={`bg-black/60 backdrop-blur-md p-2 sm:px-3 sm:py-2.5 sm:w-[150px] rounded-2xl shadow-lg text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center sm:justify-start gap-2 border border-white/10 hover:bg-black/80 transition-all ${!showSketchLabels ? 'text-slate-400' : 'text-white border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]'}`}>
+                <FileText size={16} className={showSketchLabels ? "text-amber-400" : ""} /> <span className="hidden sm:inline truncate">Label Nama</span>
+              </button>
+              <button onClick={() => setShowDistances(!showDistances)} className={`bg-black/60 backdrop-blur-md p-2 sm:px-3 sm:py-2.5 sm:w-[150px] rounded-2xl shadow-lg text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center sm:justify-start gap-2 border border-white/10 hover:bg-black/80 transition-all ${!showDistances ? 'text-slate-400' : 'text-white border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.3)]'}`}>
+                <Ruler size={16} className={showDistances ? "text-cyan-400" : ""} /> <span className="hidden sm:inline truncate">Jarak (m/km)</span>
+              </button>
+             </>
+          )}
+      </div>
+    </>
   );
 };
 
@@ -2466,7 +2606,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg }) => {
   
   // plannedPath structure: [{ id: string, name: string, color: string, isDashed: boolean, points: [{lat, lng, sta}] }]
   const [plannedPath, setPlannedPath] = useState([]);
-  const [actualSegments, setActualSegments] = useState([{ id: 1, name: 'Segmen 1', startLat: '', startLng: '', endLat: '', endLng: '' }]);
+  const [actualSegments, setActualSegments] = useState([{ id: 1, name: 'Segmen 1', points: [] }]);
   const [inputMode, setInputMode] = useState('view');
   
   // --- MENYIMPAN PREFERENSI TAMPILAN PETA DI LOKAL MEMORI BROWSER ---
@@ -2623,12 +2763,17 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg }) => {
     if (actualSegments && actualSegments.length > 0) {
       kml += `    <Folder><name>Realisasi Segmen (Aktual)</name>\n`;
       actualSegments.forEach(seg => {
-        if (seg.startLat && seg.startLng && seg.endLat && seg.endLng) {
+        if (seg.points && seg.points.length > 0) {
           kml += `      <Placemark>\n        <name>${seg.name}</name>\n        <styleUrl>#styleRealisasi</styleUrl>\n`;
-          kml += `        <LineString><tessellate>1</tessellate><coordinates>${seg.startLng},${seg.startLat},0 ${seg.endLng},${seg.endLat},0</coordinates></LineString>\n      </Placemark>\n`;
+          const coordsStr = seg.points.map(p => `${p.lng},${p.lat},0`).join(' ');
+          kml += `        <LineString><tessellate>1</tessellate><coordinates>${coordsStr}</coordinates></LineString>\n      </Placemark>\n`;
 
-          kml += `      <Placemark>\n        <name>Awal ${seg.name}</name>\n        <Point><coordinates>${seg.startLng},${seg.startLat},0</coordinates></Point>\n      </Placemark>\n`;
-          kml += `      <Placemark>\n        <name>Akhir ${seg.name}</name>\n        <Point><coordinates>${seg.endLng},${seg.endLat},0</coordinates></Point>\n      </Placemark>\n`;
+          kml += `      <Placemark>\n        <name>Awal ${seg.name}</name>\n        <Point><coordinates>${seg.points[0].lng},${seg.points[0].lat},0</coordinates></Point>\n      </Placemark>\n`;
+
+          if (seg.points.length > 1) {
+             const lastPt = seg.points[seg.points.length - 1];
+             kml += `      <Placemark>\n        <name>Akhir ${seg.name}</name>\n        <Point><coordinates>${lastPt.lng},${lastPt.lat},0</coordinates></Point>\n      </Placemark>\n`;
+          }
         }
       });
       kml += `    </Folder>\n`;
@@ -2670,8 +2815,22 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg }) => {
       }
       setPlannedPath(initialPlannedPath);
 
-      if (projectData.actual_segments_data && Array.isArray(projectData.actual_segments_data)) setActualSegments(projectData.actual_segments_data);
-      else setActualSegments([{ id: 1, name: 'Segmen 1', startLat: projectData.start_lat || '', startLng: projectData.start_lng || '', endLat: projectData.end_lat || '', endLng: projectData.end_lng || '' }]);
+      if (projectData.actual_segments_data && Array.isArray(projectData.actual_segments_data)) {
+        // Konversi format lama (startLat, startLng, dll) menjadi array points
+        const formattedSegs = projectData.actual_segments_data.map(seg => {
+            if (seg.points) return seg; // Sudah format baru
+            const pts = [];
+            if (seg.startLat && seg.startLng) pts.push({lat: parseFloat(seg.startLat), lng: parseFloat(seg.startLng)});
+            if (seg.endLat && seg.endLng) pts.push({lat: parseFloat(seg.endLat), lng: parseFloat(seg.endLng)});
+            return { ...seg, points: pts };
+        });
+        setActualSegments(formattedSegs);
+      } else {
+        const pts = [];
+        if (projectData.start_lat && projectData.start_lng) pts.push({lat: parseFloat(projectData.start_lat), lng: parseFloat(projectData.start_lng)});
+        if (projectData.end_lat && projectData.end_lng) pts.push({lat: parseFloat(projectData.end_lat), lng: parseFloat(projectData.end_lng)});
+        setActualSegments([{ id: 1, name: 'Segmen 1', points: pts }]);
+      }
     }
   }, [projectData]);
 
@@ -2732,12 +2891,25 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg }) => {
             };
             return newPaths;
           });
+        } else if (inputMode === 'actual') {
+          setActualSegments(prev => {
+            const newSegs = [...(prev || [])];
+            if (newSegs.length === 0) {
+              newSegs.push({ id: Date.now(), name: 'Segmen 1', points: [] });
+            }
+            const idx = newSegs.length - 1;
+            newSegs[idx] = {
+              ...newSegs[idx],
+              points: [...(newSegs[idx].points || []), { lat: e.latlng.lat, lng: e.latlng.lng }]
+            };
+            return newSegs;
+          });
         }
       };
       mapInstanceRef.current.on('click', handleMapClick);
       return () => { if (mapInstanceRef.current) mapInstanceRef.current.off('click', handleMapClick); };
     }
-  }, [isMapLoaded, inputMode, plannedPath]);
+  }, [isMapLoaded, inputMode, plannedPath, actualSegments]);
 
   const handleUpdateSeg = (id, field, value) => {
     setActualSegments(p => (p || []).map(s => s.id === id ? { ...s, [field]: value } : s));
@@ -2892,55 +3064,80 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg }) => {
     let hasActualData = false;
 
     (actualSegments || []).forEach((seg, idx) => {
-      const sLat = parseFloat(seg.startLat);
-      const sLng = parseFloat(seg.startLng);
-      const eLat = parseFloat(seg.endLat);
-      const eLng = parseFloat(seg.endLng);
-      if (!isNaN(sLat) && !isNaN(sLng) && !isNaN(eLat) && !isNaN(eLng)) {
-        const coords = [[sLat, sLng], [eLat, eLng]];
+      if (seg.points && seg.points.length > 0) {
+        const coords = seg.points.map(p => [parseFloat(p.lat), parseFloat(p.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
+        if (coords.length > 0) {
+          
+          // Gambar Garis Realisasi jika lebih dari 1 titik
+          if (coords.length > 1) {
+             window.L.polyline(coords, {
+               color: '#3b82f6', // Biru Realisasi
+               weight: 5,
+               opacity: 0.9,
+             }).addTo(surveyLayerRef.current);
+          }
 
-        window.L.marker(coords[0], { icon: createMarker('Blue', `Awal`, seg.name, sLat, sLng), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
-    window.L.marker(coords[1], { icon: createMarker('Red', `Akhir`, seg.name, eLat, eLng), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+          // Marker Awal
+          window.L.marker(coords[0], { icon: createMarker('Blue', `Awal`, seg.name, coords[0][0], coords[0][1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+          actualBounds.extend(coords[0]);
+          
+          // Marker Akhir
+          if (coords.length > 1) {
+            const lastIdx = coords.length - 1;
+            window.L.marker(coords[lastIdx], { icon: createMarker('Red', `Akhir`, seg.name, coords[lastIdx][0], coords[lastIdx][1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+            actualBounds.extend(coords[lastIdx]);
+          }
 
-    actualBounds.extend(coords[0]);
-    actualBounds.extend(coords[1]);
-    hasActualData = true;
-  }
-});
+          // Tambahkan label jarak antar titik realisasi jika showDistances aktif
+          if (showDistances && coords.length > 1) {
+             let segmentTotalDist = 0;
+             for (let i = 0; i < coords.length - 1; i++) {
+                const pt1 = window.L.latLng(coords[i][0], coords[i][1]); 
+                const pt2 = window.L.latLng(coords[i + 1][0], coords[i + 1][1]);
+                const dist = pt1.distanceTo(pt2); 
+                segmentTotalDist += dist;
+                window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, '#3b82f6') }).addTo(surveyLayerRef.current);
+             }
+             const lastPt = coords[coords.length - 1];
+             window.L.marker([lastPt[0], lastPt[1]], { interactive: false, zIndexOffset: 200, icon: createDistLabel(segmentTotalDist > 1000 ? `${(segmentTotalDist / 1000).toFixed(2)} km` : `${Math.round(segmentTotalDist)} m`, true, '#3b82f6') }).addTo(surveyLayerRef.current);
+          }
 
-if (!showPlanEditor && inputMode === 'view' && hasActualData) {
-  if (actualBounds && typeof actualBounds.isValid === 'function' && actualBounds.isValid()) {
-    if (!isInitialSiteFitDone.current) {
-       mapInstanceRef.current.fitBounds(actualBounds, { paddingTopLeft: [50, 150], paddingBottomRight: [50, 50] });
-       isInitialSiteFitDone.current = true;
+          hasActualData = true;
+        }
+      }
+    });
+
+    if (!showPlanEditor && inputMode === 'view' && hasActualData) {
+      if (!isInitialSiteFitDone.current && actualBounds.isValid()) {
+         mapInstanceRef.current.fitBounds(actualBounds, { padding: [50, 50], maxZoom: 17 });
+         isInitialSiteFitDone.current = true;
+      }
     }
-  }
-}
-}, [plannedPath, actualSegments, isMapLoaded, showPlanEditor, inputMode, showDistances, showPaths, showSketchLabels, showSketchPoints]);
+  }, [isMapLoaded, plannedPath, actualSegments, showPaths, showDistances, showSketchLabels, showSketchPoints, inputMode, showPlanEditor]);
 
-return (
-<div className={`h-[70vh] md:h-full rounded-[32px] border border-slate-200 bg-slate-100 relative overflow-hidden flex flex-col shadow-sm ${inputMode === 'plan' ? 'cursor-crosshair' : ''}`}>
+  return (
+    <div className="h-full flex flex-col relative overflow-hidden bg-slate-900 rounded-3xl">
       <div ref={mapContainerRef} className="absolute inset-0 z-0" />
-      <div className="hidden md:block absolute top-6 left-6 z-20 bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-slate-100 shadow-md text-left pointer-events-auto max-w-[220px]">
-        <h4 className="text-[10px] font-black uppercase text-slate-500 mb-3 tracking-wider">Legenda Peta</h4>
-        <div className="space-y-3 text-[11px] font-bold text-slate-700 max-h-[40vh] overflow-y-auto custom-scrollbar pr-2">
+      
+      {/* --- LEGENDA PETA --- */}
+      <div className="absolute top-6 left-6 z-20 bg-white/95 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-xl p-4 flex flex-col gap-3 pointer-events-auto">
+        <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-b border-slate-200/50 pb-2">Legenda Peta</h4>
+        <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-3">
-            <svg width="18" height="24" viewBox="0 0 384 512" xmlns="http://www.w3.org/2000/svg" className="shrink-0" style={{ filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.2))' }}>
-              <defs>
-                <linearGradient id="lgBlue" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="#38bdf8"/><stop offset="100%" stopColor="#2563eb"/></linearGradient>
-              </defs>
+            <svg width="16" height="16" viewBox="0 0 384 512" xmlns="http://www.w3.org/2000/svg">
+              <defs><linearGradient id="lgBlue" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="#38bdf8"/><stop offset="100%" stopColor="#2563eb"/></linearGradient></defs>
               <circle cx="192" cy="192" r="80" fill="white" />
               <path d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0zM192 272c44.183 0 80-35.817 80-80s-35.817-80-80-80-80 35.817-80 80 35.817 80 80 80z" fill="url(#lgBlue)" />
             </svg>
-            <span className="truncate">Awal Pekerjaan</span>
+            <span className="truncate text-xs font-medium text-slate-700">Awal Pekerjaan</span>
           </div>
           <div className="flex items-center gap-3">
-            <svg width="18" height="24" viewBox="0 0 384 512" xmlns="http://www.w3.org/2000/svg" className="shrink-0" style={{ filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.2))' }}>
+            <svg width="16" height="16" viewBox="0 0 384 512" xmlns="http://www.w3.org/2000/svg">
               <defs><linearGradient id="lgRed" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="#fb7185"/><stop offset="100%" stopColor="#e11d48"/></linearGradient></defs>
               <circle cx="192" cy="192" r="80" fill="white" />
               <path d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0zM192 272c44.183 0 80-35.817 80-80s-35.817-80-80-80-80 35.817-80 80 35.817 80 80 80z" fill="url(#lgRed)" />
             </svg>
-            <span className="truncate">Akhir Pekerjaan</span>
+            <span className="truncate text-xs font-medium text-slate-700">Akhir Pekerjaan</span>
           </div>
           
           {/* --- MENAMPILKAN JALUR DINAMIS DI LEGENDA --- */}
@@ -2952,13 +3149,13 @@ return (
                 ) : (
                   <div className="w-4 h-1 border-t-[3px] shrink-0" style={{ borderColor: path.color || '#f59e0b', borderStyle: path.isDashed ? 'dashed' : 'solid' }}></div>
                 )}
-                <span className="truncate max-w-[140px] text-[11px]" title={path.name}>{path.name || (path.type === 'polygon' ? 'Poligon' : 'Garis Sketsa')}</span>
+                <span className="truncate max-w-[140px] text-xs font-medium text-slate-700" title={path.name}>{path.name || (path.type === 'polygon' ? 'Poligon' : 'Garis Sketsa')}</span>
               </div>
             ))
           ) : (
             <div className="flex items-center gap-3">
               <div className="w-4 h-1 border-t-[3px] border-dashed border-amber-500 shrink-0"></div>
-              <span className="truncate text-[11px]">Garis Sketsa</span>
+              <span className="truncate text-xs font-medium text-slate-700">Garis Sketsa</span>
             </div>
           ))}
         </div>
@@ -3050,8 +3247,26 @@ return (
                       <div className="pl-1">
                         {(!pathObj.points || pathObj.points.length === 0) ? <div className="text-[9px] text-slate-400 italic">Klik peta untuk menambah titik...</div> : pathObj.points.map((p, i) => (
                           <div key={i} className="flex justify-between items-center mb-1 pl-2 border-l-2 text-slate-600 group/pt hover:bg-slate-50 rounded" style={{ borderColor: pathObj.color || (pathObj.type === 'polygon' ? '#10b981' : '#f59e0b') }}>
-                             <span>{p.sta}: {Number(p.lat).toFixed(4)}, {Number(p.lng).toFixed(4)}</span>
-                             <button onClick={() => handleDeletePoint(pathObj.id, i)} className="text-rose-400 opacity-0 group-hover/pt:opacity-100 p-0.5"><X size={10} /></button>
+                             <div className="flex items-center gap-1 w-full mr-2">
+                                <span className="text-[9px] font-bold w-6">{p.sta}</span>
+                                <input type="number" step="any" value={p.lat} onChange={e => {
+                                   setPlannedPath(prev => prev.map(path => {
+                                      if (path.id === pathObj.id) {
+                                         const nPts = [...path.points]; nPts[i].lat = e.target.value; return { ...path, points: nPts };
+                                      }
+                                      return path;
+                                   }));
+                                }} className="w-full p-1 text-[10px] border border-slate-200 rounded outline-none focus:border-blue-400 bg-white font-mono" placeholder="Lat" />
+                                <input type="number" step="any" value={p.lng} onChange={e => {
+                                   setPlannedPath(prev => prev.map(path => {
+                                      if (path.id === pathObj.id) {
+                                         const nPts = [...path.points]; nPts[i].lng = e.target.value; return { ...path, points: nPts };
+                                      }
+                                      return path;
+                                   }));
+                                }} className="w-full p-1 text-[10px] border border-slate-200 rounded outline-none focus:border-blue-400 bg-white font-mono" placeholder="Lng" />
+                             </div>
+                             <button onClick={() => handleDeletePoint(pathObj.id, i)} className="text-rose-400 opacity-0 group-hover/pt:opacity-100 p-1 shrink-0"><X size={10} /></button>
                           </div>
                         ))}
                       </div>
@@ -3066,22 +3281,62 @@ return (
               </div>
             ) : (
               <div className="animate-in fade-in slide-in-from-right-2 space-y-4">
-                <div className="flex justify-between items-center"><p className="text-[11px] text-cyan-700 bg-cyan-50 p-3 rounded-xl border border-cyan-100 w-full">Input koordinat per segmen.</p></div>
+                <div className="flex justify-between items-center"><p className="text-[11px] text-cyan-700 bg-cyan-50 p-3 rounded-xl border border-cyan-100 w-full">Klik di peta untuk menambah titik rute realisasi (Garis Biru).</p></div>
                 <div className="flex justify-end gap-3 mb-2 flex-wrap">
                   <button onClick={() => setShowSketchPoints(!showSketchPoints)} className="text-[9px] font-bold text-emerald-500 hover:text-emerald-700">{showSketchPoints ? 'Sembunyikan Titik' : 'Tampilkan Titik'}</button>
                   <button onClick={() => setShowSketchLabels(!showSketchLabels)} className="text-[9px] font-bold text-amber-500 hover:text-amber-700">{showSketchLabels ? 'Sembunyikan Label' : 'Tampilkan Label'}</button>
                   <button onClick={() => setShowDistances(!showDistances)} className="text-[9px] font-bold text-blue-500 hover:text-blue-700">{showDistances ? 'Sembunyikan Jarak' : 'Tampilkan Jarak'}</button>
                 </div>
-                {(actualSegments || []).map((seg, idx) => (
-                  <div key={seg.id} className="bg-white p-3 rounded-2xl border border-slate-200 relative group">
-                    <div className="flex justify-between mb-3"><input type="text" className="text-xs font-black bg-transparent w-3/4 outline-none" value={seg.name} onChange={e => handleUpdateSeg(seg.id, 'name', e.target.value)} />{actualSegments && actualSegments.length > 1 && (<button onClick={() => setActualSegments(p => (p || []).filter(s => s.id !== seg.id))} className="text-rose-400 bg-rose-50 p-1 rounded"><Trash size={12} /></button>)}</div>
-                    <div className="space-y-2">
-                      <div className="bg-slate-50 p-2 rounded-xl flex gap-2"><input type="number" placeholder="Lat Awal" value={seg.startLat} onChange={e => setActualSegments(p => (p || []).map(s => s.id === seg.id ? { ...s, startLat: e.target.value } : s))} className="w-full bg-white rounded p-1 text-xs" /><input type="number" placeholder="Lng Awal" value={seg.startLng} onChange={e => setActualSegments(p => (p || []).map(s => s.id === seg.id ? { ...s, startLng: e.target.value } : s))} className="w-full bg-white rounded p-1 text-xs" /></div>
-                      <div className="bg-slate-50 p-2 rounded-xl flex gap-2"><input type="number" placeholder="Lat Akhir" value={seg.endLat} onChange={e => setActualSegments(p => (p || []).map(s => s.id === seg.id ? { ...s, endLat: e.target.value } : s))} className="w-full bg-white rounded p-1 text-xs" /><input type="number" placeholder="Lng Akhir" value={seg.endLng} onChange={e => setActualSegments(p => (p || []).map(s => s.id === seg.id ? { ...s, endLng: e.target.value } : s))} className="w-full bg-white rounded p-1 text-xs" /></div>
+                <div className="max-h-[300px] overflow-y-auto bg-slate-50 p-2 rounded-xl text-[10px] font-mono border border-slate-200 mb-3 custom-scrollbar">
+                  {!actualSegments || actualSegments.length === 0 ? <div className="p-2 text-slate-500 text-center">Belum ada rute realisasi...</div> : actualSegments.map((seg) => (
+                    <div key={seg.id} className="mb-3 bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm relative group">
+                       <div className="flex justify-between items-center mb-2">
+                         <input
+                           type="text"
+                           value={seg.name}
+                           onChange={(e) => handleUpdateSeg(seg.id, 'name', e.target.value)}
+                           className="font-bold text-slate-800 text-xs outline-none bg-transparent w-[120px] focus:border-b border-blue-400"
+                           placeholder="Nama Segmen"
+                         />
+                         <button onClick={() => setActualSegments(p => (p || []).filter(s => s.id !== seg.id))} className="text-rose-500 bg-rose-50 p-1 rounded hover:bg-rose-100"><Trash size={12} /></button>
+                       </div>
+                       <div className="pl-1">
+                         {(!seg.points || seg.points.length === 0) ? <div className="text-[9px] text-slate-400 italic">Klik peta untuk menambah titik...</div> : seg.points.map((p, i) => (
+                           <div key={i} className="flex justify-between items-center mb-1 pl-2 border-l-2 text-slate-600 group/pt hover:bg-slate-50 rounded border-blue-500">
+                              <div className="flex items-center gap-1 w-full mr-2">
+                                 <span className="text-[9px] font-bold w-6">T-{i+1}</span>
+                                 <input type="number" step="any" value={p.lat} onChange={e => {
+                                    setActualSegments(prev => prev.map(s => {
+                                       if (s.id === seg.id) {
+                                          const nPts = [...s.points]; nPts[i].lat = e.target.value; return { ...s, points: nPts };
+                                       }
+                                       return s;
+                                    }));
+                                 }} className="w-full p-1 text-[10px] border border-slate-200 rounded outline-none focus:border-blue-400 bg-white font-mono" placeholder="Lat" />
+                                 <input type="number" step="any" value={p.lng} onChange={e => {
+                                    setActualSegments(prev => prev.map(s => {
+                                       if (s.id === seg.id) {
+                                          const nPts = [...s.points]; nPts[i].lng = e.target.value; return { ...s, points: nPts };
+                                       }
+                                       return s;
+                                    }));
+                                 }} className="w-full p-1 text-[10px] border border-slate-200 rounded outline-none focus:border-blue-400 bg-white font-mono" placeholder="Lng" />
+                              </div>
+                              <button onClick={() => {
+                                 setActualSegments(prev => prev.map(s => {
+                                    if (s.id === seg.id) {
+                                       const nPts = [...s.points]; nPts.splice(i, 1); return { ...s, points: nPts };
+                                    }
+                                    return s;
+                                 }));
+                              }} className="text-rose-400 opacity-0 group-hover/pt:opacity-100 p-1 shrink-0"><X size={10} /></button>
+                           </div>
+                         ))}
+                       </div>
                     </div>
-                  </div>
-                ))}
-                <button onClick={() => setActualSegments(p => [...(p || []), { id: Date.now(), name: `Segmen ${(p || []).length + 1}`, startLat: '', startLng: '', endLat: '', endLng: '' }])} className="w-full text-blue-600 bg-blue-50 py-2.5 text-[10px] font-bold flex justify-center gap-1 rounded-xl border border-blue-100"><Plus size={14} /> Tambah Segmen</button>
+                  ))}
+                </div>
+                <button onClick={() => setActualSegments(p => [...(p || []), { id: Date.now(), name: `Segmen ${(p || []).length + 1}`, points: [] }])} className="w-full text-blue-600 bg-blue-50 py-2 text-[10px] font-bold flex justify-center gap-1 rounded-xl border border-blue-100"><Plus size={14} /> Tambah Segmen Baru</button>
               </div>
             )}
           </div>
@@ -3489,7 +3744,7 @@ export default function App() {
     tenagaKerja: JSON.parse(JSON.stringify(INITIAL_TENAGA_KERJA)),
     catatan: ''
   });
-  const [uForm, setUForm] = useState({ tanggal: new Date().toISOString().split('T')[0], namaSegmen: '', startLat: '', startLng: '', endLat: '', endLng: '', panjang: '', lebar: '', jenis_model_awal: '', noteDesc: '' });
+  const [uForm, setUForm] = useState({ tanggal: new Date().toISOString().split('T')[0], namaSegmen: '', points: [{lat: '', lng: ''}, {lat: '', lng: ''}], panjang: '', lebar: '', jenis_model_awal: '', noteDesc: '' });
   const [masterForm, setMasterForm] = useState({ dinas: JSON.parse(JSON.stringify(INITIAL_DINAS_DATA)), kontraktor: { fields: initialKontraktorFields, personil: [] }, konsultan: { fields: initialKonsultanFields, personil: [] } });
   const [employeeForm, setEmployeeForm] = useState({ id: null, employee_id: '', name: '', role: 'Pelaksana', pin: '' });
 
@@ -4299,6 +4554,44 @@ export default function App() {
     }
   };
 
+  // --- FUNGSI BUKA MODAL SURVEI (AUTO-CONNECT TITIK) ---
+  const handleOpenSurveyModal = () => {
+    let initialPoints = [{ lat: '', lng: '' }, { lat: '', lng: '' }];
+
+    if (projectData && projectData.actual_segments_data && projectData.actual_segments_data.length > 0) {
+      // Cari segmen terakhir yang memiliki titik koordinat
+      const segments = projectData.actual_segments_data;
+      let lastValidPoint = null;
+
+      for (let i = segments.length - 1; i >= 0; i--) {
+        const pts = segments[i].points;
+        if (pts && pts.length > 0) {
+          lastValidPoint = pts[pts.length - 1]; // Ambil titik paling akhir
+          break;
+        }
+      }
+
+      // Jika ada, isikan otomatis ke Titik Awal Survei Baru
+      if (lastValidPoint) {
+        initialPoints[0] = { lat: lastValidPoint.lat, lng: lastValidPoint.lng };
+        showMsg("Titik awal otomatis disambungkan dengan rute sebelumnya", "info");
+      }
+    }
+
+    setUForm({
+      tanggal: new Date().toISOString().split('T')[0],
+      namaSegmen: '',
+      points: initialPoints,
+      panjang: '',
+      lebar: '',
+      jenis_model_awal: '',
+      noteDesc: ''
+    });
+    setUMedia([]);
+    setUDataUkur(null);
+    setShowUnifiedModal(true);
+  };
+
   const handleUnifiedSubmit = async (e) => {
     e.preventDefault(); if (!projectData) return; setIsProcessing(true);
 
@@ -4309,8 +4602,12 @@ export default function App() {
         const num = parseFloat(str.replace(',', '.')); return isNaN(num) ? null : num;
       };
 
-      const sLat_in = parseCoord(uForm.startLat); const sLng_in = parseCoord(uForm.startLng);
-      const eLat_in = parseCoord(uForm.endLat); const eLng_in = parseCoord(uForm.endLng);
+      const validPoints = (uForm.points || []).map(p => {
+          const lat = parseCoord(p.lat);
+          const lng = parseCoord(p.lng);
+          if (lat !== null && lng !== null) return { lat, lng };
+          return null;
+      }).filter(Boolean);
 
       const updatePayload = { panjang_rencana: uForm.panjang, lebar_rencana: uForm.lebar, jenis_model: uForm.jenis_model_awal, updated_at: new Date().toISOString() };
 
@@ -4322,24 +4619,28 @@ export default function App() {
       if (segName) { existingSegIdx = newSegments.findIndex(s => String(s.name).toLowerCase() === segName.toLowerCase()); }
       else { let count = 1; while (newSegments.find(s => String(s.name).toLowerCase() === `segmen ${count}`)) { count++; } segName = `Segmen ${count}`; }
 
-      const isMasterCoordEmpty = !projectData.start_lat || projectData.start_lat === '-';
-      if (isMasterCoordEmpty || newSegments.length === 0) {
-        if (sLat_in !== null) updatePayload.start_lat = sLat_in;
-        if (sLng_in !== null) updatePayload.start_lng = sLng_in;
-        if (eLat_in !== null) updatePayload.end_lat = eLat_in;
-        if (eLng_in !== null) updatePayload.end_lng = eLng_in;
-      }
-
-      if (sLat_in !== null && sLng_in !== null && eLat_in !== null && eLng_in !== null) {
-        if (existingSegIdx >= 0) { newSegments[existingSegIdx] = { ...newSegments[existingSegIdx], startLat: sLat_in, startLng: sLng_in, endLat: eLat_in, endLng: eLng_in }; }
-        else { newSegments.push({ id: Date.now(), name: segName, startLat: sLat_in, startLng: sLng_in, endLat: eLat_in, endLng: eLng_in }); }
+      if (validPoints.length > 0) {
+        if (existingSegIdx >= 0) { newSegments[existingSegIdx] = { ...newSegments[existingSegIdx], points: validPoints }; }
+        else { newSegments.push({ id: Date.now(), name: segName, points: validPoints }); }
         updatePayload.actual_segments_data = newSegments;
+        
+        const isMasterCoordEmpty = !projectData.start_lat || projectData.start_lat === '-';
+        if (isMasterCoordEmpty || newSegments.length === 1) {
+          updatePayload.start_lat = validPoints[0].lat;
+          updatePayload.start_lng = validPoints[0].lng;
+          if (validPoints.length > 1) {
+             updatePayload.end_lat = validPoints[validPoints.length - 1].lat;
+             updatePayload.end_lng = validPoints[validPoints.length - 1].lng;
+          }
+        }
       }
 
       const currentPath = projectData.planned_path || [];
-      const isPathEmpty = !currentPath || currentPath.length === 0 || (currentPath.length === 1 && currentPath[0].length === 0);
-      if (sLat_in !== null && sLng_in !== null && eLat_in !== null && eLng_in !== null && isPathEmpty) {
-        updatePayload.planned_path = [[{ lat: sLat_in, lng: sLng_in, sta: 'Awal' }, { lat: eLat_in, lng: eLng_in, sta: 'Akhir' }]];
+      const isPathEmpty = !currentPath || currentPath.length === 0 || (currentPath.length === 1 && (!currentPath[0].points || currentPath[0].points.length === 0));
+      
+      if (validPoints.length > 0 && isPathEmpty) {
+        // Otomatis buat jalur rencana (sketsa) juga dari input survei jika masih kosong
+        updatePayload.planned_path = [{ id: `path-${Date.now()}`, name: 'Jalur 1', type: 'line', color: '#f59e0b', isDashed: true, points: validPoints.map((p,i) => ({ ...p, sta: `T-${i+1}` })) }];
       }
 
       const { error: updateErr } = await supabaseClient.from('projects').update(updatePayload).eq('id', projectData.id);
@@ -4371,27 +4672,38 @@ export default function App() {
         await supabaseClient.from('documents').insert([{ project_id: projectData.id, name: uDataUkur.name, category: 'Survei', size: (uDataUkur.size / 1024 / 1024).toFixed(2) + ' MB', file_url: urlData.publicUrl, status: 'Verified' }]);
       }
 
+      let coordMsg = '-';
+      if(validPoints.length > 0) {
+          coordMsg = `Awal(${validPoints[0].lat}, ${validPoints[0].lng})`;
+          if(validPoints.length > 1) {
+              coordMsg += ` ... Akhir(${validPoints[validPoints.length-1].lat}, ${validPoints[validPoints.length-1].lng})`;
+          }
+      }
+
       await supabaseClient.from('field_reports').insert([{
         project_id: projectData.id, title: 'Pengiriman Data Survei',
-        description: `Tim lapangan telah mengirimkan data hasil survei untuk ${segName}.\nPanjang Eks.: ${uForm.panjang || '-'}m | Lebar Eks.: ${uForm.lebar || '-'}m | Model Eks.: ${uForm.jenis_model_awal || '-'}\nKoordinat: Awal(${sLat_in !== null ? sLat_in : '-'}, ${sLng_in !== null ? sLng_in : '-'}) Akhir(${eLat_in !== null ? eLat_in : '-'}, ${eLng_in !== null ? eLng_in : '-'})`
+        description: `Tim lapangan telah mengirimkan data hasil survei untuk ${segName}.\nPanjang Eks.: ${uForm.panjang || '-'}m | Lebar Eks.: ${uForm.lebar || '-'}m | Model Eks.: ${uForm.jenis_model_awal || '-'}\nKoordinat: ${coordMsg}`
       }]);
 
       setProjectData(prev => ({ ...prev, ...updatePayload }));
 
       showMsg("Data Survei Tersimpan!", "success"); setShowUnifiedModal(false); setUMedia([]); setUDataUkur(null);
-      setUForm({ tanggal: new Date().toISOString().split('T')[0], namaSegmen: '', startLat: '', startLng: '', endLat: '', endLng: '', panjang: '', lebar: '', jenis_model_awal: '', noteDesc: '' });
+      setUForm({ tanggal: new Date().toISOString().split('T')[0], namaSegmen: '', points: [{lat: '', lng: ''}, {lat: '', lng: ''}], panjang: '', lebar: '', jenis_model_awal: '', noteDesc: '' });
       fetchProjectDetails(projectData.id);
     } catch (err) { showMsg("Error menyimpan survei: " + err.message, "error"); } finally { setIsProcessing(false); }
   };
 
-  const getUnifiedGPS = (type) => {
+  const getUnifiedGPS = (index) => {
     if (!navigator.geolocation) { showMsg("GPS tidak didukung browser ini.", "error"); return; }
     showMsg("Mencari sinyal GPS...", "info");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        if (type === 'start') setUForm(prev => ({ ...prev, startLat: pos.coords.latitude, startLng: pos.coords.longitude }));
-        else setUForm(prev => ({ ...prev, endLat: pos.coords.latitude, endLng: pos.coords.longitude }));
-        showMsg(`GPS Titik ${type === 'start' ? 'Awal' : 'Akhir'} Ditemukan!`, "success");
+        setUForm(prev => {
+            const newPoints = [...prev.points];
+            newPoints[index] = { ...newPoints[index], lat: pos.coords.latitude, lng: pos.coords.longitude };
+            return { ...prev, points: newPoints };
+        });
+        showMsg(`GPS Titik ${index === 0 ? 'Awal' : (index === uForm.points.length - 1 ? 'Akhir' : `T-${index+1}`)} Ditemukan!`, "success");
       },
       (err) => { showMsg("Gagal mengambil GPS: " + err.message, "error"); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
@@ -4403,8 +4715,15 @@ export default function App() {
       const payload = { planned_path: planned, actual_segments_data: actualSegs, updated_at: new Date().toISOString() };
       if (actualSegs && actualSegs.length > 0) {
         const fSeg = actualSegs[0];
-        if (fSeg.startLat !== '' && fSeg.startLng !== '') { payload.start_lat = parseFloat(fSeg.startLat); payload.start_lng = parseFloat(fSeg.startLng); }
-        if (fSeg.endLat !== '' && fSeg.endLng !== '') { payload.end_lat = parseFloat(fSeg.endLat); payload.end_lng = parseFloat(fSeg.endLng); }
+        if (fSeg.points && fSeg.points.length > 0) {
+           payload.start_lat = parseFloat(fSeg.points[0].lat);
+           payload.start_lng = parseFloat(fSeg.points[0].lng);
+           if (fSeg.points.length > 1) {
+              const lastPt = fSeg.points[fSeg.points.length - 1];
+              payload.end_lat = parseFloat(lastPt.lat);
+              payload.end_lng = parseFloat(lastPt.lng);
+           }
+        }
       }
       const { error } = await supabaseClient.from('projects').update(payload).eq('id', projectData.id);
       if (error) throw error;
@@ -4692,10 +5011,12 @@ export default function App() {
       if (matchLebar && matchLebar[1]) displayLebar = matchLebar[1].trim();
       if (matchModel && matchModel[1]) displayModel = matchModel[1].trim();
 
-      const matchCoordLog = String(activeLog.description || '').match(/Koordinat:\s*Awal\(([^,]+),\s*([^)]+)\)\s*Akhir\(([^,]+),\s*([^)]+)\)/);
+      const matchCoordLog = String(activeLog.description || '').match(/Koordinat:\s*Awal\(([^,]+),\s*([^)]+)\)(?:.*Akhir\(([^,]+),\s*([^)]+)\))?/);
       if (matchCoordLog) {
         sLat = matchCoordLog[1].trim(); sLng = matchCoordLog[2].trim();
-        eLat = matchCoordLog[3].trim(); eLng = matchCoordLog[4].trim();
+        if(matchCoordLog[3] && matchCoordLog[4]) {
+           eLat = matchCoordLog[3].trim(); eLng = matchCoordLog[4].trim();
+        }
       }
 
       const T = new Date(activeLog.created_at).getTime(); const timeWindow = 15000;
@@ -5392,7 +5713,7 @@ export default function App() {
 
                   <button
                     type="button"
-                    onClick={() => currentPhase === 'persiapan' ? setShowUnifiedModal(true) : handleOpenReportModal()}
+                    onClick={() => currentPhase === 'persiapan' ? handleOpenSurveyModal() : handleOpenReportModal()}
                     className="bg-blue-600 text-white px-3 py-2 md:px-5 md:py-2.5 rounded-xl text-[10px] font-bold uppercase flex items-center justify-center gap-1.5 md:gap-2 hover:bg-blue-700 transition-colors shadow-md cursor-pointer relative z-50 pointer-events-auto"
                   >
                     {currentPhase === 'persiapan' ? <Plus size={14} className="md:w-4 md:h-4" /> : <Camera size={14} className="md:w-4 md:h-4" />}
@@ -6503,8 +6824,36 @@ export default function App() {
             <form onSubmit={handleUnifiedSubmit} className="space-y-4">
               <SurveyInputRow label="Tanggal"><input type="date" value={uForm.tanggal} onChange={e => setUForm(p => ({ ...p, tanggal: e.target.value }))} className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
               <SurveyInputRow label="Nama Jln/Gg./Blok"><input type="text" value={uForm.namaSegmen} onChange={e => setUForm(p => ({ ...p, namaSegmen: e.target.value }))} placeholder="Misal: Jl. Mawar / Segmen 1" className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
-              <SurveyInputRow label="Titik Awal"><div className="flex gap-2"><input type="text" placeholder="Lat" value={uForm.startLat} onChange={e => setUForm(p => ({ ...p, startLat: e.target.value }))} className="flex-1 p-3 rounded-xl border bg-slate-50" /><input type="text" placeholder="Lng" value={uForm.startLng} onChange={e => setUForm(p => ({ ...p, startLng: e.target.value }))} className="flex-1 p-3 rounded-xl border bg-slate-50" /><button type="button" onClick={() => getUnifiedGPS('start')} className="px-4 bg-blue-50 text-blue-600 font-bold rounded-xl text-[10px]">GPS</button></div></SurveyInputRow>
-              <SurveyInputRow label="Titik Akhir"><div className="flex gap-2"><input type="text" placeholder="Lat" value={uForm.endLat} onChange={e => setUForm(p => ({ ...p, endLat: e.target.value }))} className="flex-1 p-3 rounded-xl border bg-slate-50" /><input type="text" placeholder="Lng" value={uForm.endLng} onChange={e => setUForm(p => ({ ...p, endLng: e.target.value }))} className="flex-1 p-3 rounded-xl border bg-slate-50" /><button type="button" onClick={() => getUnifiedGPS('end')} className="px-4 bg-rose-50 text-rose-600 font-bold rounded-xl text-[10px]">GPS</button></div></SurveyInputRow>
+              
+              <SurveyInputRow label="Titik Koordinat (Jalur Realisasi Lapangan)">
+                <div className="space-y-2">
+                   {uForm.points.map((pt, i) => (
+                      <div key={i} className="flex gap-2 items-center bg-slate-50 p-2 rounded-xl border border-slate-100">
+                         <span className="text-[10px] font-black text-slate-500 w-10 text-center shrink-0 uppercase tracking-widest">
+                            {i === 0 ? 'Awal' : (i === uForm.points.length - 1 ? 'Akhir' : `T${i+1}`)}
+                         </span>
+                         <input type="text" placeholder="Lat" value={pt.lat} onChange={e => {
+                            const n = [...uForm.points]; n[i].lat = e.target.value; setUForm(p => ({...p, points: n}));
+                         }} className="flex-1 p-2 text-xs rounded-lg border bg-white focus:outline-blue-400" />
+                         <input type="text" placeholder="Lng" value={pt.lng} onChange={e => {
+                            const n = [...uForm.points]; n[i].lng = e.target.value; setUForm(p => ({...p, points: n}));
+                         }} className="flex-1 p-2 text-xs rounded-lg border bg-white focus:outline-blue-400" />
+                         <button type="button" onClick={() => getUnifiedGPS(i)} className="px-3 py-2 bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors font-bold rounded-lg text-[10px] shadow-sm">GPS</button>
+                         {uForm.points.length > 2 && (
+                            <button type="button" onClick={() => {
+                               const n = [...uForm.points]; n.splice(i, 1); setUForm(p => ({...p, points: n}));
+                            }} className="px-2 py-2 bg-rose-50 hover:bg-rose-100 text-rose-500 font-bold rounded-lg transition-colors"><Trash size={14}/></button>
+                         )}
+                      </div>
+                   ))}
+                   <button type="button" onClick={() => {
+                      setUForm(p => ({...p, points: [...p.points, {lat: '', lng: ''}]}));
+                   }} className="w-full mt-2 py-2 border border-dashed border-blue-300 text-blue-600 bg-blue-50/50 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 hover:bg-blue-50 hover:border-blue-400 transition-colors">
+                      <Plus size={14} /> Tambah Titik Jalur Berikutnya
+                   </button>
+                </div>
+              </SurveyInputRow>
+
               <SurveyInputRow label="Panjang Eks."><input type="text" value={uForm.panjang} onChange={e => setUForm(p => ({ ...p, panjang: e.target.value }))} className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
               <SurveyInputRow label="Lebar Eks."><input type="text" value={uForm.lebar} onChange={e => setUForm(p => ({ ...p, lebar: e.target.value }))} className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
               <SurveyInputRow label="Jenis/Model Eks."><input type="text" value={uForm.jenis_model_awal} onChange={e => setUForm(p => ({ ...p, jenis_model_awal: e.target.value }))} className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
