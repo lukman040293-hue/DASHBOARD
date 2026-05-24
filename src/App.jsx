@@ -3070,11 +3070,25 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg }) => {
           
           // Gambar Garis Realisasi jika lebih dari 1 titik
           if (coords.length > 1) {
-             window.L.polyline(coords, {
+             const actualShape = window.L.polyline(coords, {
                color: '#3b82f6', // Biru Realisasi
                weight: 5,
                opacity: 0.9,
              }).addTo(surveyLayerRef.current);
+
+             // TAMPILKAN NAMA/KETERANGAN JALUR REALISASI DI TENGAH GARIS
+             if (showSketchLabels) {
+                const center = actualShape.getBounds().getCenter();
+                window.L.marker(center, {
+                  interactive: false,
+                  zIndexOffset: 110,
+                  icon: window.L.divIcon({
+                    className: 'bg-transparent border-0 overflow-visible',
+                    html: `<div style="transform: translate(-50%, 50%); background-color: rgba(255,255,255,0.95); color: #2563eb; border: 2px solid #3b82f6;" class="w-max px-3 py-1.5 rounded-xl text-[10px] font-black whitespace-nowrap shadow-lg uppercase tracking-wider backdrop-blur-md">${seg.name || 'Segmen Realisasi'}</div>`,
+                    iconSize: [0, 0]
+                  })
+                }).addTo(surveyLayerRef.current);
+             }
           }
 
           // Marker Awal
@@ -4633,14 +4647,6 @@ export default function App() {
              updatePayload.end_lng = validPoints[validPoints.length - 1].lng;
           }
         }
-      }
-
-      const currentPath = projectData.planned_path || [];
-      const isPathEmpty = !currentPath || currentPath.length === 0 || (currentPath.length === 1 && (!currentPath[0].points || currentPath[0].points.length === 0));
-      
-      if (validPoints.length > 0 && isPathEmpty) {
-        // Otomatis buat jalur rencana (sketsa) juga dari input survei jika masih kosong
-        updatePayload.planned_path = [{ id: `path-${Date.now()}`, name: 'Jalur 1', type: 'line', color: '#f59e0b', isDashed: true, points: validPoints.map((p,i) => ({ ...p, sta: `T-${i+1}` })) }];
       }
 
       const { error: updateErr } = await supabaseClient.from('projects').update(updatePayload).eq('id', projectData.id);
