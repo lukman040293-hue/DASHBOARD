@@ -1216,10 +1216,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
         actualSegments.forEach(seg => {
             let pts = seg.points || [];
             let bEnd = seg.boundary_end;
-            if (pts.length === 2 && !bEnd) {
-                pts = [seg.points[0]];
-                bEnd = seg.points[1];
-            } else if (!seg.points) {
+            if (!seg.points) {
                 if (seg.startLat && seg.startLng) pts.push({lat: parseFloat(seg.startLat), lng: parseFloat(seg.startLng)});
                 if (seg.endLat && seg.endLng) bEnd = {lat: parseFloat(seg.endLat), lng: parseFloat(seg.endLng)};
             }
@@ -1282,15 +1279,17 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
           actualSegsToRender.forEach(seg => {
             if (seg.points && seg.points.length > 0) {
               const coords = seg.points.map(pt => [parseFloat(pt.lat), parseFloat(pt.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
-              
-              // GABUNGKAN TITIK AKHIR (BOUNDARY) AGAR GARIS TERBENTUK MESKI 2 TITIK
-              // if (coords.length === 1 && seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
-              //     coords.push([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)]);
-              // }
 
               if (coords.length > 0) {
                 if (coords.length > 1) {
                   window.L.polyline(coords, { color: '#3b82f6', weight: 5, opacity: 0.9 }).addTo(surveyLayerRef.current);
+                }
+
+                // Gambar garis putus-putus penghubung titik rute terakhir ke Target Akhir (Boundary End Survey)
+                if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
+                    const lastPt = coords[coords.length - 1];
+                    const boundaryPt = [parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)];
+                    window.L.polyline([lastPt, boundaryPt], { color: '#3b82f6', weight: 3, opacity: 0.5, dashArray: '8, 8' }).addTo(surveyLayerRef.current);
                 }
                 
                 if (showSketchPoints) {
@@ -2878,10 +2877,6 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }
         // Konversi format lama (startLat, startLng, dll) menjadi array points
         const formattedSegs = projectData.actual_segments_data.map(seg => {
             if (seg.points) {
-                // Auto-Migrasi: Pisahkan Akhir ke boundary_end jika itu hanya garis survei lurus
-                if (seg.points.length === 2 && !seg.boundary_end) {
-                    return { ...seg, points: [seg.points[0]], boundary_end: seg.points[1] };
-                }
                 return seg;
             }
             const pts = [];
@@ -3165,6 +3160,18 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }
              }
           }
 
+          // Gambar garis putus-putus ke titik target akhir (Boundary End)
+          if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
+             const lastPt = coords[coords.length - 1];
+             const boundaryPt = [parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)];
+             window.L.polyline([lastPt, boundaryPt], { 
+                color: '#3b82f6', 
+                weight: 3, 
+                opacity: 0.5, 
+                dashArray: '8, 8' 
+             }).addTo(surveyLayerRef.current);
+          }
+
           // Marker Awal
           window.L.marker(coords[0], { icon: createMarker('Blue', `Awal`, seg.name, coords[0][0], coords[0][1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
           actualBounds.extend(coords[0]);
@@ -3215,7 +3222,8 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }
     photoLayerRef.current.clearLayers();
 
     if (showPhotos && feeds && feeds.length > 0) {
-        const updateFeeds = feeds.filter(f => f.title === 'Update Progress Rute' && f.media_url);
+        // PERBAIKAN: Menggunakan .includes('Update Progress') karena title sekarang dinamis ('Update Progress Rute Realisasi' / 'Sketsa')
+        const updateFeeds = feeds.filter(f => String(f.title || '').includes('Update Progress') && f.media_url);
         updateFeeds.forEach(feed => {
             const desc = feed.description || '';
             const latMatch = desc.match(/Lat\s([-0-9.]+)/);
