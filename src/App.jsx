@@ -2647,7 +2647,7 @@ const DokumentasiView = ({ feeds, onView, onDelete }) => {
   );
 };
 
-const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg }) => {
+const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }) => {
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [showPlanEditor, setShowPlanEditor] = useState(false);
   const isInitialSiteFitDone = useRef(false); // State penanda untuk Peta Detail
@@ -2674,15 +2674,20 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg }) => {
     const saved = localStorage.getItem('map_showSketchPoints');
     return saved !== null ? JSON.parse(saved) : true;
   });
+  const [showPhotos, setShowPhotos] = useState(() => {
+    const saved = localStorage.getItem('map_showPhotos');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
 
   // Efek untuk menyimpan ke memori setiap kali tombol diklik/diubah
   useEffect(() => { localStorage.setItem('map_showDistances', JSON.stringify(showDistances)); }, [showDistances]);
   useEffect(() => { localStorage.setItem('map_showPaths', JSON.stringify(showPaths)); }, [showPaths]);
   useEffect(() => { localStorage.setItem('map_showSketchLabels', JSON.stringify(showSketchLabels)); }, [showSketchLabels]);
   useEffect(() => { localStorage.setItem('map_showSketchPoints', JSON.stringify(showSketchPoints)); }, [showSketchPoints]);
+  useEffect(() => { localStorage.setItem('map_showPhotos', JSON.stringify(showPhotos)); }, [showPhotos]);
 
   const mapContainerRef = useRef(null); const mapInstanceRef = useRef(null);
-  const tileLayerRef = useRef(null); const routeLayerRef = useRef(null); const surveyLayerRef = useRef(null);
+  const tileLayerRef = useRef(null); const routeLayerRef = useRef(null); const surveyLayerRef = useRef(null); const photoLayerRef = useRef(null);
   const kmlInputRef = useRef(null);
 
   // --- FUNGSI IMPORT KML ---
@@ -2906,6 +2911,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg }) => {
       
       routeLayerRef.current = window.L.layerGroup().addTo(mapInstanceRef.current);
       surveyLayerRef.current = window.L.layerGroup().addTo(mapInstanceRef.current);
+      photoLayerRef.current = window.L.layerGroup().addTo(mapInstanceRef.current);
     }
   }, [isMapLoaded]);
 
@@ -3203,6 +3209,54 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg }) => {
     }
   }, [isMapLoaded, plannedPath, actualSegments, showPaths, showDistances, showSketchLabels, showSketchPoints, inputMode, showPlanEditor]);
 
+  // --- EFEK BARU: MENAMPILKAN FOTO MARKER DI PETA ---
+  useEffect(() => {
+    if (!isMapLoaded || !mapInstanceRef.current || !photoLayerRef.current) return;
+    photoLayerRef.current.clearLayers();
+
+    if (showPhotos && feeds && feeds.length > 0) {
+        const updateFeeds = feeds.filter(f => f.title === 'Update Progress Rute' && f.media_url);
+        updateFeeds.forEach(feed => {
+            const desc = feed.description || '';
+            const latMatch = desc.match(/Lat\s([-0-9.]+)/);
+            const lngMatch = desc.match(/Lng\s([-0-9.]+)/);
+
+            if (latMatch && lngMatch) {
+                const lat = parseFloat(latMatch[1]);
+                const lng = parseFloat(lngMatch[1]);
+                const firstImage = feed.media_url.split(',')[0];
+                const isVid = /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(firstImage || '');
+
+                if (!isNaN(lat) && !isNaN(lng)) {
+                     const iconHtml = `
+                        <div class="relative flex flex-col items-center group cursor-pointer pointer-events-auto" style="transform: translate(-50%, -100%);">
+                            <div class="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity z-[10000] pointer-events-none whitespace-nowrap bg-white text-slate-800 text-[10px] font-bold py-1.5 px-2.5 rounded-lg shadow-xl border border-slate-200">
+                                ${new Date(feed.created_at).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'})}
+                            </div>
+                            <div class="w-14 h-14 bg-white p-1 rounded-xl shadow-[0_5px_15px_rgba(0,0,0,0.25)] relative z-10 group-hover:scale-[1.6] group-hover:-translate-y-2 transition-transform duration-300 origin-bottom border border-slate-200/80">
+                                ${isVid ? 
+                                    `<video src="${firstImage}" class="w-full h-full object-cover rounded-lg bg-slate-800"></video>
+                                     <div class="absolute inset-0 flex items-center justify-center pointer-events-none"><svg width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></div>` : 
+                                    `<img src="${firstImage}" class="w-full h-full object-cover rounded-lg bg-slate-100" />`
+                                }
+                            </div>
+                            <div class="w-3.5 h-3.5 bg-white rotate-45 -mt-2 shadow-[2px_2px_5px_rgba(0,0,0,0.15)] relative z-0 border-r border-b border-slate-200/80"></div>
+                        </div>
+                     `;
+                     window.L.marker([lat, lng], {
+                        icon: window.L.divIcon({
+                            className: 'bg-transparent border-0 overflow-visible',
+                            html: iconHtml,
+                            iconSize: [0,0]
+                        }),
+                        zIndexOffset: 6000
+                     }).addTo(photoLayerRef.current);
+                }
+            }
+        });
+    }
+  }, [isMapLoaded, feeds, showPhotos]);
+
   return (
     <div className="h-full flex flex-col relative overflow-hidden bg-slate-900 rounded-3xl">
       <div ref={mapContainerRef} className="absolute inset-0 z-0" />
@@ -3255,6 +3309,10 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg }) => {
           <span className="hidden sm:inline truncate">Jalur (Sketsa)</span>
         </button>
         
+        <button onClick={() => setShowPhotos(!showPhotos)} className={`bg-white p-2 sm:px-3 sm:py-2 sm:w-[130px] rounded-xl shadow-md text-[10px] sm:text-[11px] font-bold flex items-center justify-center sm:justify-start gap-2 border border-slate-100 hover:bg-slate-50 transition-all ${!showPhotos ? 'text-slate-400' : 'text-rose-500'}`}>
+          <ImageIcon size={16} className="shrink-0" /> <span className="hidden sm:inline truncate">Foto Rute</span>
+        </button>
+
         <input type="file" accept=".kml" ref={kmlInputRef} onChange={handleImportKML} className="hidden" />
         
         <button onClick={() => kmlInputRef.current?.click()} className="bg-white text-slate-700 p-2 sm:px-3 sm:py-2 sm:w-[130px] rounded-xl shadow-md text-[10px] sm:text-[11px] font-bold flex items-center justify-center sm:justify-start gap-2 border border-slate-100 hover:bg-slate-50 transition-all">
@@ -3293,6 +3351,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg }) => {
                   <button onClick={() => setShowSketchPoints(!showSketchPoints)} className="text-[9px] font-bold text-emerald-500 hover:text-emerald-700">{showSketchPoints ? 'Sembunyikan Titik' : 'Tampilkan Titik'}</button>
                   <button onClick={() => setShowSketchLabels(!showSketchLabels)} className="text-[9px] font-bold text-amber-500 hover:text-amber-700">{showSketchLabels ? 'Sembunyikan Label' : 'Tampilkan Label'}</button>
                   <button onClick={() => setShowDistances(!showDistances)} className="text-[9px] font-bold text-blue-500 hover:text-blue-700">{showDistances ? 'Sembunyikan Jarak' : 'Tampilkan Jarak'}</button>
+                  <button onClick={() => setShowPhotos(!showPhotos)} className="text-[9px] font-bold text-rose-500 hover:text-rose-700">{showPhotos ? 'Sembunyikan Foto' : 'Tampilkan Foto'}</button>
                 </div>
                 <div className="max-h-[300px] overflow-y-auto bg-slate-50 p-2 rounded-xl text-[10px] font-mono border border-slate-200 mb-3 custom-scrollbar">
                   {!plannedPath || plannedPath.length === 0 ? <div className="p-2 text-slate-500 text-center">Belum ada titik rencana...</div> : plannedPath.map((pathObj) => (
@@ -3374,6 +3433,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg }) => {
                   <button onClick={() => setShowSketchPoints(!showSketchPoints)} className="text-[9px] font-bold text-emerald-500 hover:text-emerald-700">{showSketchPoints ? 'Sembunyikan Titik' : 'Tampilkan Titik'}</button>
                   <button onClick={() => setShowSketchLabels(!showSketchLabels)} className="text-[9px] font-bold text-amber-500 hover:text-amber-700">{showSketchLabels ? 'Sembunyikan Label' : 'Tampilkan Label'}</button>
                   <button onClick={() => setShowDistances(!showDistances)} className="text-[9px] font-bold text-blue-500 hover:text-blue-700">{showDistances ? 'Sembunyikan Jarak' : 'Tampilkan Jarak'}</button>
+                  <button onClick={() => setShowPhotos(!showPhotos)} className="text-[9px] font-bold text-rose-500 hover:text-rose-700">{showPhotos ? 'Sembunyikan Foto' : 'Tampilkan Foto'}</button>
                 </div>
                 <div className="max-h-[300px] overflow-y-auto bg-slate-50 p-2 rounded-xl text-[10px] font-mono border border-slate-200 mb-3 custom-scrollbar">
                   {!actualSegments || actualSegments.length === 0 ? <div className="p-2 text-slate-500 text-center">Belum ada rute realisasi...</div> : actualSegments.map((seg) => (
@@ -3753,7 +3813,6 @@ export default function App() {
   const [authError, setAuthError] = useState('');
 
   const [activeMenu, setActiveMenu] = useState('dashboard');
-  const [dashboardMode, setDashboardMode] = useState('auto');
   const [masterProjects, setMasterProjects] = useState([]);
   const [projectData, setProjectData] = useState(null);
 
@@ -3803,7 +3862,6 @@ export default function App() {
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [showEditProjectModal, setShowEditProjectModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
-  const [showUnifiedModal, setShowUnifiedModal] = useState(false);
   const [showSCurveModal, setShowSCurveModal] = useState(false);
   const [showDocModal, setShowDocModal] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
@@ -4394,6 +4452,38 @@ export default function App() {
     setQuickRepFiles([]);
     setRepFiles([]); // Memastikan lampiran foto Laporan Harian dikosongkan saat dibuka
 
+    // INIT SURVEI DATA (Jika user membuka tab survei)
+    let initialPoints = [{ lat: '', lng: '' }, { lat: '', lng: '' }];
+    if (projectData && projectData.actual_segments_data && projectData.actual_segments_data.length > 0) {
+      const segments = projectData.actual_segments_data;
+      let lastValidPoint = null;
+      for (let i = segments.length - 1; i >= 0; i--) {
+        if (segments[i].boundary_end && segments[i].boundary_end.lat) {
+           lastValidPoint = segments[i].boundary_end;
+           break;
+        }
+        const pts = segments[i].points;
+        if (pts && pts.length > 0) {
+          lastValidPoint = pts[pts.length - 1];
+          break;
+        }
+      }
+      if (lastValidPoint) {
+        initialPoints[0] = { lat: lastValidPoint.lat, lng: lastValidPoint.lng };
+      }
+    }
+    setUForm({
+      tanggal: new Date().toISOString().split('T')[0],
+      namaSegmen: '',
+      points: initialPoints,
+      panjang: '',
+      lebar: '',
+      jenis_model_awal: '',
+      noteDesc: ''
+    });
+    setUMedia([]);
+    setUDataUkur(null);
+
     let baseAktivitas = JSON.parse(JSON.stringify(INITIAL_AKTIVITAS));
     let baseTenagaKerja = JSON.parse(JSON.stringify(INITIAL_TENAGA_KERJA));
     let baseLokasi = '';
@@ -4736,49 +4826,6 @@ export default function App() {
     );
   };
 
-  // --- FUNGSI BUKA MODAL SURVEI (AUTO-CONNECT TITIK) ---
-  const handleOpenSurveyModal = () => {
-    let initialPoints = [{ lat: '', lng: '' }, { lat: '', lng: '' }];
-
-    if (projectData && projectData.actual_segments_data && projectData.actual_segments_data.length > 0) {
-      // Cari segmen terakhir yang memiliki titik koordinat
-      const segments = projectData.actual_segments_data;
-      let lastValidPoint = null;
-
-      for (let i = segments.length - 1; i >= 0; i--) {
-        // Prioritaskan Akhir / boundary_end terlebih dahulu
-        if (segments[i].boundary_end && segments[i].boundary_end.lat) {
-           lastValidPoint = segments[i].boundary_end;
-           break;
-        }
-        const pts = segments[i].points;
-        if (pts && pts.length > 0) {
-          lastValidPoint = pts[pts.length - 1]; // Fallback ke titik progress paling akhir
-          break;
-        }
-      }
-
-      // Jika ada, isikan otomatis ke Titik Awal Survei Baru
-      if (lastValidPoint) {
-        initialPoints[0] = { lat: lastValidPoint.lat, lng: lastValidPoint.lng };
-        showMsg("Titik awal otomatis disambungkan dengan rute sebelumnya", "info");
-      }
-    }
-
-    setUForm({
-      tanggal: new Date().toISOString().split('T')[0],
-      namaSegmen: '',
-      points: initialPoints,
-      panjang: '',
-      lebar: '',
-      jenis_model_awal: '',
-      noteDesc: ''
-    });
-    setUMedia([]);
-    setUDataUkur(null);
-    setShowUnifiedModal(true);
-  };
-
   const handleUnifiedSubmit = async (e) => {
     e.preventDefault(); if (!projectData) return; setIsProcessing(true);
 
@@ -4873,7 +4920,7 @@ export default function App() {
 
       setProjectData(prev => ({ ...prev, ...updatePayload }));
 
-      showMsg("Data Survei Tersimpan!", "success"); setShowUnifiedModal(false); setUMedia([]); setUDataUkur(null);
+      showMsg("Data Survei Tersimpan!", "success"); setShowReportModal(false); setUMedia([]); setUDataUkur(null);
       setUForm({ tanggal: new Date().toISOString().split('T')[0], namaSegmen: '', points: [{lat: '', lng: ''}, {lat: '', lng: ''}], panjang: '', lebar: '', jenis_model_awal: '', noteDesc: '' });
       fetchProjectDetails(projectData.id);
     } catch (err) { showMsg("Error menyimpan survei: " + err.message, "error"); } finally { setIsProcessing(false); }
@@ -5162,8 +5209,6 @@ export default function App() {
     else if (diffDays === 0) return { value: `Hari\nIni`, sub: subText, status: 'warning' };
     return { value: `${Math.abs(diffDays)}\nHari Lewat`, sub: subText, status: 'warning' };
   }, [projectData]);
-
-  const currentPhase = dashboardMode === 'auto' ? (!!(findDynamicValue(projectData?.kontraktor_data, ['nomor kontrak', 'no kontrak'], ['nomor_kontrak'])) || parseFloat(projectData?.actual_progress || 0) > 0 || projectData?.status === 'Running' ? 'pelaksanaan' : 'persiapan') : dashboardMode;
 
   const filteredDocs = useMemo(() => safeDocuments.filter(d => (docFilterCategory === 'Semua' || d.category === docFilterCategory) && String(d.name || '').toLowerCase().includes(docSearchQuery.toLowerCase())), [safeDocuments, docFilterCategory, docSearchQuery]);
   const photos = useMemo(() => {
@@ -5897,39 +5942,30 @@ export default function App() {
 
                   <button type="button" onClick={() => setShowEditProjectModal(true)} className="relative z-50 p-2 text-slate-400 hover:text-blue-600 transition-colors bg-white hover:bg-blue-50 rounded-xl shadow-sm border border-slate-200 cursor-pointer pointer-events-auto" title="Pengaturan Proyek"><Settings size={16} /></button>
 
-                  {/* TOMBOL BARU KHUSUS UPDATE RUTE DI TAHAP PELAKSANAAN */}
-                  {currentPhase === 'pelaksanaan' && (
-                     <button type="button" onClick={() => setShowAppendRouteModal(true)} className="bg-emerald-600 text-white px-3 py-2 md:px-4 md:py-2.5 rounded-xl text-[10px] font-bold uppercase flex items-center justify-center gap-1.5 md:gap-2 hover:bg-emerald-700 transition-colors shadow-md cursor-pointer relative z-50 pointer-events-auto" title="Tambah Progress Rute Realisasi">
-                       <MapPin size={14} className="md:w-4 md:h-4" />
-                       <span className="hidden sm:inline">Update Rute</span>
-                       <span className="sm:hidden">Rute</span>
-                     </button>
-                  )}
+                  {/* TOMBOL UPDATE RUTE */}
+                  <button type="button" onClick={() => setShowAppendRouteModal(true)} className="bg-emerald-600 text-white px-3 py-2 md:px-4 md:py-2.5 rounded-xl text-[10px] font-bold uppercase flex items-center justify-center gap-1.5 md:gap-2 hover:bg-emerald-700 transition-colors shadow-md cursor-pointer relative z-50 pointer-events-auto" title="Tambah Progress Rute Realisasi">
+                    <MapPin size={14} className="md:w-4 md:h-4" />
+                    <span className="hidden sm:inline">Update Rute</span>
+                    <span className="sm:hidden">Rute</span>
+                  </button>
 
                   <button
                     type="button"
-                    onClick={() => currentPhase === 'persiapan' ? handleOpenSurveyModal() : handleOpenReportModal()}
+                    onClick={() => handleOpenReportModal()}
                     className="bg-blue-600 text-white px-3 py-2 md:px-5 md:py-2.5 rounded-xl text-[10px] font-bold uppercase flex items-center justify-center gap-1.5 md:gap-2 hover:bg-blue-700 transition-colors shadow-md cursor-pointer relative z-50 pointer-events-auto"
                   >
-                    {currentPhase === 'persiapan' ? <Plus size={14} className="md:w-4 md:h-4" /> : <Camera size={14} className="md:w-4 md:h-4" />}
-                    <span className="hidden sm:inline">{currentPhase === 'persiapan' ? 'Input Survei' : 'Lapor Lapangan'}</span>
-                    <span className="sm:hidden">{currentPhase === 'persiapan' ? 'Survei' : 'Lapor'}</span>
+                    <Camera size={14} className="md:w-4 md:h-4" />
+                    <span className="hidden sm:inline">Lapor Lapangan</span>
+                    <span className="sm:hidden">Lapor</span>
                   </button>
                 </div>
               </div>
 
-              {/* BARIS 2: TOGGLE & INFO TEKNIS */}
+              {/* BARIS 2: INFO TEKNIS */}
               <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 w-full">
                 
-                {/* TOGGLE PHASE & INFO TEKNIS */}
+                {/* INFO TEKNIS */}
                 <div className="flex flex-col md:flex-row items-start md:items-center gap-3 w-full">
-                  {/* TOGGLE PHASE */}
-                  <div className="flex gap-1 p-1 bg-slate-100/80 w-max rounded-lg border border-slate-200/60 shadow-inner shrink-0">
-                    <button onClick={() => setDashboardMode('persiapan')} className={`px-4 py-2 text-[9px] md:text-[10px] font-black uppercase tracking-wider rounded-md transition-all ${currentPhase === 'persiapan' ? 'bg-white shadow-sm text-blue-600 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>Persiapan</button>
-                    <button onClick={() => setDashboardMode('pelaksanaan')} className={`px-4 py-2 text-[9px] md:text-[10px] font-black uppercase tracking-wider rounded-md transition-all ${currentPhase === 'pelaksanaan' ? 'bg-white shadow-sm text-blue-600 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>Pelaksanaan</button>
-                  </div>
-
-                  {/* INFO TEKNIS */}
                   <div className="flex flex-wrap items-center gap-2">
                      <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-3 py-2 rounded-lg shadow-sm text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                        <Ruler size={14} className="text-blue-500" /> Panjang: <span className="text-slate-800 font-black">{projectData?.panjang_rencana ? `${projectData.panjang_rencana} m` : '-'}</span>
@@ -5948,104 +5984,13 @@ export default function App() {
 
             <div className="p-4 md:p-6 lg:p-8 flex-1 overflow-y-auto no-scrollbar relative z-10">
 
-              {currentPhase === 'persiapan' ? (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 items-start animate-in fade-in zoom-in-95 duration-500">
+              <div className="animate-in fade-in zoom-in-95 duration-500 w-full flex flex-col pb-10">
 
-                  {/* KIRI: DATA SURVEI (TABEL) */}
-                  <div className="lg:col-span-9 flex flex-col">
-                    <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm w-full h-auto flex flex-col overflow-hidden">
+                {/* MAIN GRID LAYOUT - RESTRUCTURED UNTUK SEJAJAR */}
+                <div className="flex flex-col gap-6 mb-8">
 
-                      <div className="p-6 md:p-8 bg-[#f8fafc] border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                        <div className="flex items-center gap-4">
-                          <div className="p-3 bg-amber-100 text-amber-600 rounded-2xl shrink-0"><HardHat size={24} /></div>
-                          <div>
-                            <h3 className="text-sm md:text-base font-black text-slate-800 uppercase tracking-widest">Data Survei</h3>
-                            <p className="text-[10px] text-slate-500 font-bold uppercase mt-0.5 tracking-wider">Data Kondisi Eksisting Lapangan</p>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-3">
-                          {surveyLogs.length > 0 && (
-                            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
-                              <Clock size={14} className="text-slate-400 shrink-0" />
-                              <select
-                                className="text-[10px] font-bold text-slate-700 bg-transparent outline-none cursor-pointer w-auto"
-                                value={activeSurveyLogId}
-                                onChange={(e) => setActiveSurveyLogId(e.target.value)}
-                              >
-                                {surveyLogs.map(log => {
-                                  const d = new Date(log.created_at);
-                                  const dtStr = d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-                                  const tmStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':');
-                                  const sName = getSegNameFromLog(log.description);
-                                  return (
-                                    <option key={log.id} value={log.id}>
-                                      {dtStr} ({tmStr}) - {sName}
-                                    </option>
-                                  );
-                                })}
-                              </select>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col">
-                        <SurveyDetailRow label="Tanggal" value={tglStr} isEven={false} />
-                        <SurveyDetailRow label="Nama Jln/Gg./Blok" value={safeRender(displaySegName)} isEven={true} />
-                        <SurveyDetailRow label="Titik Awal" value={safeRender(sLat) !== '-' && safeRender(sLng) !== '-' ? `${sLat}, ${sLng}` : '-'} isEven={false} />
-                        <SurveyDetailRow label="Titik Akhir" value={safeRender(eLat) !== '-' && safeRender(eLng) !== '-' ? `${eLat}, ${eLng}` : '-'} isEven={true} />
-                        <SurveyDetailRow label="Panjang Eks." value={safeRender(displayPanjang) !== '-' ? `${displayPanjang} m` : '-'} isEven={false} />
-                        <SurveyDetailRow label="Lebar Eks." value={safeRender(displayLebar) !== '-' ? `${displayLebar} m` : '-'} isEven={true} />
-                        <SurveyDetailRow label="Jenis/Model Eks." value={safeRender(displayModel)} isEven={false} />
-                        <SurveyDetailRow label="Upload Data Ukur (CSV)" value={displayCsv && displayCsv.file_url ? <a href={displayCsv.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1 w-fit"><FileSpreadsheet size={14} /> {String(displayCsv.name || '')}</a> : '-'} isEven={true} />
-                        <SurveyDetailRow label="Catatan - Kendala - Kondisi" value={safeRender(noteText)} isEven={false} />
-                      </div>
-
-                      <div className="p-6 md:p-8 bg-slate-50 border-t border-slate-100">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Dokumentasi Eksisting (0%)</p>
-                        {displayPhotos.length > 0 ? (
-                          <div className="flex overflow-x-auto gap-4 custom-scrollbar pb-4 snap-x">
-                            {displayPhotos.map((photo, idx) => (
-                              <div key={photo.display_id || idx} className="min-w-[160px] w-[160px] aspect-square rounded-2xl overflow-hidden border border-slate-200 cursor-pointer shadow-sm hover:shadow-md transition-all relative group snap-start" onClick={() => setSelectedLog(photo)}>
-                                {isVideo(photo.media_url) ? <video src={photo.media_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" /> : <img src={photo.media_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={`Foto 0% Part ${idx + 1}`} />}
-                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                                <button onClick={(e) => { e.stopPropagation(); setDeleteConfig({ id: photo.original_id || photo.id, type: 'media' }); }} className="absolute top-2 right-2 p-2 bg-white/90 text-rose-500 rounded-xl opacity-0 group-hover:opacity-100 transition-all z-10 hover:bg-rose-50 shadow-sm backdrop-blur-sm"><Trash size={14} /></button>
-                              </div>
-                            ))}
-                          </div>
-                        ) : <p className="text-sm font-bold text-slate-400">-</p>}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* KANAN: AKTIVITAS TERKINI */}
-                  <div className="lg:col-span-3 flex flex-col">
-                    <div className="bg-white p-5 md:p-6 lg:p-8 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.03)] flex flex-col h-[450px] shrink-0">
-                      <h3 className="text-[9px] lg:text-[10px] font-black text-slate-400 mb-2 tracking-[0.3em] uppercase flex justify-between shrink-0">Aktivitas Terkini <div className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" /></h3>
-                      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 flex flex-col divide-y divide-slate-100">
-                        {safeFeeds.length > 0 ? (
-                          safeFeeds.slice(0, 10).map(f => <FeedItem key={f.id} item={f} onView={handleViewLog} onDelete={() => setDeleteConfig({ id: f.id, type: 'media' })} isUnread={!readFeeds.has(f.id)} />)
-                        ) : (
-                          <div className="text-center py-12 flex flex-col items-center opacity-50 m-auto">
-                            <Activity size={32} className="mb-3 text-slate-400" />
-                            <p className="text-[10px] font-bold uppercase tracking-widest">Belum ada aktivitas</p>
-                          </div>
-                        )}
-                      </div>
-                      <button onClick={() => setActiveMenu('dokumentasi')} className="w-full mt-4 py-3 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold border border-slate-100 hover:bg-slate-100 hover:text-blue-600 transition-colors shrink-0">Lihat Semua Riwayat</button>
-                    </div>
-                  </div>
-
-                </div>
-              ) : (
-                <div className="animate-in fade-in zoom-in-95 duration-500 w-full flex flex-col pb-10">
-
-                  {/* MAIN GRID LAYOUT - RESTRUCTURED UNTUK SEJAJAR */}
-                  <div className="flex flex-col gap-6 mb-8">
-
-                    {/* BARIS 1: STATISTIK & LOG AKTIVITAS */}
-                    <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 md:gap-6 lg:h-[300px]">
+                  {/* BARIS 1: STATISTIK & LOG AKTIVITAS */}
+                  <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 md:gap-6 lg:h-[300px]">
                       
                       {/* STATISTIK (KIRI 8 KOLOM) */}
                       <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 lg:h-full">
@@ -6275,13 +6220,12 @@ export default function App() {
                   </div>
 
                 </div>
-              )}
             </div>
           </div>
         )}
 
         {activeMenu === 'dokumentasi' && (<DokumentasiView feeds={safeFeeds} onView={setSelectedLog} onDelete={setDeleteConfig} />)}
-        {activeMenu === 'map' && (<div className="h-full p-4 md:p-8"><SiteMapView projectData={projectData} onUpdateRoutes={handleRoutesUpdate} isUpdating={isProcessing} showMsg={showMsg} /></div>)}
+        {activeMenu === 'map' && (<div className="h-full p-4 md:p-8"><SiteMapView projectData={projectData} feeds={safeFeeds} onUpdateRoutes={handleRoutesUpdate} isUpdating={isProcessing} showMsg={showMsg} /></div>)}
         {activeMenu === '3d-twin' && (<TwinViewer />)}
         {activeMenu === 'schedule' && (<GanttChartView projectData={projectData} onSaveSchedule={handleSaveSchedule} isProcessing={isProcessing} />)}
         {activeMenu === 'rab' && (<RABView />)}
@@ -6690,16 +6634,19 @@ export default function App() {
           <div className="bg-white rounded-[32px] p-6 md:p-10 w-full max-w-5xl shadow-2xl relative my-auto">
             <button onClick={() => setShowReportModal(false)} className="absolute top-6 right-6 p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors z-10"><X size={20} /></button>
             <h3 className="text-2xl font-black mb-6 pr-10 border-b border-slate-200 pb-4 text-slate-800">
-              {reportTab === 'harian' ? 'Input Laporan Harian' : 'Input Lapor Lapangan'}
+              {reportTab === 'harian' ? 'Input Laporan Harian' : reportTab === 'lapangan' ? 'Input Lapor Lapangan' : 'Input Data Survei (Awal)'}
             </h3>
 
             {/* TAB SWITCHER */}
-            <div className="flex gap-2 bg-slate-100 p-1.5 rounded-xl border text-center mb-6">
-              <button onClick={() => setReportTab('harian')} className={`flex-1 py-3 rounded-lg text-[11px] md:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${reportTab === 'harian' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
+            <div className="flex gap-2 bg-slate-100 p-1.5 rounded-xl border text-center mb-6 overflow-x-auto custom-scrollbar">
+              <button onClick={() => setReportTab('harian')} className={`flex-1 min-w-[160px] py-3 rounded-lg text-[11px] md:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${reportTab === 'harian' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
                 <FileText size={16} /> Laporan Harian
               </button>
-              <button onClick={() => setReportTab('lapangan')} className={`flex-1 py-3 rounded-lg text-[11px] md:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${reportTab === 'lapangan' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
+              <button onClick={() => setReportTab('lapangan')} className={`flex-1 min-w-[160px] py-3 rounded-lg text-[11px] md:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${reportTab === 'lapangan' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
                 <Camera size={16} /> Lapor Lapangan
+              </button>
+              <button onClick={() => setReportTab('survei')} className={`flex-1 min-w-[160px] py-3 rounded-lg text-[11px] md:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${reportTab === 'survei' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
+                <Ruler size={16} /> Data Survei
               </button>
             </div>
 
@@ -7007,72 +6954,66 @@ export default function App() {
               </form>
             )}
 
-          </div>
-        </div>
-      )}
+            {reportTab === 'survei' && (
+              <form onSubmit={handleUnifiedSubmit} className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
+                <SurveyInputRow label="Tanggal"><input type="date" value={uForm.tanggal} onChange={e => setUForm(p => ({ ...p, tanggal: e.target.value }))} className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
+                <SurveyInputRow label="Nama Jln/Gg./Blok"><input type="text" value={uForm.namaSegmen} onChange={e => setUForm(p => ({ ...p, namaSegmen: e.target.value }))} placeholder="Misal: Jl. Mawar / Segmen 1" className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
+                
+                <SurveyInputRow label="Titik Koordinat Batas Pekerjaan (Awal & Akhir)">
+                  <div className="space-y-3">
+                     {/* Titik Awal */}
+                     <div className="flex gap-2 items-center bg-slate-50 p-2 rounded-xl border border-slate-100">
+                        <span className="text-[10px] font-black text-slate-500 w-10 text-center shrink-0 uppercase tracking-widest">Awal</span>
+                        <input type="text" placeholder="Lat" value={uForm.points[0]?.lat || ''} onChange={e => {
+                           const n = [...uForm.points]; n[0].lat = e.target.value; setUForm(p => ({...p, points: n}));
+                        }} className="flex-1 p-2 text-xs rounded-lg border bg-white focus:outline-blue-400" />
+                        <input type="text" placeholder="Lng" value={uForm.points[0]?.lng || ''} onChange={e => {
+                           const n = [...uForm.points]; n[0].lng = e.target.value; setUForm(p => ({...p, points: n}));
+                        }} className="flex-1 p-2 text-xs rounded-lg border bg-white focus:outline-blue-400" />
+                        <button type="button" onClick={() => getUnifiedGPS(0)} className="px-3 py-2 bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors font-bold rounded-lg text-[10px] shadow-sm">GPS</button>
+                     </div>
+                     
+                     {/* Titik Akhir */}
+                     <div className="flex gap-2 items-center bg-slate-50 p-2 rounded-xl border border-slate-100">
+                        <span className="text-[10px] font-black text-slate-500 w-10 text-center shrink-0 uppercase tracking-widest">Akhir</span>
+                        <input type="text" placeholder="Lat" value={uForm.points[1]?.lat || ''} onChange={e => {
+                           const n = [...uForm.points]; n[1].lat = e.target.value; setUForm(p => ({...p, points: n}));
+                        }} className="flex-1 p-2 text-xs rounded-lg border bg-white focus:outline-blue-400" />
+                        <input type="text" placeholder="Lng" value={uForm.points[1]?.lng || ''} onChange={e => {
+                           const n = [...uForm.points]; n[1].lng = e.target.value; setUForm(p => ({...p, points: n}));
+                        }} className="flex-1 p-2 text-xs rounded-lg border bg-white focus:outline-blue-400" />
+                        <button type="button" onClick={() => getUnifiedGPS(1)} className="px-3 py-2 bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors font-bold rounded-lg text-[10px] shadow-sm">GPS</button>
+                     </div>
 
-      {showUnifiedModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-start justify-center z-[1000] p-4 overflow-y-auto">
-          <div className="bg-white rounded-[32px] p-8 w-full max-w-2xl shadow-2xl relative my-auto">
-            <button onClick={() => setShowUnifiedModal(false)} className="absolute top-6 right-6 p-2"><X size={20} /></button>
-            <h3 className="text-xl font-black mb-6">Input Data Survei (Awal)</h3>
-            <form onSubmit={handleUnifiedSubmit} className="space-y-4">
-              <SurveyInputRow label="Tanggal"><input type="date" value={uForm.tanggal} onChange={e => setUForm(p => ({ ...p, tanggal: e.target.value }))} className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
-              <SurveyInputRow label="Nama Jln/Gg./Blok"><input type="text" value={uForm.namaSegmen} onChange={e => setUForm(p => ({ ...p, namaSegmen: e.target.value }))} placeholder="Misal: Jl. Mawar / Segmen 1" className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
-              
-              <SurveyInputRow label="Titik Koordinat Batas Pekerjaan (Awal & Akhir)">
-                <div className="space-y-3">
-                   {/* Titik Awal */}
-                   <div className="flex gap-2 items-center bg-slate-50 p-2 rounded-xl border border-slate-100">
-                      <span className="text-[10px] font-black text-slate-500 w-10 text-center shrink-0 uppercase tracking-widest">Awal</span>
-                      <input type="text" placeholder="Lat" value={uForm.points[0]?.lat || ''} onChange={e => {
-                         const n = [...uForm.points]; n[0].lat = e.target.value; setUForm(p => ({...p, points: n}));
-                      }} className="flex-1 p-2 text-xs rounded-lg border bg-white focus:outline-blue-400" />
-                      <input type="text" placeholder="Lng" value={uForm.points[0]?.lng || ''} onChange={e => {
-                         const n = [...uForm.points]; n[0].lng = e.target.value; setUForm(p => ({...p, points: n}));
-                      }} className="flex-1 p-2 text-xs rounded-lg border bg-white focus:outline-blue-400" />
-                      <button type="button" onClick={() => getUnifiedGPS(0)} className="px-3 py-2 bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors font-bold rounded-lg text-[10px] shadow-sm">GPS</button>
-                   </div>
-                   
-                   {/* Titik Akhir */}
-                   <div className="flex gap-2 items-center bg-slate-50 p-2 rounded-xl border border-slate-100">
-                      <span className="text-[10px] font-black text-slate-500 w-10 text-center shrink-0 uppercase tracking-widest">Akhir</span>
-                      <input type="text" placeholder="Lat" value={uForm.points[1]?.lat || ''} onChange={e => {
-                         const n = [...uForm.points]; n[1].lat = e.target.value; setUForm(p => ({...p, points: n}));
-                      }} className="flex-1 p-2 text-xs rounded-lg border bg-white focus:outline-blue-400" />
-                      <input type="text" placeholder="Lng" value={uForm.points[1]?.lng || ''} onChange={e => {
-                         const n = [...uForm.points]; n[1].lng = e.target.value; setUForm(p => ({...p, points: n}));
-                      }} className="flex-1 p-2 text-xs rounded-lg border bg-white focus:outline-blue-400" />
-                      <button type="button" onClick={() => getUnifiedGPS(1)} className="px-3 py-2 bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors font-bold rounded-lg text-[10px] shadow-sm">GPS</button>
-                   </div>
+                     <div className="bg-blue-50/50 p-3 rounded-xl border border-dashed border-blue-200">
+                       <p className="text-[10px] text-blue-600 font-bold leading-relaxed">
+                         ℹ️ Cukup isi Titik Awal dan Akhir di lapangan. Admin di dashboard dapat menggambar detail lekukan rutenya secara manual melalui <span className="uppercase text-blue-700">Geo-Map &gt; Editor Rute</span> berdasarkan batas titik ini.
+                       </p>
+                     </div>
+                  </div>
+                </SurveyInputRow>
 
-                   <div className="bg-blue-50/50 p-3 rounded-xl border border-dashed border-blue-200">
-                     <p className="text-[10px] text-blue-600 font-bold leading-relaxed">
-                       ℹ️ Cukup isi Titik Awal dan Akhir di lapangan. Admin di dashboard dapat menggambar detail lekukan rutenya secara manual melalui <span className="uppercase text-blue-700">Geo-Map &gt; Editor Rute</span> berdasarkan batas titik ini.
-                     </p>
-                   </div>
-                </div>
-              </SurveyInputRow>
+                <SurveyInputRow label="Panjang Eks."><input type="text" value={uForm.panjang} onChange={e => setUForm(p => ({ ...p, panjang: e.target.value }))} className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
+                <SurveyInputRow label="Lebar Eks."><input type="text" value={uForm.lebar} onChange={e => setUForm(p => ({ ...p, lebar: e.target.value }))} className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
+                <SurveyInputRow label="Jenis/Model Eks."><input type="text" value={uForm.jenis_model_awal} onChange={e => setUForm(p => ({ ...p, jenis_model_awal: e.target.value }))} className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
+                <SurveyInputRow label="Upload Data Ukur (CSV)"><input type="file" accept=".csv" onChange={e => setUDataUkur(e.target.files[0])} className="w-full p-3 rounded-xl border bg-slate-50 text-xs" /></SurveyInputRow>
+                <SurveyInputRow label="Catatan - Kendala - Kondisi"><textarea rows="3" value={uForm.noteDesc} onChange={e => setUForm(p => ({ ...p, noteDesc: e.target.value }))} className="w-full p-3 rounded-xl border bg-slate-50"></textarea></SurveyInputRow>
+                <SurveyInputRow label="Dokumentasi Eks.">
+                  <input type="file" multiple accept="image/*,video/*" onChange={e => {
+                    const files = Array.from(e.target.files);
+                    if (files.length > 5) {
+                      showMsg("Maksimal 5 file, sisanya diabaikan.", "warning");
+                      setUMedia(files.slice(0, 5));
+                    } else {
+                      setUMedia(files);
+                    }
+                  }} className="w-full p-3 rounded-xl border bg-slate-50 text-xs" />
+                  {uMedia.length > 0 && <div className="text-[10px] mt-1.5 text-blue-600 font-bold">{uMedia.length} file siap diunggah</div>}
+                </SurveyInputRow>
+                <button type="submit" disabled={isProcessing} className="w-full bg-cyan-600 text-white py-4 rounded-2xl text-sm font-bold uppercase">{isProcessing ? 'Menyimpan...' : 'Simpan Data Survei'}</button>
+              </form>
+            )}
 
-              <SurveyInputRow label="Panjang Eks."><input type="text" value={uForm.panjang} onChange={e => setUForm(p => ({ ...p, panjang: e.target.value }))} className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
-              <SurveyInputRow label="Lebar Eks."><input type="text" value={uForm.lebar} onChange={e => setUForm(p => ({ ...p, lebar: e.target.value }))} className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
-              <SurveyInputRow label="Jenis/Model Eks."><input type="text" value={uForm.jenis_model_awal} onChange={e => setUForm(p => ({ ...p, jenis_model_awal: e.target.value }))} className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
-              <SurveyInputRow label="Upload Data Ukur (CSV)"><input type="file" accept=".csv" onChange={e => setUDataUkur(e.target.files[0])} className="w-full p-3 rounded-xl border bg-slate-50 text-xs" /></SurveyInputRow>
-              <SurveyInputRow label="Catatan - Kendala - Kondisi"><textarea rows="3" value={uForm.noteDesc} onChange={e => setUForm(p => ({ ...p, noteDesc: e.target.value }))} className="w-full p-3 rounded-xl border bg-slate-50"></textarea></SurveyInputRow>
-              <SurveyInputRow label="Dokumentasi Eks.">
-                <input type="file" multiple accept="image/*,video/*" onChange={e => {
-                  const files = Array.from(e.target.files);
-                  if (files.length > 5) {
-                    showMsg("Maksimal 5 file, sisanya diabaikan.", "warning");
-                    setUMedia(files.slice(0, 5));
-                  } else {
-                    setUMedia(files);
-                  }
-                }} className="w-full p-3 rounded-xl border bg-slate-50 text-xs" />
-                {uMedia.length > 0 && <div className="text-[10px] mt-1.5 text-blue-600 font-bold">{uMedia.length} file siap diunggah</div>}
-              </SurveyInputRow>
-              <button type="submit" disabled={isProcessing} className="w-full bg-blue-600 text-white py-4 rounded-2xl text-sm font-bold uppercase">{isProcessing ? 'Menyimpan...' : 'Simpan Data'}</button>
-            </form>
           </div>
         </div>
       )}
