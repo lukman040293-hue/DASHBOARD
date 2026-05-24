@@ -3894,7 +3894,7 @@ export default function App() {
   const [uForm, setUForm] = useState({ tanggal: new Date().toISOString().split('T')[0], namaSegmen: '', points: [{lat: '', lng: ''}, {lat: '', lng: ''}], panjang: '', lebar: '', jenis_model_awal: '', noteDesc: '' });
   const [masterForm, setMasterForm] = useState({ dinas: JSON.parse(JSON.stringify(INITIAL_DINAS_DATA)), kontraktor: { fields: initialKontraktorFields, personil: [] }, konsultan: { fields: initialKonsultanFields, personil: [] } });
   const [employeeForm, setEmployeeForm] = useState({ id: null, employee_id: '', name: '', role: 'Pelaksana', pin: '' });
-  const [appendRouteForm, setAppendRouteForm] = useState({ segmentName: 'Segmen 1', lat: '', lng: '', note: '' }); // FORM BARU
+  const [appendRouteForm, setAppendRouteForm] = useState({ targetType: 'actual', segmentName: 'Segmen 1', lat: '', lng: '', note: '' }); // DITAMBAHKAN targetType
   const [appendRouteFiles, setAppendRouteFiles] = useState([]); // STATE BARU: Foto Rute Realisasi
 
   // --- File & Upload States ---
@@ -4141,11 +4141,13 @@ export default function App() {
 
   // EFEK BARU: Set Nama Segmen Default untuk Modal Append Rute
   useEffect(() => {
-    if (showAppendRouteModal && projectData?.actual_segments_data) {
-       const segs = projectData.actual_segments_data;
-       if (segs.length > 0) {
-          setAppendRouteForm(p => ({ ...p, segmentName: segs[segs.length - 1].name || 'Segmen 1' }));
-       }
+    if (showAppendRouteModal && projectData) {
+       const segs = projectData.actual_segments_data || [];
+       setAppendRouteForm(p => ({ 
+          ...p, 
+          targetType: 'actual',
+          segmentName: segs.length > 0 ? (segs[segs.length - 1].name || 'Segmen 1') : 'Segmen 1' 
+       }));
     }
   }, [showAppendRouteModal, projectData]);
 
@@ -4759,24 +4761,38 @@ export default function App() {
        const lng = parseCoord(appendRouteForm.lng);
        if (lat === null || lng === null) throw new Error("Format kordinat tidak valid");
 
-       let newSegments = Array.isArray(projectData.actual_segments_data) ? [...projectData.actual_segments_data] : [];
-       const segName = appendRouteForm.segmentName || 'Segmen 1';
-       let existingSegIdx = newSegments.findIndex(s => String(s.name).toLowerCase() === segName.toLowerCase());
+       const isActual = appendRouteForm.targetType === 'actual';
+       let dbUpdatePayload = {};
+       const segName = appendRouteForm.segmentName || (isActual ? 'Segmen 1' : 'Jalur 1');
 
-       // MENYAMBUNGKAN TITIK (APPEND) KE SEGMEN YANG SUDAH ADA
-       if (existingSegIdx >= 0) {
-          const existingPoints = newSegments[existingSegIdx].points || [];
-          newSegments[existingSegIdx] = { ...newSegments[existingSegIdx], points: [...existingPoints, { lat, lng }] };
+       // UPDATE REALISASI (AKTUAL) ATAU SKETSA (RENCANA)
+       if (isActual) {
+           let newSegments = Array.isArray(projectData.actual_segments_data) ? [...projectData.actual_segments_data] : [];
+           let existingSegIdx = newSegments.findIndex(s => String(s.name).toLowerCase() === segName.toLowerCase());
+
+           if (existingSegIdx >= 0) {
+              const existingPoints = newSegments[existingSegIdx].points || [];
+              newSegments[existingSegIdx] = { ...newSegments[existingSegIdx], points: [...existingPoints, { lat, lng }] };
+           } else {
+              newSegments.push({ id: Date.now(), name: segName, points: [{ lat, lng }] });
+           }
+           dbUpdatePayload.actual_segments_data = newSegments;
        } else {
-          // BUAT SEGMEN BARU JIKA BELUM ADA
-          newSegments.push({ id: Date.now(), name: segName, points: [{ lat, lng }] });
+           let newPlans = Array.isArray(projectData.planned_path) ? [...projectData.planned_path] : [];
+           let existingIdx = newPlans.findIndex(s => String(s.name).toLowerCase() === segName.toLowerCase());
+
+           if (existingIdx >= 0) {
+              const extPts = newPlans[existingIdx].points || [];
+              newPlans[existingIdx] = { ...newPlans[existingIdx], points: [...extPts, { lat, lng, sta: `T-${extPts.length + 1}` }] };
+           } else {
+              newPlans.push({ id: `path-${Date.now()}`, name: segName, type: 'line', color: '#f59e0b', isDashed: true, points: [{ lat, lng, sta: 'T-1' }] });
+           }
+           dbUpdatePayload.planned_path = newPlans;
        }
+       
+       dbUpdatePayload.updated_at = new Date().toISOString();
 
-       const { error } = await supabaseClient.from('projects').update({
-          actual_segments_data: newSegments,
-          updated_at: new Date().toISOString()
-       }).eq('id', projectData.id);
-
+       const { error } = await supabaseClient.from('projects').update(dbUpdatePayload).eq('id', projectData.id);
        if (error) throw error;
 
        // UPLOAD MEDIA JIKA ADA
@@ -4795,18 +4811,21 @@ export default function App() {
           publicUrl = uploadedUrls.join(',');
        }
 
+       const reportTypeStr = isActual ? 'Rute Realisasi' : 'Sketsa Rencana';
+
        await supabaseClient.from('field_reports').insert([{
           project_id: projectData.id,
-          title: 'Update Progress Rute',
-          description: `Penambahan titik rute realisasi baru pada ${segName}.\nKordinat Baru: Lat ${lat}, Lng ${lng}\nCatatan: ${appendRouteForm.note || '-'}`,
+          title: `Update Progress ${reportTypeStr}`,
+          description: `Penambahan titik ${reportTypeStr.toLowerCase()} baru pada ${segName}.\nKordinat Baru: Lat ${lat}, Lng ${lng}\nCatatan: ${appendRouteForm.note || '-'}`,
           media_url: publicUrl,
           is_problem: false
        }]);
 
-       setProjectData(prev => ({ ...prev, actual_segments_data: newSegments }));
-       showMsg("Titik progress rute berhasil ditambahkan!", "success");
+       // UPDATE STATE LOKAL
+       setProjectData(prev => ({ ...prev, ...dbUpdatePayload }));
+       showMsg(`Titik ${reportTypeStr.toLowerCase()} berhasil ditambahkan!`, "success");
        setShowAppendRouteModal(false);
-       setAppendRouteForm({ segmentName: segName, lat: '', lng: '', note: '' });
+       setAppendRouteForm(p => ({ ...p, segmentName: segName, lat: '', lng: '', note: '' }));
        setAppendRouteFiles([]);
        fetchProjectDetails(projectData.id);
 
@@ -7023,19 +7042,32 @@ export default function App() {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-start justify-center z-[1000] p-4 overflow-y-auto">
           <div className="bg-white rounded-[32px] p-8 w-full max-w-md shadow-2xl relative my-auto">
             <button onClick={() => setShowAppendRouteModal(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X size={20} /></button>
-            <h3 className="text-xl font-black mb-2 text-emerald-600 flex items-center gap-2"><MapPin size={24} strokeWidth={2.5}/> Update Progress Rute</h3>
+            <h3 className="text-xl font-black mb-2 text-emerald-600 flex items-center gap-2"><MapPin size={24} strokeWidth={2.5}/> Update Rute (GPS)</h3>
             <p className="text-[10px] font-bold text-slate-500 mb-6 bg-emerald-50 p-3.5 rounded-xl border border-emerald-100 leading-relaxed">
-              Gunakan fitur ini di lapangan untuk <b>memperpanjang garis realisasi</b> secara otomatis berdasarkan posisi GPS Anda saat ini.
+              Gunakan fitur ini di lapangan untuk <b>memperpanjang garis di peta</b> secara otomatis berdasarkan posisi GPS Anda saat ini.
             </p>
 
             <form onSubmit={handleAppendRouteSubmit} className="space-y-4">
+               
+               <SurveyInputRow label="Tipe Jalur Target">
+                  <div className="flex gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+                     <button type="button" onClick={() => setAppendRouteForm(p => ({ ...p, targetType: 'actual', segmentName: projectData?.actual_segments_data?.[0]?.name || 'Segmen 1' }))} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-all shadow-sm ${appendRouteForm.targetType === 'actual' ? 'bg-blue-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-100'}`}>Realisasi</button>
+                     <button type="button" onClick={() => setAppendRouteForm(p => ({ ...p, targetType: 'plan', segmentName: projectData?.planned_path?.[0]?.name || 'Jalur 1' }))} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-all shadow-sm ${appendRouteForm.targetType === 'plan' ? 'bg-amber-500 text-white' : 'bg-white text-slate-500 hover:bg-slate-100'}`}>Sketsa</button>
+                  </div>
+               </SurveyInputRow>
+
                <SurveyInputRow label="Pilih Segmen / Jalur Target">
                   <select value={appendRouteForm.segmentName} onChange={e => setAppendRouteForm(p => ({ ...p, segmentName: e.target.value }))} className="w-full p-3.5 rounded-xl border border-slate-200 bg-white focus:border-emerald-400 outline-none text-sm font-bold text-slate-700">
-                     {projectData?.actual_segments_data?.map(s => (
-                        <option key={s.id} value={s.name}>{s.name}</option>
-                     ))}
-                     {(!projectData?.actual_segments_data || projectData.actual_segments_data.length === 0) && (
-                        <option value="Segmen 1">Segmen 1 (Baru)</option>
+                     {appendRouteForm.targetType === 'actual' ? (
+                        <>
+                           {projectData?.actual_segments_data?.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                           {(!projectData?.actual_segments_data || projectData.actual_segments_data.length === 0) && <option value="Segmen 1">Segmen 1 (Baru)</option>}
+                        </>
+                     ) : (
+                        <>
+                           {projectData?.planned_path?.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                           {(!projectData?.planned_path || projectData.planned_path.length === 0) && <option value="Jalur 1">Jalur 1 (Baru)</option>}
+                        </>
                      )}
                   </select>
                </SurveyInputRow>
