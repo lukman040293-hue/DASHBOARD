@@ -1286,23 +1286,24 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
           actualSegsToRender.forEach(seg => {
             if (seg.points && seg.points.length > 0) {
               const coords = seg.points.map(pt => [parseFloat(pt.lat), parseFloat(pt.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
+              const segColor = seg.color || '#3b82f6';
 
               if (coords.length > 0) {
                 if (coords.length > 1) {
-                  window.L.polyline(coords, { color: '#3b82f6', weight: 5, opacity: 0.9 }).addTo(surveyLayerRef.current);
+                  window.L.polyline(coords, { color: segColor, weight: 5, opacity: 0.9 }).addTo(surveyLayerRef.current);
                 }
 
                 // Gambar garis putus-putus penghubung titik rute terakhir ke Target Akhir (Boundary End Survey)
                 if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
                     const lastPt = coords[coords.length - 1];
                     const boundaryPt = [parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)];
-                    window.L.polyline([lastPt, boundaryPt], { color: '#3b82f6', weight: 3, opacity: 0.5, dashArray: '8, 8' }).addTo(surveyLayerRef.current);
+                    window.L.polyline([lastPt, boundaryPt], { color: segColor, weight: 3, opacity: 0.5, dashArray: '8, 8' }).addTo(surveyLayerRef.current);
                 }
                 
                 if (showSketchPoints) {
                   // Tambahkan titik (point) untuk setiap koordinat di jalur realisasi
                   coords.forEach(coord => {
-                     window.L.marker(coord, { icon: createSimplePointMarker('#3b82f6'), zIndexOffset: 4500 }).addTo(surveyLayerRef.current);
+                     window.L.marker(coord, { icon: createSimplePointMarker(segColor), zIndexOffset: 4500 }).addTo(surveyLayerRef.current);
                   });
                 }
                 
@@ -1324,10 +1325,10 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
                      const pt1 = window.L.latLng(coords[i][0], coords[i][1]); 
                      const pt2 = window.L.latLng(coords[i + 1][0], coords[i + 1][1]);
                      const dist = pt1.distanceTo(pt2); segmentTotalDist += dist;
-                     window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, '#3b82f6') }).addTo(surveyLayerRef.current);
+                     window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, segColor) }).addTo(surveyLayerRef.current);
                   }
                   const lastPt = coords[coords.length - 1];
-                  window.L.marker([lastPt[0], lastPt[1]], { interactive: false, zIndexOffset: 200, icon: createDistLabel(segmentTotalDist > 1000 ? `${(segmentTotalDist / 1000).toFixed(2)} km` : `${Math.round(segmentTotalDist)} m`, true, '#3b82f6') }).addTo(surveyLayerRef.current);
+                  window.L.marker([lastPt[0], lastPt[1]], { interactive: false, zIndexOffset: 200, icon: createDistLabel(segmentTotalDist > 1000 ? `${(segmentTotalDist / 1000).toFixed(2)} km` : `${Math.round(segmentTotalDist)} m`, true, segColor) }).addTo(surveyLayerRef.current);
                 }
               }
             }
@@ -2955,7 +2956,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }
           setActualSegments(prev => {
             const newSegs = [...(prev || [])];
             if (newSegs.length === 0) {
-              newSegs.push({ id: Date.now(), name: 'Segmen 1', points: [] });
+              newSegs.push({ id: Date.now(), name: 'Segmen 1', color: '#3b82f6', points: [] });
             }
             const idx = newSegs.length - 1;
             newSegs[idx] = {
@@ -3152,6 +3153,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }
     (actualSegments || []).forEach((seg, idx) => {
       if (seg.points && seg.points.length > 0) {
         const coords = seg.points.map(p => [parseFloat(p.lat), parseFloat(p.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
+        const segColor = seg.color || '#3b82f6';
         
         // GABUNGKAN TITIK AKHIR (BOUNDARY) JIKA ADA AGAR GARIS TERBENTUK UNTUK 2 TITIK SAJA
         // if (coords.length === 1 && seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
@@ -3163,7 +3165,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }
           // Gambar Garis Realisasi JIKA ADA pergerakan rute (lebih dari 1 titik)
           if (coords.length > 1) {
              const actualShape = window.L.polyline(coords, {
-               color: '#3b82f6', // Biru Realisasi
+               color: segColor, // Warna dinamis Realisasi
                weight: 5,
                opacity: 0.9,
              }).addTo(surveyLayerRef.current);
@@ -3176,7 +3178,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }
                   zIndexOffset: 110,
                   icon: window.L.divIcon({
                     className: 'bg-transparent border-0 overflow-visible',
-                    html: `<div style="transform: translate(-50%, 50%); background-color: rgba(255,255,255,0.95); color: #2563eb; border: 2px solid #3b82f6;" class="w-max px-3 py-1.5 rounded-xl text-[10px] font-black whitespace-nowrap shadow-lg uppercase tracking-wider backdrop-blur-md">${seg.name || 'Segmen Realisasi'}</div>`,
+                    html: `<div style="transform: translate(-50%, 50%); background-color: rgba(255,255,255,0.95); color: ${segColor}; border: 2px solid ${segColor};" class="w-max px-3 py-1.5 rounded-xl text-[10px] font-black whitespace-nowrap shadow-lg uppercase tracking-wider backdrop-blur-md">${seg.name || 'Segmen Realisasi'}</div>`,
                     iconSize: [0, 0]
                   })
                 }).addTo(surveyLayerRef.current);
@@ -3188,7 +3190,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }
              const lastPt = coords[coords.length - 1];
              const boundaryPt = [parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)];
              window.L.polyline([lastPt, boundaryPt], { 
-                color: '#3b82f6', 
+                color: segColor, 
                 weight: 3, 
                 opacity: 0.5, 
                 dashArray: '8, 8' 
@@ -3198,7 +3200,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }
           if (showSketchPoints) {
             // Tambahkan titik (point) biasa untuk setiap koordinat rute yang berjalan
             coords.forEach(coord => {
-               window.L.marker(coord, { icon: createSimplePointMarker('#3b82f6'), zIndexOffset: 4500 }).addTo(surveyLayerRef.current);
+               window.L.marker(coord, { icon: createSimplePointMarker(segColor), zIndexOffset: 4500 }).addTo(surveyLayerRef.current);
             });
           }
 
@@ -3226,10 +3228,10 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }
                 const pt2 = window.L.latLng(coords[i + 1][0], coords[i + 1][1]);
                 const dist = pt1.distanceTo(pt2); 
                 segmentTotalDist += dist;
-                window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, '#3b82f6') }).addTo(surveyLayerRef.current);
+                window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, segColor) }).addTo(surveyLayerRef.current);
              }
              const lastPt = coords[coords.length - 1];
-             window.L.marker([lastPt[0], lastPt[1]], { interactive: false, zIndexOffset: 200, icon: createDistLabel(segmentTotalDist > 1000 ? `${(segmentTotalDist / 1000).toFixed(2)} km` : `${Math.round(segmentTotalDist)} m`, true, '#3b82f6') }).addTo(surveyLayerRef.current);
+             window.L.marker([lastPt[0], lastPt[1]], { interactive: false, zIndexOffset: 200, icon: createDistLabel(segmentTotalDist > 1000 ? `${(segmentTotalDist / 1000).toFixed(2)} km` : `${Math.round(segmentTotalDist)} m`, true, segColor) }).addTo(surveyLayerRef.current);
           }
 
           hasActualData = true;
@@ -3322,23 +3324,39 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }
           </div>
           
           {/* --- MENAMPILKAN JALUR DINAMIS DI LEGENDA --- */}
-          {showPaths && (plannedPath && plannedPath.length > 0 ? (
-            plannedPath.map(path => (
-              <div key={path.id} className="flex items-center gap-3">
-                {path.type === 'polygon' ? (
-                  <div className="w-4 h-3 border-2 bg-opacity-30 shrink-0" style={{ borderColor: path.color || '#10b981', backgroundColor: path.color || '#10b981' }}></div>
-                ) : (
-                  <div className="w-4 h-1 border-t-[3px] shrink-0" style={{ borderColor: path.color || '#f59e0b', borderStyle: path.isDashed ? 'dashed' : 'solid' }}></div>
-                )}
-                <span className="truncate max-w-[140px] text-xs font-medium text-slate-700" title={path.name}>{path.name || (path.type === 'polygon' ? 'Poligon' : 'Garis Sketsa')}</span>
-              </div>
-            ))
-          ) : (
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-1 border-t-[3px] border-dashed border-amber-500 shrink-0"></div>
-              <span className="truncate text-xs font-medium text-slate-700">Garis Sketsa</span>
-            </div>
-          ))}
+          {showPaths && (
+            <>
+              {plannedPath && plannedPath.length > 0 ? (
+                plannedPath.map(path => (
+                  <div key={path.id} className="flex items-center gap-3">
+                    {path.type === 'polygon' ? (
+                      <div className="w-4 h-3 border-2 bg-opacity-30 shrink-0" style={{ borderColor: path.color || '#10b981', backgroundColor: path.color || '#10b981' }}></div>
+                    ) : (
+                      <div className="w-4 h-1 border-t-[3px] shrink-0" style={{ borderColor: path.color || '#f59e0b', borderStyle: path.isDashed ? 'dashed' : 'solid' }}></div>
+                    )}
+                    <span className="truncate max-w-[140px] text-xs font-medium text-slate-700" title={path.name}>{path.name || (path.type === 'polygon' ? 'Poligon' : 'Garis Sketsa')}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="w-4 h-1 border-t-[3px] border-dashed border-amber-500 shrink-0"></div>
+                  <span className="truncate text-xs font-medium text-slate-700">Garis Sketsa</span>
+                </div>
+              )}
+
+              {/* Menampilkan Daftar Segmen Realisasi di Legenda dengan Warna Dinamis */}
+              {actualSegments && actualSegments.length > 0 && actualSegments.map((seg) => {
+                if (!seg.points || seg.points.length === 0) return null;
+                const segColor = seg.color || '#3b82f6';
+                return (
+                  <div key={seg.id} className="flex items-center gap-3">
+                    <div className="w-4 h-1 border-t-[3px] border-solid shrink-0" style={{ borderColor: segColor }}></div>
+                    <span className="truncate max-w-[140px] text-xs font-medium text-slate-700" title={seg.name}>{seg.name || 'Segmen Realisasi'}</span>
+                  </div>
+                );
+              })}
+            </>
+          )}
         </div>
       </div>
 
@@ -3485,11 +3503,20 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }
                            className="font-bold text-slate-800 text-xs outline-none bg-transparent w-[120px] focus:border-b border-blue-400"
                            placeholder="Nama Segmen"
                          />
-                         <button onClick={() => setActualSegments(p => (p || []).filter(s => s.id !== seg.id))} className="text-rose-500 bg-rose-50 p-1 rounded hover:bg-rose-100"><Trash size={12} /></button>
+                         <div className="flex items-center gap-2">
+                           <input 
+                              type="color" 
+                              value={seg.color || '#3b82f6'} 
+                              onChange={(e) => handleUpdateSeg(seg.id, 'color', e.target.value)}
+                              className="w-6 h-6 p-0 border-0 rounded cursor-pointer shrink-0"
+                              title="Warna Rute"
+                           />
+                           <button onClick={() => setActualSegments(p => (p || []).filter(s => s.id !== seg.id))} className="text-rose-500 bg-rose-50 p-1 rounded hover:bg-rose-100"><Trash size={12} /></button>
+                         </div>
                        </div>
                        <div className="pl-1">
                          {(!seg.points || seg.points.length === 0) ? <div className="text-[9px] text-slate-400 italic">Klik peta untuk menambah titik...</div> : seg.points.map((p, i) => (
-                           <div key={i} className="flex justify-between items-center mb-1 pl-2 border-l-2 text-slate-600 group/pt hover:bg-slate-50 rounded border-blue-500">
+                           <div key={i} className="flex justify-between items-center mb-1 pl-2 border-l-2 text-slate-600 group/pt hover:bg-slate-50 rounded" style={{ borderColor: seg.color || '#3b82f6' }}>
                               <div className="flex items-center gap-1 w-full mr-2">
                                  <span className="text-[9px] font-bold w-6">T-{i+1}</span>
                                  <input type="number" step="any" value={p.lat} onChange={e => {
@@ -3523,7 +3550,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }
                     </div>
                   ))}
                 </div>
-                <button onClick={() => setActualSegments(p => [...(p || []), { id: Date.now(), name: `Segmen ${(p || []).length + 1}`, points: [] }])} className="w-full text-blue-600 bg-blue-50 py-2 text-[10px] font-bold flex justify-center gap-1 rounded-xl border border-blue-100"><Plus size={14} /> Tambah Segmen Baru</button>
+                <button onClick={() => setActualSegments(p => [...(p || []), { id: Date.now(), name: `Segmen ${(p || []).length + 1}`, color: '#3b82f6', points: [] }])} className="w-full text-blue-600 bg-blue-50 py-2 text-[10px] font-bold flex justify-center gap-1 rounded-xl border border-blue-100"><Plus size={14} /> Tambah Segmen Baru</button>
               </div>
             )}
           </div>
@@ -4805,7 +4832,7 @@ export default function App() {
               const existingPoints = newSegments[existingSegIdx].points || [];
               newSegments[existingSegIdx] = { ...newSegments[existingSegIdx], points: [...existingPoints, { lat, lng }] };
            } else {
-              newSegments.push({ id: Date.now(), name: segName, points: [{ lat, lng }] });
+              newSegments.push({ id: Date.now(), name: segName, color: '#3b82f6', points: [{ lat, lng }] });
            }
            dbUpdatePayload.actual_segments_data = newSegments;
        } else {
@@ -7148,22 +7175,25 @@ export default function App() {
                   </div>
                </SurveyInputRow>
 
-               <SurveyInputRow label="Pilih Segmen / Jalur Target">
+               <SurveyInputRow label="Pilih Atau Buat Jalur Target">
                   {!renameRouteConfig.isEditing ? (
                      <div className="flex gap-2 items-center">
-                        <select value={appendRouteForm.segmentName} onChange={e => setAppendRouteForm(p => ({ ...p, segmentName: e.target.value }))} className="w-full p-3.5 rounded-xl border border-slate-200 bg-white focus:border-emerald-400 outline-none text-sm font-bold text-slate-700">
+                        <input 
+                           type="text" 
+                           list="segment-suggestions"
+                           value={appendRouteForm.segmentName} 
+                           onChange={e => setAppendRouteForm(p => ({ ...p, segmentName: e.target.value }))} 
+                           className="w-full p-3.5 rounded-xl border border-slate-200 bg-white focus:border-emerald-400 outline-none text-sm font-bold text-slate-700"
+                           placeholder={appendRouteForm.targetType === 'actual' ? "Ketik nama segmen baru atau pilih..." : "Ketik nama jalur baru atau pilih..."}
+                           required
+                        />
+                        <datalist id="segment-suggestions">
                            {appendRouteForm.targetType === 'actual' ? (
-                              <>
-                                 {projectData?.actual_segments_data?.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                                 {(!projectData?.actual_segments_data || projectData.actual_segments_data.length === 0) && <option value="Segmen 1">Segmen 1 (Baru)</option>}
-                              </>
+                              projectData?.actual_segments_data?.map(s => <option key={s.id} value={s.name} />)
                            ) : (
-                              <>
-                                 {projectData?.planned_path?.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                                 {(!projectData?.planned_path || projectData.planned_path.length === 0) && <option value="Jalur 1">Jalur 1 (Baru)</option>}
-                              </>
+                              projectData?.planned_path?.map(s => <option key={s.id} value={s.name} />)
                            )}
-                        </select>
+                        </datalist>
                         <button type="button" onClick={() => setRenameRouteConfig({ isEditing: true, newName: appendRouteForm.segmentName })} className="p-3.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors shadow-sm shrink-0" title="Edit Nama"><Edit3 size={18} /></button>
                         <button type="button" onClick={() => setDeleteRouteConfirm(true)} className="p-3.5 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-100 transition-colors shadow-sm shrink-0" title="Hapus Segmen"><Trash size={18} /></button>
                      </div>
