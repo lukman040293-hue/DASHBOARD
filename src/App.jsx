@@ -1278,10 +1278,61 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
               let segmentTotalDist = 0;
               for (let i = 0; i < coords.length; i++) {
                 if (showSketchPoints) {
-                  // Tambahkan titik (point) biasa untuk setiap koordinat rute yang berjalan
+                  window.L.marker([coords[i][0], coords[i][1]], { interactive: false, zIndexOffset: 150, icon: window.L.divIcon({ className: 'bg-transparent border-0', html: `<div style="transform: translate(-50%, -50%); background-color: ${pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')};" class="w-2.5 h-2.5 border border-white rounded-full shadow-md"></div>`, iconSize: [0, 0] }) }).addTo(routeLayerRef.current);
+                }
+                if (i < coords.length - 1) {
+                  const pt1 = window.L.latLng(coords[i][0], coords[i][1]); const pt2 = window.L.latLng(coords[i + 1][0], coords[i + 1][1]);
+                  const dist = pt1.distanceTo(pt2); segmentTotalDist += dist;
+                  if (showDistances) window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')) }).addTo(routeLayerRef.current);
+                }
+                if (showDistances && i === coords.length - 1 && i > 0) {
+                  let closeDist = 0;
+                  if (isPolygon && coords.length > 2) {
+                      const ptStart = window.L.latLng(coords[0][0], coords[0][1]);
+                      const ptEnd = window.L.latLng(coords[i][0], coords[i][1]);
+                      closeDist = ptStart.distanceTo(ptEnd);
+                      window.L.marker([(ptStart.lat + ptEnd.lat) / 2, (ptStart.lng + ptEnd.lng) / 2], { interactive: false, zIndexOffset: 200, icon: createDistLabel(closeDist > 1000 ? `${(closeDist / 1000).toFixed(2)} km` : `${Math.round(closeDist)} m`, false, pathObj.color || '#10b981') }).addTo(routeLayerRef.current);
+                  }
+                  const finalDist = segmentTotalDist + closeDist;
+                  window.L.marker([coords[i][0], coords[i][1]], { interactive: false, zIndexOffset: 200, icon: createDistLabel(finalDist > 1000 ? `${(finalDist / 1000).toFixed(2)} km` : `${Math.round(finalDist)} m${isPolygon?' (Keliling)':''}`, true, pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')) }).addTo(routeLayerRef.current);
+                }
+              }
+            }
+          });
+        }
+
+        // B. GAMBAR JALUR REALISASI (AKTUAL LAPANGAN)
+        if (showPaths && actualSegsToRender.length > 0) {
+          actualSegsToRender.forEach(seg => {
+            if (seg.points && seg.points.length > 0) {
+              const coords = seg.points.map(pt => [parseFloat(pt.lat), parseFloat(pt.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
+
+              if (coords.length > 0) {
+                if (coords.length > 1) {
+                  window.L.polyline(coords, { color: '#3b82f6', weight: 5, opacity: 0.9 }).addTo(surveyLayerRef.current);
+                }
+
+                // Gambar garis putus-putus penghubung titik rute terakhir ke Target Akhir (Boundary End Survey)
+                if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
+                    const lastPt = coords[coords.length - 1];
+                    const boundaryPt = [parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)];
+                    window.L.polyline([lastPt, boundaryPt], { color: '#3b82f6', weight: 3, opacity: 0.5, dashArray: '8, 8' }).addTo(surveyLayerRef.current);
+                }
+                
+                if (showSketchPoints) {
+                  // Tambahkan titik (point) untuk setiap koordinat di jalur realisasi
                   coords.forEach(coord => {
                      window.L.marker(coord, { icon: createSimplePointMarker('#3b82f6'), zIndexOffset: 4500 }).addTo(surveyLayerRef.current);
                   });
+                  
+                  let endPt = null;
+                  if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
+                      endPt = [parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)];
+                  }
+
+                  if (endPt) {
+                    window.L.marker(endPt, { icon: createActualMarker('Red', 'Akhir', `${p.pekerjaan.substring(0, 20)}... - ${seg.name}`, endPt[0], endPt[1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+                  }
                 }
                 
                 coords.forEach(c => bounds.extend(c));
@@ -3182,19 +3233,24 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }
             });
           }
 
-          // Pin Awal Survei (Biru)
-          window.L.marker(coords[0], { icon: createSurveyPinMarker('Blue', `Awal`, seg.name, coords[0][0], coords[0][1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
-          actualBounds.extend(coords[0]);
-          
-          // Pin Akhir Survei (Merah) dari data survei
+          // HANYA GAMBAR PIN MAP/ICON JIKA DATA BERASAL DARI INPUT SURVEI (Memiliki boundary_end)
+          // ATAU JIKA INI ADALAH SEGMEN PERTAMA (Untuk tetap memiliki penanda Awal Proyek)
           if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
-              window.L.marker([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)], { icon: createSurveyPinMarker('Red', `Akhir`, seg.name, parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+              // Pin Awal Survei (Biru)
+              window.L.marker(coords[0], { icon: createSurveyPinMarker('Blue', `Awal Survei`, seg.name, coords[0][0], coords[0][1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+              
+              // Pin Akhir Survei (Merah)
+              window.L.marker([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)], { icon: createSurveyPinMarker('Red', `Akhir Survei`, seg.name, parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+              
               actualBounds.extend([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)]);
-          } else if (coords.length > 1) {
-              // Jika tidak ada batas akhir survei, tampilkan di titik terakhir sebagai informasi
-              const endPt = coords[coords.length - 1];
-              window.L.marker(endPt, { icon: createSurveyPinMarker('Red', `Akhir`, seg.name, endPt[0], endPt[1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
-              actualBounds.extend(endPt);
+          } else if (idx === 0) {
+              // Fallback Pin Awal untuk segmen pertama jika tidak ada data survei
+              window.L.marker(coords[0], { icon: createSurveyPinMarker('Blue', `Awal Pekerjaan`, seg.name, coords[0][0], coords[0][1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+          }
+
+          actualBounds.extend(coords[0]);
+          if (coords.length > 1) {
+              actualBounds.extend(coords[coords.length - 1]);
           }
 
           // Tambahkan label jarak antar titik realisasi jika showDistances aktif
