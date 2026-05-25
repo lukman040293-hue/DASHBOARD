@@ -1,22 +1,20 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Area, Line, Legend
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Area, Legend
 } from 'recharts';
 import {
   Camera, AlertCircle, FileText, CheckCircle2, Activity, LayoutDashboard, Upload, X, Plus,
   HardHat, Search, Loader2, Edit3, ExternalLink, Building2, ShieldCheck,
-  TrendingUp, Banknote, MapPin, Ruler, Trash, Clock, Database, Settings,
+  TrendingUp, Banknote, MapPin, Ruler, Trash, Clock, Settings,
   Briefcase, Image as ImageIcon, CalendarDays, MonitorPlay, FileSpreadsheet, FolderEdit,
-  Calculator, Save, MapIcon, ArrowLeft, Globe2, Fingerprint, RefreshCw, ArrowUp, ArrowDown,
-      Sun, Moon, Users, UserPlus, Eye, EyeOff, Maximize, Minimize, ChevronLeft, ChevronRight, Download, Menu,
-      Lock, User, LogOut, Grid, ChevronDown, Bell, ChevronUp
-    } from 'lucide-react';
+  Save, MapIcon, ArrowLeft, Globe2, Fingerprint, RefreshCw, ArrowUp, ArrowDown,
+  Users, UserPlus, Eye, EyeOff, Maximize, Minimize, ChevronLeft, ChevronRight, Download, Menu,
+  Lock, User, LogOut, Grid, ChevronDown, Bell, ChevronUp
+} from 'lucide-react';
 
 // --- KONSTANTA & KONFIGURASI ---
 const SUPABASE_URL = 'https://hnxomovcwwjbtirupnao.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhueG9tb3Zjd3dqYnRpcnVwbmFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MTQzMDEsImV4cCI6MjA5MzQ5MDMwMX0.TTqrps9cuHfJKNS-fHNjmrX1nza7Ktp-wDfbIi8Jhlk';
-
-// SQL_QUERY dihapus untuk Keamanan (Mencegah SQL Injection dari frontend)
 
 const INITIAL_AKTIVITAS = [
   { nama: 'Pek. Galian tanah', kemarin: '', hariIni: '', satuan: 'm' },
@@ -1696,14 +1694,6 @@ const PresentationView = ({ projectData, processedSCurveData, photos, actualProg
     </div>
   );
 };
-
-const RABView = () => (
-  <div className="p-8 flex flex-col items-center justify-center h-full text-center">
-    <Calculator size={64} className="text-slate-300 mb-6" />
-    <h2 className="text-2xl font-black mb-2 text-slate-800">RAB & BOQ</h2>
-    <p className="text-sm text-slate-500 font-medium mb-8">Modul Rencana Anggaran Biaya sedang dalam tahap penyempurnaan.</p>
-  </div>
-);
 
 const TwinViewer = () => {
   const cesiumHtml = `<!DOCTYPE html>
@@ -4469,16 +4459,6 @@ export default function App() {
     } catch (e) { showMsg("Gagal menyimpan: " + e.message, "error"); } finally { setIsProcessing(false); }
   };
 
-  const handleSaveRAB = async (rabItems) => {
-    if (!projectData) return; setIsProcessing(true);
-    try {
-      const cleanedItems = (rabItems || []).filter(item => String(item.uraian || '').trim() !== '' || item.volume || item.harga_satuan);
-      const { error } = await supabaseClient.from('projects').update({ rab_data: cleanedItems, updated_at: new Date().toISOString() }).eq('id', projectData.id);
-      if (error) throw error;
-      setProjectData(prev => ({ ...prev, rab_data: cleanedItems })); showMsg("Data RAB Berhasil Disimpan!", "success");
-    } catch (err) { showMsg("Gagal update DB RAB: " + err.message, "error"); } finally { setIsProcessing(false); }
-  };
-
   const handleSaveSchedule = async (scheduleItems) => {
     if (!projectData) return; setIsProcessing(true);
     try {
@@ -5270,12 +5250,6 @@ export default function App() {
     if (projectData && supabaseClient) { supabaseClient.from('projects').update({ doc_categories: docCategories }).eq('id', projectData.id).then(); }
   };
 
-  const copyToClipboard = (text) => {
-    const textArea = document.createElement("textarea"); textArea.value = text; textArea.style.position = "fixed"; textArea.style.left = "-9999px"; textArea.style.top = "0"; document.body.appendChild(textArea); textArea.select();
-    try { document.execCommand('copy'); } catch (err) { } document.body.removeChild(textArea);
-    showMsg("SQL disalin ke clipboard", "success");
-  };
-
   const renderMediaContent = (url) => {
     if (!url) return null;
     const urls = String(url).split(',');
@@ -6031,7 +6005,6 @@ export default function App() {
             <button onClick={() => setActiveMenu('dokumentasi')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'dokumentasi' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Dokumentasi"><ImageIcon size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Dokumentasi</span>}</button>
             <button onClick={() => setActiveMenu('3d-twin')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === '3d-twin' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="3D Digital Twin"><Globe2 size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">3D Digital Twin</span>}</button>
             <button onClick={() => setActiveMenu('admin')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'admin' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Arsip Dokumen"><FolderEdit size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Arsip Dokumen</span>}</button>
-            <button onClick={() => setActiveMenu('rab')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'rab' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="RAB / BOQ"><Calculator size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">RAB / BOQ</span>}</button>
             <button onClick={() => setActiveMenu('presentation')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'presentation' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Presentasi"><MonitorPlay size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Presentasi</span>}</button>
           </nav>
         </div>
@@ -6367,7 +6340,6 @@ export default function App() {
         {activeMenu === 'map' && (<div className="h-full p-4 md:p-8"><SiteMapView projectData={projectData} feeds={safeFeeds} onUpdateRoutes={handleRoutesUpdate} isUpdating={isProcessing} showMsg={showMsg} /></div>)}
         {activeMenu === '3d-twin' && (<TwinViewer />)}
         {activeMenu === 'schedule' && (<GanttChartView projectData={projectData} onSaveSchedule={handleSaveSchedule} isProcessing={isProcessing} />)}
-        {activeMenu === 'rab' && (<RABView />)}
 
         {activeMenu === 'contract' && (
           <div className="h-full flex flex-col overflow-hidden">
