@@ -1190,6 +1190,33 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
         const textColor = theme === 'Blue' ? 'text-blue-600' : 'text-rose-600';
         return window.L.divIcon({
           className: 'bg-transparent border-0 overflow-visible',
+          html: `<div class="relative flex flex-col items-center group cursor-pointer pointer-events-auto" style="transform: translate(-50%, -50%);">
+                   <div class="absolute bottom-full mb-1.5 px-2 py-1 bg-white/95 backdrop-blur-md rounded-lg shadow-[0_4px_10px_rgba(0,0,0,0.15)] border border-slate-200/50 whitespace-nowrap text-center z-[9999] opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100 transition-all duration-300 pointer-events-none origin-bottom">
+                      <div class="text-[8px] font-black uppercase tracking-wide leading-tight text-slate-800"><span class="${textColor}">${prefix}</span><br/>${segName}</div>
+                   </div>
+                   <div class="w-3 h-3 rounded-full border-2 border-white shadow-md relative origin-bottom group-hover:scale-110 transition-all duration-300" style="background: linear-gradient(to bottom, ${stop1}, ${stop2});"></div>
+                 </div>`,
+          iconSize: [0, 0]
+        });
+      };
+      
+      // 4. Fungsi Gambar Titik Biasa untuk Rute
+      const createSimplePointMarker = (color) => {
+        return window.L.divIcon({
+          className: 'bg-transparent border-0',
+          html: `<div style="transform: translate(-50%, -50%); background-color: ${color};" class="w-3 h-3 border-2 border-white rounded-full shadow-md"></div>`,
+          iconSize: [0, 0]
+        });
+      };
+
+      // 5. Fungsi Gambar Pin Map untuk Survei Awal/Akhir
+      const createSurveyPinMarker = (theme, prefix, segName, lat, lng) => {
+        const gradId = theme === 'Blue' ? `gB-${Math.random()}` : `gR-${Math.random()}`;
+        const stop1 = theme === 'Blue' ? '#38bdf8' : '#fb7185';
+        const stop2 = theme === 'Blue' ? '#2563eb' : '#e11d48';
+        const textColor = theme === 'Blue' ? 'text-blue-600' : 'text-rose-600';
+        return window.L.divIcon({
+          className: 'bg-transparent border-0 overflow-visible',
           html: `<div class="relative flex flex-col items-center group cursor-pointer pointer-events-auto" style="transform: translate(-50%, -100%);">
                    <div class="absolute bottom-full mb-2.5 px-3 py-1.5 bg-white/95 backdrop-blur-md rounded-xl shadow-[0_8px_20px_rgba(0,0,0,0.15)] border border-slate-200/50 whitespace-nowrap text-center z-[9999] opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100 transition-all duration-300 pointer-events-none origin-bottom">
                       <div class="text-[9px] font-black uppercase tracking-wide leading-tight text-slate-800"><span class="${textColor}">${prefix}</span><br/>${segName}</div>
@@ -1293,7 +1320,10 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
                 }
                 
                 if (showSketchPoints) {
-                  window.L.marker(coords[0], { icon: createActualMarker('Blue', 'Awal', `${p.pekerjaan.substring(0, 20)}... - ${seg.name}`, coords[0][0], coords[0][1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+                  // Tambahkan titik (point) untuk setiap koordinat di jalur realisasi
+                  coords.forEach(coord => {
+                     window.L.marker(coord, { icon: createSimplePointMarker('#3b82f6'), zIndexOffset: 4500 }).addTo(surveyLayerRef.current);
+                  });
                   
                   let endPt = null;
                   if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
@@ -3003,8 +3033,34 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }
     if (!isMapLoaded || !mapInstanceRef.current) return;
     routeLayerRef.current.clearLayers(); surveyLayerRef.current.clearLayers();
 
+    const createSimplePointMarker = (color) => {
+        return window.L.divIcon({
+          className: 'bg-transparent border-0',
+          html: `<div style="transform: translate(-50%, -50%); background-color: ${color};" class="w-3 h-3 border-2 border-white rounded-full shadow-md"></div>`,
+          iconSize: [0, 0]
+        });
+    };
+
     const createMarker = (theme, prefix, segName, lat, lng) => {
-      const gradId = theme === 'Blue' ? 'gradBlueMap' : 'gradRedMap';
+        const stop1 = theme === 'Blue' ? '#38bdf8' : '#fb7185';
+        const stop2 = theme === 'Blue' ? '#2563eb' : '#e11d48';
+        const textColor = theme === 'Blue' ? 'text-blue-600' : 'text-rose-600';
+
+        return window.L.divIcon({
+          className: 'bg-transparent border-0 overflow-visible',
+          html: `<div class="relative flex flex-col items-center group cursor-pointer pointer-events-auto" style="transform: translate(-50%, -50%);">
+                   <div class="absolute bottom-full mb-1.5 px-2 py-1 bg-white/95 backdrop-blur-md rounded-lg shadow-[0_4px_10px_rgba(0,0,0,0.15)] border border-slate-200/50 whitespace-nowrap text-center z-[9999] opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100 transition-all duration-300 pointer-events-none origin-bottom">
+                      <div class="text-[8px] font-black uppercase tracking-wide leading-tight text-slate-800"><span class="${textColor}">${prefix}</span><br/>${segName}</div>
+                      <div class="text-[7.5px] font-bold text-slate-500 mt-0.5 tracking-wider font-mono">${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)}</div>
+                   </div>
+                   <div class="w-3.5 h-3.5 rounded-full border-2 border-white shadow-md relative origin-bottom group-hover:scale-110 transition-all duration-300" style="background: linear-gradient(to bottom, ${stop1}, ${stop2});"></div>
+                 </div>`,
+          iconSize: [0, 0]
+        });
+    };
+
+    const createSurveyPinMarker = (theme, prefix, segName, lat, lng) => {
+      const gradId = theme === 'Blue' ? 'gradBlueMapPin' : 'gradRedMapPin';
       const stop1 = theme === 'Blue' ? '#38bdf8' : '#fb7185';
       const stop2 = theme === 'Blue' ? '#2563eb' : '#e11d48';
       const textColor = theme === 'Blue' ? 'text-blue-600' : 'text-rose-600';
@@ -3172,21 +3228,30 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }
              }).addTo(surveyLayerRef.current);
           }
 
-          // Marker Awal
-          window.L.marker(coords[0], { icon: createMarker('Blue', `Awal`, seg.name, coords[0][0], coords[0][1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+          if (showSketchPoints) {
+            // Tambahkan titik (point) biasa untuk setiap koordinat
+            coords.forEach(coord => {
+               window.L.marker(coord, { icon: createSimplePointMarker('#3b82f6'), zIndexOffset: 4500 }).addTo(surveyLayerRef.current);
+            });
+          }
+
           actualBounds.extend(coords[0]);
           
           // Marker Akhir (Menyisihkan dari titik boundary agar garis tidak membentang ke tujuan secara otomatis)
           let endPt = null;
-          if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
-              endPt = [parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)];
-          } else if (coords.length > 1) {
+          if (coords.length > 1) {
               endPt = coords[coords.length - 1];
           }
 
           if (endPt) {
-            window.L.marker(endPt, { icon: createMarker('Red', `Akhir`, seg.name, endPt[0], endPt[1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+            window.L.marker(endPt, { icon: createMarker('Red', `Akhir Rute`, seg.name, endPt[0], endPt[1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
             actualBounds.extend(endPt);
+          }
+          
+          // Marker Pin (Survei) HANYA untuk target akhir survei
+          if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
+              window.L.marker([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)], { icon: createSurveyPinMarker('Red', `Target Survei`, seg.name, parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+              actualBounds.extend([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)]);
           }
 
           // Tambahkan label jarak antar titik realisasi jika showDistances aktif
@@ -3222,12 +3287,14 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }
     photoLayerRef.current.clearLayers();
 
     if (showPhotos && feeds && feeds.length > 0) {
-        // PERBAIKAN: Menggunakan .includes('Update Progress') karena title sekarang dinamis ('Update Progress Rute Realisasi' / 'Sketsa')
-        const updateFeeds = feeds.filter(f => String(f.title || '').includes('Update Progress') && f.media_url);
-        updateFeeds.forEach(feed => {
+        // Hapus filter yang membatasi hanya 'Update Progress Rute Realisasi' agar foto survei juga bisa muncul
+        // Namun kita tetap harus mengekstrak koordinat dari deskripsi
+        const photoFeeds = feeds.filter(f => f.media_url);
+        
+        photoFeeds.forEach(feed => {
             const desc = feed.description || '';
-            const latMatch = desc.match(/Lat\s([-0-9.]+)/);
-            const lngMatch = desc.match(/Lng\s([-0-9.]+)/);
+            const latMatch = desc.match(/Lat\s*([-0-9.]+)/) || desc.match(/Awal\s*\(([-0-9.]+)/);
+            const lngMatch = desc.match(/Lng\s*([-0-9.]+)/) || desc.match(/Awal\s*\([^,]+,\s*([-0-9.]+)/);
 
             if (latMatch && lngMatch) {
                 const lat = parseFloat(latMatch[1]);
