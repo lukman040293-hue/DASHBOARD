@@ -3674,38 +3674,35 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
          <div className="absolute bottom-[10%] right-[20%] w-[300px] h-[300px] bg-slate-400/10 rounded-full blur-[120px]"></div>
       </div>
 
-      {/* LOGO & MENU TOGGLE (MENGAMBANG DI KIRI ATAS) */}
-      <div 
-        onClick={() => setIsUIHidden(!isUIHidden)}
-        className="absolute top-6 left-6 md:top-10 md:left-10 z-[99999] flex items-center gap-4 group cursor-pointer pointer-events-auto"
-        title={isUIHidden ? "Tampilkan Menu Akses" : "Sembunyikan Menu Akses"}
-      >
-        <div className="w-12 h-12 md:w-14 md:h-14 bg-blue-600/90 backdrop-blur-md rounded-2xl md:rounded-3xl flex items-center justify-center text-white shadow-[0_8px_30px_rgba(37,99,235,0.4)] group-hover:scale-105 group-hover:bg-blue-500 transition-all border border-blue-400/50 relative overflow-hidden">
-           <Menu size={24} className={`absolute transition-all duration-500 ${!isUIHidden ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100'}`} />
-           <Activity size={24} className={`absolute transition-all duration-500 ${isUIHidden ? '-rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100'}`} />
-        </div>
-        <div className="flex flex-col opacity-90 group-hover:opacity-100 transition-opacity">
-          <h1 className="text-xl md:text-2xl font-normal tracking-tight text-white leading-none drop-shadow-md">Dashboard</h1>
-          <p className="text-[10px] md:text-xs font-bold text-slate-400 group-hover:text-blue-300 uppercase tracking-widest mt-1 drop-shadow-md transition-colors">
-            Gerbang Utama
-          </p>
-        </div>
-      </div>
+      {/* MENU TOGGLE & AKSI (DI TENGAH ATAS) */}
+      <div className="absolute top-6 md:top-10 left-1/2 -translate-x-1/2 z-[99999] flex flex-col items-center pointer-events-auto w-full px-4">
+        {/* Tombol Panah Tengah */}
+        <button 
+          onClick={() => setIsUIHidden(!isUIHidden)}
+          className="w-12 h-12 md:w-14 md:h-14 bg-slate-800/80 backdrop-blur-xl rounded-full flex items-center justify-center text-white shadow-[0_8px_30px_rgba(0,0,0,0.3)] hover:scale-105 hover:bg-slate-700 transition-all border border-slate-600/50 z-20"
+          title={isUIHidden ? "Tampilkan Menu Akses" : "Sembunyikan Menu"}
+        >
+           <ChevronDown size={28} className={`transition-transform duration-500 ${!isUIHidden ? 'rotate-180' : ''}`} />
+        </button>
 
-      {/* HEADER AKSI KANAN (MUNCUL SAAT DIKLIK) */}
-      <div className={`absolute top-6 right-6 md:top-10 md:right-10 flex flex-wrap justify-end items-center gap-2 md:gap-3 z-[90000] transition-all duration-500 ease-out origin-right ${isUIHidden ? 'opacity-0 scale-95 pointer-events-none translate-x-12' : 'opacity-100 scale-100 translate-x-0'}`}>
-        <button onClick={onViewRekap} className="p-3 bg-amber-500/20 text-amber-400 rounded-2xl hover:bg-amber-500/30 hover:text-amber-300 transition-all hover:scale-105 flex items-center justify-center shadow-lg backdrop-blur-md border border-amber-500/30" title="Rekap Semua Proyek">
-           <FileSpreadsheet size={20} />
-        </button>
-        <button onClick={onSelectMaster} className="p-3 bg-blue-500/20 text-blue-400 rounded-2xl hover:bg-blue-500/30 hover:text-blue-300 transition-all hover:scale-105 flex items-center justify-center shadow-lg backdrop-blur-md border border-blue-500/30" title="Buka Peta Induk">
-           <Globe2 size={20} />
-        </button>
-        <button onClick={onViewAbsensi} className="p-3 bg-emerald-500/20 text-emerald-400 rounded-2xl hover:bg-emerald-500/30 hover:text-emerald-300 transition-all hover:scale-105 flex items-center justify-center shadow-lg backdrop-blur-md border border-emerald-500/30" title="Data Absensi">
-           <Fingerprint size={20} />
-        </button>
-        <button onClick={onLogout} className="p-3 bg-rose-500/20 text-rose-400 rounded-2xl hover:bg-rose-500/30 hover:text-rose-300 transition-all hover:scale-105 flex items-center justify-center shadow-lg backdrop-blur-md border border-rose-500/30" title="Keluar dari Sistem">
-           <LogOut size={20} />
-        </button>
+        {/* Deretan Ikon Aksi (Muncul saat diklik) */}
+        <div className={`flex flex-wrap justify-center items-center gap-2 md:gap-3 transition-all duration-500 ease-out origin-top absolute top-16 md:top-20 z-10 ${isUIHidden ? 'opacity-0 scale-75 pointer-events-none -translate-y-10' : 'opacity-100 scale-100 translate-y-0'}`}>
+          <button onClick={onAddProject} className="p-3 md:p-3.5 bg-emerald-500/20 text-emerald-400 rounded-2xl hover:bg-emerald-500/30 hover:text-emerald-300 transition-all hover:scale-105 flex items-center justify-center shadow-lg backdrop-blur-md border border-emerald-500/30" title="Kamar Proyek Baru">
+             <Plus size={20} />
+          </button>
+          <button onClick={onViewRekap} className="p-3 md:p-3.5 bg-amber-500/20 text-amber-400 rounded-2xl hover:bg-amber-500/30 hover:text-amber-300 transition-all hover:scale-105 flex items-center justify-center shadow-lg backdrop-blur-md border border-amber-500/30" title="Rekap Semua Proyek">
+             <FileSpreadsheet size={20} />
+          </button>
+          <button onClick={onSelectMaster} className="p-3 md:p-3.5 bg-blue-500/20 text-blue-400 rounded-2xl hover:bg-blue-500/30 hover:text-blue-300 transition-all hover:scale-105 flex items-center justify-center shadow-lg backdrop-blur-md border border-blue-500/30" title="Buka Peta Induk">
+             <Globe2 size={20} />
+          </button>
+          <button onClick={onViewAbsensi} className="p-3 md:p-3.5 bg-emerald-500/20 text-emerald-400 rounded-2xl hover:bg-emerald-500/30 hover:text-emerald-300 transition-all hover:scale-105 flex items-center justify-center shadow-lg backdrop-blur-md border border-emerald-500/30" title="Data Absensi">
+             <Fingerprint size={20} />
+          </button>
+          <button onClick={onLogout} className="p-3 md:p-3.5 bg-rose-500/20 text-rose-400 rounded-2xl hover:bg-rose-500/30 hover:text-rose-300 transition-all hover:scale-105 flex items-center justify-center shadow-lg backdrop-blur-md border border-rose-500/30" title="Keluar dari Sistem">
+             <LogOut size={20} />
+          </button>
+        </div>
       </div>
 
       {/* Konten Utama */}
@@ -3939,7 +3936,7 @@ export default function App() {
   const [quickReportNote, setQuickReportNote] = useState(''); // State Catatan Lapor Lapangan
   const [quickRepFiles, setQuickRepFiles] = useState([]); // State File Lapor Lapangan
   
-  const [newProjectForm, setNewProjectForm] = useState({ pekerjaan: '', status: 'Preparation' });
+  const [newProjectForm, setNewProjectForm] = useState({ pekerjaan: '', tahun: new Date().getFullYear().toString() });
   const [editProjectForm, setEditProjectForm] = useState({ status: 'Running', pekerjaan: '', termin_ke: '1', termin_persen: '0', panjang_rencana: '', lebar_rencana: '', jenis_model: '', item_utama_data: [], waktu_pelaksanaan: '' });
   const [sCurveForm, setSCurveForm] = useState({ plan: '', actual: '' });
   const [dailyReportForm, setDailyReportForm] = useState({
@@ -4239,23 +4236,6 @@ export default function App() {
       // Cek otomatis laporan/aktivitas baru setiap 5 detik
       if (projectData?.id) {
         try {
-          // --- PERBAIKAN: REAL-TIME UPDATE PETA DARI USER LAIN ---
-          const { data: projUpdate } = await supabaseClient
-            .from('projects')
-            .select('*')
-            .eq('id', projectData.id)
-            .single();
-
-          if (projUpdate && projUpdate.updated_at) {
-            const localUpdate = projectData.updated_at ? new Date(projectData.updated_at).getTime() : 0;
-            const remoteUpdate = new Date(projUpdate.updated_at).getTime();
-            if (remoteUpdate > localUpdate) {
-              // Data proyek di DB lebih baru (Rute diupdate orang lain), sinkronisasi Peta otomatis!
-              setProjectData(projUpdate);
-            }
-          }
-          // -------------------------------------------------------
-
           const { data: newFeeds } = await supabaseClient
             .from('field_reports')
             .select('id, title')
@@ -4427,14 +4407,15 @@ export default function App() {
       const { error } = await supabaseClient.from('projects').insert([{ 
          name: newProjectForm.pekerjaan,
          pekerjaan: newProjectForm.pekerjaan, 
-         status: newProjectForm.status,
+         tahun: newProjectForm.tahun,
+         status: 'Preparation',
          actual_progress: 0,
          target_progress: 0 
       }]);
       if (error) throw error;
       showMsg("Kamar Proyek Berhasil Dibuat!", "success");
       setShowNewProjectModal(false);
-      setNewProjectForm({ pekerjaan: '', status: 'Preparation' });
+      setNewProjectForm({ pekerjaan: '', tahun: new Date().getFullYear().toString() });
       fetchAllProjects();
     } catch (err) {
       showMsg("Gagal membuat proyek: " + err.message, "error");
@@ -4869,10 +4850,6 @@ export default function App() {
        
        dbUpdatePayload.updated_at = new Date().toISOString();
 
-       // --- PERBAIKAN: OPTIMISTIC UPDATE (Langsung gambar di peta tanpa nunggu DB/Upload Foto) ---
-       setProjectData(prev => ({ ...prev, ...dbUpdatePayload }));
-       // -----------------------------------------------------------------------------------------
-
        const { error } = await supabaseClient.from('projects').update(dbUpdatePayload).eq('id', projectData.id);
        if (error) throw error;
 
@@ -5082,10 +5059,6 @@ export default function App() {
         }
       }
 
-      // --- PERBAIKAN: OPTIMISTIC UPDATE PETA SURVEI ---
-      setProjectData(prev => ({ ...prev, ...updatePayload }));
-      // ------------------------------------------------
-
       const { error: updateErr } = await supabaseClient.from('projects').update(updatePayload).eq('id', projectData.id);
       if (updateErr) throw updateErr;
 
@@ -5206,11 +5179,6 @@ export default function App() {
            }
         }
       }
-      
-      // --- PERBAIKAN: OPTIMISTIC UPDATE PETA DARI EDITOR RUTE ---
-      setProjectData(prev => ({ ...prev, ...payload }));
-      // ----------------------------------------------------------
-
       const { error } = await supabaseClient.from('projects').update(payload).eq('id', projectData.id);
       if (error) throw error;
       showMsg("Data Rute Disinkronkan!", "success"); fetchProjectDetails(projectData.id);
@@ -5870,11 +5838,8 @@ export default function App() {
                   <input type="text" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={newProjectForm.pekerjaan} onChange={e => setNewProjectForm({ ...newProjectForm, pekerjaan: e.target.value })} placeholder="Misal: Peningkatan Jalan Baru..." required />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Fase Awal Proyek</label>
-                  <select className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-700 outline-none focus:border-blue-400 focus:bg-white transition-all" value={newProjectForm.status} onChange={e => setNewProjectForm({ ...newProjectForm, status: e.target.value })}>
-                    <option value="Preparation">Tahap Persiapan</option>
-                    <option value="Running">Tahap Pelaksanaan</option>
-                  </select>
+                  <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Tahun <span className="text-rose-500">*</span></label>
+                  <input type="number" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={newProjectForm.tahun} onChange={e => setNewProjectForm({ ...newProjectForm, tahun: e.target.value })} placeholder="Misal: 2024" required />
                 </div>
                 <button type="submit" disabled={isProcessing} className="w-full bg-blue-600 text-white py-4 rounded-2xl text-xs font-bold uppercase mt-4 hover:bg-blue-700 transition-colors shadow-md">
                   {isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Buat Proyek Sekarang'}
@@ -5916,11 +5881,8 @@ export default function App() {
                   <input type="text" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={newProjectForm.pekerjaan} onChange={e => setNewProjectForm({ ...newProjectForm, pekerjaan: e.target.value })} placeholder="Misal: Peningkatan Jalan Baru..." required />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Fase Awal Proyek</label>
-                  <select className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-700 outline-none focus:border-blue-400 focus:bg-white transition-all" value={newProjectForm.status} onChange={e => setNewProjectForm({ ...newProjectForm, status: e.target.value })}>
-                    <option value="Preparation">Tahap Persiapan</option>
-                    <option value="Running">Tahap Pelaksanaan</option>
-                  </select>
+                  <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Tahun <span className="text-rose-500">*</span></label>
+                  <input type="number" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={newProjectForm.tahun} onChange={e => setNewProjectForm({ ...newProjectForm, tahun: e.target.value })} placeholder="Misal: 2024" required />
                 </div>
                 <button type="submit" disabled={isProcessing} className="w-full bg-blue-600 text-white py-4 rounded-2xl text-xs font-bold uppercase mt-4 hover:bg-blue-700 transition-colors shadow-md">
                   {isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Buat Proyek Sekarang'}
@@ -6054,11 +6016,8 @@ export default function App() {
                   <input type="text" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={newProjectForm.pekerjaan} onChange={e => setNewProjectForm({ ...newProjectForm, pekerjaan: e.target.value })} placeholder="Misal: Peningkatan Jalan Baru..." required />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Fase Awal Proyek</label>
-                  <select className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-700 outline-none focus:border-blue-400 focus:bg-white transition-all" value={newProjectForm.status} onChange={e => setNewProjectForm({ ...newProjectForm, status: e.target.value })}>
-                    <option value="Preparation">Tahap Persiapan</option>
-                    <option value="Running">Tahap Pelaksanaan</option>
-                  </select>
+                  <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Tahun <span className="text-rose-500">*</span></label>
+                  <input type="number" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={newProjectForm.tahun} onChange={e => setNewProjectForm({ ...newProjectForm, tahun: e.target.value })} placeholder="Misal: 2024" required />
                 </div>
                 <button type="submit" disabled={isProcessing} className="w-full bg-blue-600 text-white py-4 rounded-2xl text-xs font-bold uppercase mt-4 hover:bg-blue-700 transition-colors shadow-md">
                   {isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Buat Proyek Sekarang'}
