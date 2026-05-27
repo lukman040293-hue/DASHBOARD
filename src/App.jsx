@@ -3964,6 +3964,8 @@ export default function App() {
   const [appendRouteFiles, setAppendRouteFiles] = useState([]); // STATE BARU: Foto Rute Realisasi
   const [renameRouteConfig, setRenameRouteConfig] = useState({ isEditing: false, newName: '' });
   const [deleteRouteConfirm, setDeleteRouteConfirm] = useState(false);
+  const [isAddingNewRoute, setIsAddingNewRoute] = useState(false); // STATE BARU: Mode Tambah Rute Baru
+  const [newRouteName, setNewRouteName] = useState(''); // STATE BARU: Nama Rute Baru
 
   // --- File & Upload States ---
   const [repFiles, setRepFiles] = useState([]);
@@ -4961,15 +4963,52 @@ export default function App() {
 
   const getAppendGPS = () => {
     if (!navigator.geolocation) { showMsg("GPS tidak didukung oleh perangkat", "error"); return; }
-    showMsg("Mencari sinyal GPS...", "info");
-    navigator.geolocation.getCurrentPosition(
+    showMsg("Mencari sinyal presisi tinggi (Tunggu bbrp detik)...", "info");
+    
+    let watchId;
+    let bestPos = null;
+    let timeoutId;
+
+    const stopWatching = () => {
+       if (watchId) navigator.geolocation.clearWatch(watchId);
+       if (timeoutId) clearTimeout(timeoutId);
+    };
+
+    // Menggunakan watchPosition untuk mencari akurasi terbaik
+    watchId = navigator.geolocation.watchPosition(
       (pos) => {
-        setAppendRouteForm(p => ({ ...p, lat: pos.coords.latitude, lng: pos.coords.longitude }));
-        showMsg("Sinyal GPS Terkunci!", "success");
+        // Simpan posisi jika akurasinya lebih baik (angka lebih kecil)
+        if (!bestPos || pos.coords.accuracy < bestPos.coords.accuracy) {
+            bestPos = pos;
+        }
+        // Jika akurasi sudah sangat baik (di bawah 10 meter), langsung kunci
+        if (bestPos.coords.accuracy <= 10) {
+            stopWatching();
+            setAppendRouteForm(p => ({ ...p, lat: bestPos.coords.latitude, lng: bestPos.coords.longitude }));
+            showMsg(`GPS Terkunci! (Akurasi: ±${Math.round(bestPos.coords.accuracy)} meter)`, "success");
+        }
       },
-      (err) => { showMsg("Gagal ambil GPS: " + err.message, "error"); },
+      (err) => { 
+        stopWatching();
+        showMsg("Gagal ambil GPS: " + err.message, "error"); 
+      },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
+
+    // Batas waktu pemantauan 6 detik, ambil yang terbaik sejauh ini
+    timeoutId = setTimeout(() => {
+       stopWatching();
+       if (bestPos) {
+           setAppendRouteForm(p => ({ ...p, lat: bestPos.coords.latitude, lng: bestPos.coords.longitude }));
+           if (bestPos.coords.accuracy > 30) {
+               showMsg(`GPS Terkunci, akurasi lemah (±${Math.round(bestPos.coords.accuracy)}m). Coba di area terbuka.`, "warning");
+           } else {
+               showMsg(`GPS Terkunci! (Akurasi: ±${Math.round(bestPos.coords.accuracy)} meter)`, "success");
+           }
+       } else {
+           showMsg("Sinyal GPS tidak ditemukan. Pastikan izin lokasi aktif.", "error");
+       }
+    }, 6000);
   };
 
   const handleUnifiedSubmit = async (e) => {
@@ -5074,18 +5113,56 @@ export default function App() {
 
   const getUnifiedGPS = (index) => {
     if (!navigator.geolocation) { showMsg("GPS tidak didukung browser ini.", "error"); return; }
-    showMsg("Mencari sinyal GPS...", "info");
-    navigator.geolocation.getCurrentPosition(
+    showMsg("Mencari sinyal presisi tinggi (Tunggu bbrp detik)...", "info");
+    
+    let watchId;
+    let bestPos = null;
+    let timeoutId;
+
+    const stopWatching = () => {
+       if (watchId) navigator.geolocation.clearWatch(watchId);
+       if (timeoutId) clearTimeout(timeoutId);
+    };
+
+    watchId = navigator.geolocation.watchPosition(
       (pos) => {
-        setUForm(prev => {
-            const newPoints = [...prev.points];
-            newPoints[index] = { ...newPoints[index], lat: pos.coords.latitude, lng: pos.coords.longitude };
-            return { ...prev, points: newPoints };
-        });
-        showMsg(`GPS Titik ${index === 0 ? 'Awal' : (index === uForm.points.length - 1 ? 'Akhir' : `T-${index+1}`)} Ditemukan!`, "success");
+        if (!bestPos || pos.coords.accuracy < bestPos.coords.accuracy) {
+            bestPos = pos;
+        }
+        if (bestPos.coords.accuracy <= 10) {
+            stopWatching();
+            setUForm(prev => {
+                const newPoints = [...prev.points];
+                newPoints[index] = { ...newPoints[index], lat: bestPos.coords.latitude, lng: bestPos.coords.longitude };
+                return { ...prev, points: newPoints };
+            });
+            showMsg(`GPS Titik ${index === 0 ? 'Awal' : (index === uForm.points.length - 1 ? 'Akhir' : `T-${index+1}`)} Terkunci! (±${Math.round(bestPos.coords.accuracy)}m)`, "success");
+        }
       },
-      (err) => { showMsg("Gagal mengambil GPS: " + err.message, "error"); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      (err) => { 
+        stopWatching();
+        showMsg("Gagal mengambil GPS: " + err.message, "error"); 
+      }, 
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
+
+    timeoutId = setTimeout(() => {
+       stopWatching();
+       if (bestPos) {
+           setUForm(prev => {
+               const newPoints = [...prev.points];
+               newPoints[index] = { ...newPoints[index], lat: bestPos.coords.latitude, lng: bestPos.coords.longitude };
+               return { ...prev, points: newPoints };
+           });
+           if (bestPos.coords.accuracy > 30) {
+               showMsg(`GPS Terkunci, akurasi lemah (±${Math.round(bestPos.coords.accuracy)}m). Coba di area terbuka.`, "warning");
+           } else {
+               showMsg(`GPS Titik ${index === 0 ? 'Awal' : (index === uForm.points.length - 1 ? 'Akhir' : `T-${index+1}`)} Terkunci! (±${Math.round(bestPos.coords.accuracy)}m)`, "success");
+           }
+       } else {
+           showMsg("Sinyal GPS tidak ditemukan. Pastikan izin lokasi aktif.", "error");
+       }
+    }, 6000);
   };
 
   const handleRoutesUpdate = async (planned, actualSegs) => {
@@ -7170,30 +7247,56 @@ export default function App() {
                
                <SurveyInputRow label="Tipe Jalur Target">
                   <div className="flex gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-100">
-                     <button type="button" onClick={() => { setAppendRouteForm(p => ({ ...p, targetType: 'actual', segmentName: projectData?.actual_segments_data?.[0]?.name || 'Segmen 1' })); setRenameRouteConfig({isEditing:false, newName:''}); setDeleteRouteConfirm(false); }} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-all shadow-sm ${appendRouteForm.targetType === 'actual' ? 'bg-blue-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-100'}`}>Realisasi</button>
-                     <button type="button" onClick={() => { setAppendRouteForm(p => ({ ...p, targetType: 'plan', segmentName: projectData?.planned_path?.[0]?.name || 'Jalur 1' })); setRenameRouteConfig({isEditing:false, newName:''}); setDeleteRouteConfirm(false); }} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-all shadow-sm ${appendRouteForm.targetType === 'plan' ? 'bg-amber-500 text-white' : 'bg-white text-slate-500 hover:bg-slate-100'}`}>Sketsa</button>
+                     <button type="button" onClick={() => { setAppendRouteForm(p => ({ ...p, targetType: 'actual', segmentName: projectData?.actual_segments_data?.[0]?.name || 'Segmen 1' })); setRenameRouteConfig({isEditing:false, newName:''}); setDeleteRouteConfirm(false); setIsAddingNewRoute(false); }} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-all shadow-sm ${appendRouteForm.targetType === 'actual' ? 'bg-blue-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-100'}`}>Realisasi</button>
+                     <button type="button" onClick={() => { setAppendRouteForm(p => ({ ...p, targetType: 'plan', segmentName: projectData?.planned_path?.[0]?.name || 'Jalur 1' })); setRenameRouteConfig({isEditing:false, newName:''}); setDeleteRouteConfirm(false); setIsAddingNewRoute(false); }} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-all shadow-sm ${appendRouteForm.targetType === 'plan' ? 'bg-amber-500 text-white' : 'bg-white text-slate-500 hover:bg-slate-100'}`}>Sketsa</button>
                   </div>
                </SurveyInputRow>
 
-               <SurveyInputRow label="Pilih Atau Buat Jalur Target">
-                  {!renameRouteConfig.isEditing ? (
-                     <div className="flex gap-2 items-center">
+               <SurveyInputRow label="Pilih Segmen / Jalur Target">
+                  {isAddingNewRoute ? (
+                     <div className="flex gap-2 items-center animate-in fade-in slide-in-from-right-2">
                         <input 
                            type="text" 
-                           list="segment-suggestions"
-                           value={appendRouteForm.segmentName} 
-                           onChange={e => setAppendRouteForm(p => ({ ...p, segmentName: e.target.value }))} 
-                           className="w-full p-3.5 rounded-xl border border-slate-200 bg-white focus:border-emerald-400 outline-none text-sm font-bold text-slate-700"
-                           placeholder={appendRouteForm.targetType === 'actual' ? "Ketik nama segmen baru atau pilih..." : "Ketik nama jalur baru atau pilih..."}
+                           value={newRouteName} 
+                           onChange={e => setNewRouteName(e.target.value)} 
+                           className="w-full p-3.5 rounded-xl border border-emerald-300 bg-emerald-50 focus:border-emerald-500 outline-none text-sm font-bold text-emerald-800 placeholder-emerald-400/70 shadow-inner"
+                           placeholder={appendRouteForm.targetType === 'actual' ? "Ketik nama Segmen baru..." : "Ketik nama Sketsa baru..."}
+                           autoFocus
                            required
                         />
-                        <datalist id="segment-suggestions">
+                        <button type="button" onClick={() => {
+                           if (newRouteName.trim()) {
+                              setAppendRouteForm(p => ({ ...p, segmentName: newRouteName.trim() }));
+                              setIsAddingNewRoute(false);
+                              setNewRouteName('');
+                           }
+                        }} className="p-3.5 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors shadow-sm shrink-0" title="Simpan Segmen Baru"><CheckCircle2 size={18} /></button>
+                        <button type="button" onClick={() => { setIsAddingNewRoute(false); setNewRouteName(''); }} className="p-3.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-colors shadow-sm shrink-0" title="Batal"><X size={18} /></button>
+                     </div>
+                  ) : !renameRouteConfig.isEditing ? (
+                     <div className="flex gap-2 items-center">
+                        <select 
+                           value={appendRouteForm.segmentName} 
+                           onChange={e => setAppendRouteForm(p => ({ ...p, segmentName: e.target.value }))} 
+                           className="w-full p-3.5 rounded-xl border border-slate-200 bg-white focus:border-emerald-400 outline-none text-sm font-bold text-slate-700 shadow-sm"
+                        >
                            {appendRouteForm.targetType === 'actual' ? (
-                              projectData?.actual_segments_data?.map(s => <option key={s.id} value={s.name} />)
+                              <>
+                                 {projectData?.actual_segments_data?.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                 {(!projectData?.actual_segments_data || projectData.actual_segments_data.length === 0) && <option value="Segmen 1">Segmen 1</option>}
+                              </>
                            ) : (
-                              projectData?.planned_path?.map(s => <option key={s.id} value={s.name} />)
+                              <>
+                                 {projectData?.planned_path?.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                 {(!projectData?.planned_path || projectData.planned_path.length === 0) && <option value="Jalur 1">Jalur 1</option>}
+                              </>
                            )}
-                        </datalist>
+                           {/* Menampilkan segmen baru yang baru saja diketik agar bisa langsung dipilih tanpa error */}
+                           {appendRouteForm.segmentName && 
+                            !(appendRouteForm.targetType === 'actual' ? projectData?.actual_segments_data : projectData?.planned_path)?.some(s => s.name === appendRouteForm.segmentName) && 
+                            <option value={appendRouteForm.segmentName}>{appendRouteForm.segmentName} (Baru)</option>}
+                        </select>
+                        <button type="button" onClick={() => { setIsAddingNewRoute(true); setNewRouteName(''); }} className="p-3.5 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-colors shadow-sm shrink-0" title="Tambah Segmen/Jalur Baru"><Plus size={18} /></button>
                         <button type="button" onClick={() => setRenameRouteConfig({ isEditing: true, newName: appendRouteForm.segmentName })} className="p-3.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors shadow-sm shrink-0" title="Edit Nama"><Edit3 size={18} /></button>
                         <button type="button" onClick={() => setDeleteRouteConfirm(true)} className="p-3.5 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-100 transition-colors shadow-sm shrink-0" title="Hapus Segmen"><Trash size={18} /></button>
                      </div>
