@@ -4239,6 +4239,23 @@ export default function App() {
       // Cek otomatis laporan/aktivitas baru setiap 5 detik
       if (projectData?.id) {
         try {
+          // --- PERBAIKAN: REAL-TIME UPDATE PETA DARI USER LAIN ---
+          const { data: projUpdate } = await supabaseClient
+            .from('projects')
+            .select('*')
+            .eq('id', projectData.id)
+            .single();
+
+          if (projUpdate && projUpdate.updated_at) {
+            const localUpdate = projectData.updated_at ? new Date(projectData.updated_at).getTime() : 0;
+            const remoteUpdate = new Date(projUpdate.updated_at).getTime();
+            if (remoteUpdate > localUpdate) {
+              // Data proyek di DB lebih baru (Rute diupdate orang lain), sinkronisasi Peta otomatis!
+              setProjectData(projUpdate);
+            }
+          }
+          // -------------------------------------------------------
+
           const { data: newFeeds } = await supabaseClient
             .from('field_reports')
             .select('id, title')
@@ -4852,6 +4869,10 @@ export default function App() {
        
        dbUpdatePayload.updated_at = new Date().toISOString();
 
+       // --- PERBAIKAN: OPTIMISTIC UPDATE (Langsung gambar di peta tanpa nunggu DB/Upload Foto) ---
+       setProjectData(prev => ({ ...prev, ...dbUpdatePayload }));
+       // -----------------------------------------------------------------------------------------
+
        const { error } = await supabaseClient.from('projects').update(dbUpdatePayload).eq('id', projectData.id);
        if (error) throw error;
 
@@ -5061,6 +5082,10 @@ export default function App() {
         }
       }
 
+      // --- PERBAIKAN: OPTIMISTIC UPDATE PETA SURVEI ---
+      setProjectData(prev => ({ ...prev, ...updatePayload }));
+      // ------------------------------------------------
+
       const { error: updateErr } = await supabaseClient.from('projects').update(updatePayload).eq('id', projectData.id);
       if (updateErr) throw updateErr;
 
@@ -5181,6 +5206,11 @@ export default function App() {
            }
         }
       }
+      
+      // --- PERBAIKAN: OPTIMISTIC UPDATE PETA DARI EDITOR RUTE ---
+      setProjectData(prev => ({ ...prev, ...payload }));
+      // ----------------------------------------------------------
+
       const { error } = await supabaseClient.from('projects').update(payload).eq('id', projectData.id);
       if (error) throw error;
       showMsg("Data Rute Disinkronkan!", "success"); fetchProjectDetails(projectData.id);
