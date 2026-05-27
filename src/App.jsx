@@ -4236,6 +4236,7 @@ export default function App() {
       // Cek otomatis laporan/aktivitas baru setiap 5 detik
       if (projectData?.id) {
         try {
+          // 1. Cek Laporan & Log Aktivitas Baru
           const { data: newFeeds } = await supabaseClient
             .from('field_reports')
             .select('id, title')
@@ -4268,6 +4269,35 @@ export default function App() {
               latestFeedIdRef.current = currentLatestId;
             }
           }
+
+          // 2. SINKRONISASI RUTE PETA SECARA DIAM-DIAM (SILENT SYNC MAP DATA)
+          // Ini memastikan jika ada penambahan rute dari HP / perangkat lain, peta web langsung terupdate real-time
+          const { data: mapUpdate } = await supabaseClient
+            .from('projects')
+            .select('planned_path, actual_segments_data, actual_progress')
+            .eq('id', projectData.id)
+            .single();
+
+          if (mapUpdate) {
+            setProjectData(prev => {
+               if (!prev) return prev;
+               const oldPath = JSON.stringify(prev.planned_path || []);
+               const newPath = JSON.stringify(mapUpdate.planned_path || []);
+               const oldActual = JSON.stringify(prev.actual_segments_data || []);
+               const newActual = JSON.stringify(mapUpdate.actual_segments_data || []);
+               
+               if (oldPath !== newPath || oldActual !== newActual) {
+                   return {
+                       ...prev,
+                       planned_path: mapUpdate.planned_path,
+                       actual_segments_data: mapUpdate.actual_segments_data,
+                       actual_progress: mapUpdate.actual_progress
+                   };
+               }
+               return prev;
+            });
+          }
+
         } catch (e) {
           // Abaikan error polling (hening di latar belakang)
         }
@@ -4885,7 +4915,10 @@ export default function App() {
        setShowAppendRouteModal(false);
        setAppendRouteForm(p => ({ ...p, segmentName: segName, lat: '', lng: '', note: '' }));
        setAppendRouteFiles([]);
-       fetchProjectDetails(projectData.id);
+
+       // UPDATE OPTIMISTIS: Fetch hanya Log Aktivitas agar peta tidak berkedip / kembali ke state lama
+       const { data: newLogs } = await supabaseClient.from('field_reports').select('*').eq('project_id', projectData.id).order('created_at', { ascending: false });
+       if (newLogs) setFeeds(newLogs);
 
     } catch (err) { showMsg("Error: " + err.message, "error"); } finally { setIsProcessing(false); }
   };
@@ -5105,7 +5138,13 @@ export default function App() {
 
       showMsg("Data Survei Tersimpan!", "success"); setShowReportModal(false); setUMedia([]); setUDataUkur(null);
       setUForm({ tanggal: new Date().toISOString().split('T')[0], namaSegmen: '', points: [{lat: '', lng: ''}, {lat: '', lng: ''}], panjang: '', lebar: '', jenis_model_awal: '', noteDesc: '' });
-      fetchProjectDetails(projectData.id);
+      
+      // UPDATE OPTIMISTIS UNTUK SURVEI
+      const { data: newLogs } = await supabaseClient.from('field_reports').select('*').eq('project_id', projectData.id).order('created_at', { ascending: false });
+      if (newLogs) setFeeds(newLogs);
+      const { data: newDocs } = await supabaseClient.from('documents').select('*').eq('project_id', projectData.id).order('created_at', { ascending: false });
+      if (newDocs) setDocuments(newDocs);
+
     } catch (err) { showMsg("Error menyimpan survei: " + err.message, "error"); } finally { setIsProcessing(false); }
   };
 
@@ -5181,7 +5220,11 @@ export default function App() {
       }
       const { error } = await supabaseClient.from('projects').update(payload).eq('id', projectData.id);
       if (error) throw error;
-      showMsg("Data Rute Disinkronkan!", "success"); fetchProjectDetails(projectData.id);
+      
+      // UPDATE LOKAL SECARA LANGSUNG
+      setProjectData(prev => ({ ...prev, ...payload }));
+      showMsg("Data Rute Disinkronkan!", "success"); 
+      
     } catch (e) { showMsg("Gagal sinkronisasi rute: " + e.message, "error"); } finally { setIsProcessing(false); }
   };
 
