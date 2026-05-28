@@ -1397,19 +1397,34 @@ const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBac
   const [mapType, setMapType] = useState(() => localStorage.getItem('master_mapType') || 'satellite');
   const [isUIHidden, setIsUIHidden] = useState(true);
   
+  // STATE BARU: Filter Tahun untuk Peta Induk
+  const [filterTahun, setFilterTahun] = useState('Semua');
+  
   useEffect(() => { localStorage.setItem('master_mapType', mapType); }, [mapType]);
 
-  // --- KALKULASI RINGKASAN PORTOFOLIO KESELURUHAN ---
-  const totalProjects = allProjects.length;
-  const runningProjects = allProjects.filter(p => p.status === 'Running' || parseFloat(p.actual_progress || 0) > 0).length;
-  const avgProgress = totalProjects > 0 ? allProjects.reduce((sum, p) => sum + parseFloat(p.actual_progress || 0), 0) / totalProjects : 0;
+  // Ekstrak daftar tahun unik dari semua proyek
+  const uniqueYears = useMemo(() => {
+     const years = allProjects.map(p => p.tahun).filter(Boolean);
+     return [...new Set(years)].sort((a, b) => b - a);
+  }, [allProjects]);
+
+  // Filter proyek yang akan ditampilkan di peta
+  const filteredProjectsForMap = useMemo(() => {
+     if (filterTahun === 'Semua') return allProjects;
+     return allProjects.filter(p => String(p.tahun) === String(filterTahun));
+  }, [allProjects, filterTahun]);
+
+  // --- KALKULASI RINGKASAN PORTOFOLIO KESELURUHAN (Berdasarkan Filter) ---
+  const totalProjects = filteredProjectsForMap.length;
+  const runningProjects = filteredProjectsForMap.filter(p => p.status === 'Running' || parseFloat(p.actual_progress || 0) > 0).length;
+  const avgProgress = totalProjects > 0 ? filteredProjectsForMap.reduce((sum, p) => sum + parseFloat(p.actual_progress || 0), 0) / totalProjects : 0;
 
   return (
     <div className="relative w-full h-screen overflow-hidden font-sans bg-slate-900">
       
       {/* MAP BACKGROUND (100% SCREEN) */}
       <div className="absolute inset-0 z-0">
-        <MasterMapView allProjects={allProjects} onSelectProject={onSelectProject} mapType={mapType} />
+        <MasterMapView allProjects={filteredProjectsForMap} onSelectProject={onSelectProject} mapType={mapType} />
       </div>
 
       {/* LOGO & MENU TOGGLE (MENGAMBANG DI KIRI ATAS) */}
@@ -1432,6 +1447,22 @@ const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBac
       {/* FLOATING HEADER BUTTONS (KANAN ATAS) */}
       <header className={`absolute top-4 right-4 md:top-6 md:right-6 z-20 flex justify-end items-start pointer-events-none transition-all duration-500 ease-in-out origin-right ${isUIHidden ? 'opacity-0 scale-95 translate-x-12' : 'opacity-100 scale-100 translate-x-0'}`}>
          <div className="flex flex-col md:flex-row items-end md:items-center gap-2 md:gap-3 pointer-events-auto">
+             
+             {/* Filter Tahun Dropdown */}
+             <div className="relative">
+                <select
+                   value={filterTahun}
+                   onChange={(e) => setFilterTahun(e.target.value)}
+                   className="appearance-none bg-black/60 backdrop-blur-md text-slate-200 px-3 py-3 md:pl-4 md:pr-9 md:py-3.5 rounded-2xl text-[10px] md:text-xs font-black uppercase shadow-lg hover:bg-black/80 hover:text-white transition-colors border border-white/10 outline-none cursor-pointer"
+                   title="Filter Peta Berdasarkan Tahun"
+                >
+                   <option value="Semua">Semua Tahun</option>
+                   {uniqueYears.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                   <ChevronDown size={14} />
+                </div>
+             </div>
              
              {/* Tombol Menu Utama */}
              <button onClick={onBackToSelection} className="bg-black/60 backdrop-blur-md text-slate-200 px-3 py-3 md:px-4 md:py-3.5 rounded-2xl text-[10px] md:text-xs font-black uppercase flex items-center gap-2 shadow-lg hover:bg-black/80 hover:text-white transition-colors border border-white/10" title="Kembali ke Menu Utama">
@@ -3808,19 +3839,19 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
                  {/* Dropdown Filter Tahun */}
                  <div className="relative">
                     <select 
-                       className="w-full appearance-none bg-slate-800/80 border border-slate-600 text-blue-300 py-3 pl-5 pr-10 rounded-2xl text-xs font-bold outline-none cursor-pointer hover:bg-slate-700 transition-colors focus:border-blue-400 shadow-inner"
+                       className="w-full appearance-none bg-slate-800/80 border border-slate-600 text-white py-3 pl-5 pr-10 rounded-2xl text-xs font-bold outline-none cursor-pointer hover:bg-slate-700 transition-colors focus:border-white shadow-inner"
                        value={selectedYear}
                        onChange={(e) => {
                           setSelectedYear(e.target.value);
                           setSelectedProjectId(''); // Reset pilihan proyek jika tahun diganti
                        }}
                     >
-                       <option value="Semua" className="bg-slate-800 text-slate-200">Tahun</option>
+                       <option value="Semua" className="bg-slate-800 text-white">Tahun</option>
                        {uniqueYears.map(year => (
-                          <option key={year} value={year} className="bg-slate-800 text-slate-200">{year}</option>
+                          <option key={year} value={year} className="bg-slate-800 text-white">{year}</option>
                        ))}
                     </select>
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-blue-400">
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-white">
                        <ChevronDown size={16} />
                     </div>
                  </div>
