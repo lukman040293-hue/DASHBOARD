@@ -2150,8 +2150,7 @@ const THEME_COLORS = {
   purple: { plan: 'bg-purple-200 border-purple-300', actualBg: 'bg-purple-100 border-purple-300', actualFill: 'bg-purple-500', legendMarker: 'bg-purple-500 border-purple-600' },
   slate: { plan: 'bg-slate-200 border-slate-300', actualBg: 'bg-slate-100 border-slate-300', actualFill: 'bg-slate-500', legendMarker: 'bg-slate-500 border-slate-600' }
 };
-
-const GanttChartView = ({ projectData, onSaveSchedule, isProcessing }) => {
+const GanttChartView = ({ projectData, onSaveSchedule, isProcessing, userRole }) => {
   const [activeTab, setActiveTab] = useState('input'); // State baru untuk mengontrol Tab
   const [tasks, setTasks] = useState([]);
   const [theme, setTheme] = useState({ plan: 'amber', actual: 'blue' });
@@ -2172,7 +2171,8 @@ const GanttChartView = ({ projectData, onSaveSchedule, isProcessing }) => {
         try { setTheme(JSON.parse(savedTheme)); } catch(e){}
       }
     }
-  }, [projectData?.id]);
+    if (userRole === 'guest') setActiveTab('view');
+  }, [projectData?.id, userRole]);
 
   const handleThemeChange = (type, value) => {
     const newTheme = { ...theme, [type]: value };
@@ -2364,9 +2364,11 @@ const GanttChartView = ({ projectData, onSaveSchedule, isProcessing }) => {
           <button onClick={handleExportExcel} className="flex-1 sm:flex-none bg-emerald-600 text-white px-4 md:px-6 py-3 rounded-2xl text-[10px] font-bold uppercase shadow-md flex justify-center gap-2 items-center hover:bg-emerald-700 transition-all">
             <FileSpreadsheet size={16} /> <span className="hidden sm:inline">Export Excel</span>
           </button>
-          <button onClick={() => onSaveSchedule(tasks)} disabled={isProcessing} className="flex-1 sm:flex-none bg-blue-600 text-white px-4 md:px-6 py-3 rounded-2xl text-[10px] font-bold uppercase shadow-md flex justify-center gap-2 items-center hover:bg-blue-700 transition-all">
-            {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} <span className="hidden sm:inline">Simpan Jadwal</span>
-          </button>
+          {userRole !== 'guest' && (
+            <button onClick={() => onSaveSchedule(tasks)} disabled={isProcessing} className="flex-1 sm:flex-none bg-blue-600 text-white px-4 md:px-6 py-3 rounded-2xl text-[10px] font-bold uppercase shadow-md flex justify-center gap-2 items-center hover:bg-blue-700 transition-all">
+              {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} <span className="hidden sm:inline">Simpan Jadwal</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -2374,9 +2376,11 @@ const GanttChartView = ({ projectData, onSaveSchedule, isProcessing }) => {
         
         {/* KONTROL TAB BARU */}
         <div className="flex bg-slate-200/50 p-1.5 rounded-2xl w-full sm:w-max mx-auto shadow-sm shrink-0">
-          <button onClick={() => setActiveTab('input')} className={`flex-1 sm:flex-none px-8 py-3 text-[10px] md:text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'input' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'}`}>
-            <LayoutDashboard size={16}/> 1. Input Data
-          </button>
+          {userRole !== 'guest' && (
+            <button onClick={() => setActiveTab('input')} className={`flex-1 sm:flex-none px-8 py-3 text-[10px] md:text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'input' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'}`}>
+              <LayoutDashboard size={16}/> 1. Input Data
+            </button>
+          )}
           <button onClick={() => setActiveTab('view')} className={`flex-1 sm:flex-none px-8 py-3 text-[10px] md:text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'view' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'}`}>
             <TrendingUp size={16}/> 2. Visualisasi Timeline
           </button>
@@ -2609,7 +2613,7 @@ const GanttChartView = ({ projectData, onSaveSchedule, isProcessing }) => {
   );
 };
 
-const DokumentasiView = ({ feeds, onView, onDelete }) => {
+const DokumentasiView = ({ feeds, onView, onDelete, userRole }) => {
   const [filterDate, setFilterDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -2660,7 +2664,9 @@ const DokumentasiView = ({ feeds, onView, onDelete }) => {
                 <div className="h-32 sm:h-40 rounded-2xl overflow-hidden bg-slate-100 relative border border-slate-200/50">
                   {isVideo(item.media_url) ? <video src={item.media_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" /> : <img src={item.media_url} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />}
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
-                  <button onClick={(e) => { e.stopPropagation(); onDelete({ id: item.original_id || item.id, type: 'media' }); }} className="absolute top-2 right-2 p-2 bg-white/90 text-rose-500 rounded-xl opacity-0 group-hover:opacity-100 transition-all z-10 hover:bg-rose-50 shadow-sm backdrop-blur-sm"><Trash size={14} /></button>
+                  {userRole !== 'guest' && (
+                    <button onClick={(e) => { e.stopPropagation(); onDelete({ id: item.original_id || item.id, type: 'media' }); }} className="absolute top-2 right-2 p-2 bg-white/90 text-rose-500 rounded-xl opacity-0 group-hover:opacity-100 transition-all z-10 hover:bg-rose-50 shadow-sm backdrop-blur-sm"><Trash size={14} /></button>
+                  )}
                   {item.is_problem && <div className="absolute bottom-2 left-2 bg-rose-500 text-white p-1 rounded-md shadow-md"><AlertCircle size={12} /></div>}
                 </div>
                 <div className="px-1">
@@ -2681,7 +2687,7 @@ const DokumentasiView = ({ feeds, onView, onDelete }) => {
   );
 };
 
-const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }) => {
+const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, userRole }) => {
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [showPlanEditor, setShowPlanEditor] = useState(false);
   const isInitialSiteFitDone = useRef(false); // State penanda untuk Peta Detail
@@ -3411,14 +3417,14 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds }
           <Download size={16} className="shrink-0" /> <span className="hidden sm:inline truncate">Export KML</span>
         </button>
 
-        {!showPlanEditor && (
+        {!showPlanEditor && userRole !== 'guest' && (
           <button onClick={() => { setShowPlanEditor(true); setInputMode('plan'); }} className="bg-blue-600 text-white p-2 sm:px-3 sm:py-2 sm:w-[130px] rounded-xl shadow-md text-[10px] sm:text-[11px] font-bold flex items-center justify-center sm:justify-start gap-2 border border-blue-500 hover:bg-blue-700 transition-all">
             <Ruler size={16} className="shrink-0" /> <span className="hidden sm:inline truncate">Editor Rute</span>
           </button>
         )}
       </div>
 
-      {showPlanEditor && (
+      {showPlanEditor && userRole !== 'guest' && (
         <div className="absolute top-32 md:top-28 right-4 bottom-4 z-30 w-[300px] md:w-[360px] bg-white/95 backdrop-blur-xl border border-slate-200 rounded-3xl shadow-2xl flex flex-col pointer-events-auto">
           <button onClick={() => { setShowPlanEditor(false); setInputMode('view'); }} className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 rounded-full transition-colors z-40 shadow-sm" title="Tutup Editor">
             <X size={16} />
@@ -3839,16 +3845,16 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
                  {/* Dropdown Filter Tahun */}
                  <div className="relative">
                     <select 
-                       className="w-full appearance-none bg-slate-800/80 border border-slate-600 text-white py-3 pl-5 pr-10 rounded-2xl text-xs font-bold outline-none cursor-pointer hover:bg-slate-700 transition-colors focus:border-white shadow-inner"
+                       className="w-full appearance-none bg-slate-900 border border-slate-600 text-white py-3 pl-5 pr-10 rounded-2xl text-xs font-bold outline-none cursor-pointer hover:bg-slate-950 transition-colors focus:border-white shadow-inner"
                        value={selectedYear}
                        onChange={(e) => {
                           setSelectedYear(e.target.value);
                           setSelectedProjectId(''); // Reset pilihan proyek jika tahun diganti
                        }}
                     >
-                       <option value="Semua" className="bg-slate-800 text-white">Tahun</option>
+                       <option value="Semua" className="bg-slate-900 text-white">Tahun</option>
                        {uniqueYears.map(year => (
-                          <option key={year} value={year} className="bg-slate-800 text-white">{year}</option>
+                          <option key={year} value={year} className="bg-slate-900 text-white">{year}</option>
                        ))}
                     </select>
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-white">
@@ -3859,13 +3865,13 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
                  {/* Dropdown Pilih Proyek */}
                  <div className="relative">
                     <select 
-                       className="w-full appearance-none bg-slate-900/50 border border-slate-600 text-slate-200 py-4 pl-5 pr-10 rounded-2xl text-xs md:text-sm font-bold outline-none cursor-pointer hover:bg-slate-700/50 transition-colors focus:border-white/50 shadow-inner"
+                       className="w-full appearance-none bg-slate-900 border border-slate-600 text-slate-200 py-4 pl-5 pr-10 rounded-2xl text-xs md:text-sm font-bold outline-none cursor-pointer hover:bg-slate-950 transition-colors focus:border-white/50 shadow-inner"
                        value={selectedProjectId}
                        onChange={(e) => setSelectedProjectId(e.target.value)}
                     >
-                       <option value="" disabled className="bg-slate-800">-- Pilih Judul Pekerjaan --</option>
+                       <option value="" disabled className="bg-slate-900 text-slate-400">-- Pilih Judul Pekerjaan --</option>
                        {filteredProjects && filteredProjects.map(p => (
-                          <option key={p.id} value={p.id} className="bg-slate-800 text-slate-200">{p.pekerjaan}</option>
+                          <option key={p.id} value={p.id} className="bg-slate-900 text-slate-200">{p.pekerjaan}</option>
                        ))}
                     </select>
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
