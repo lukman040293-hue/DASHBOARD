@@ -3664,6 +3664,19 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
   // State untuk menyimpan ID proyek yang dipilih pada dropdown
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [isUIHidden, setIsUIHidden] = useState(true);
+  const [selectedYear, setSelectedYear] = useState('Semua'); // State baru untuk filter tahun
+
+  // Mendapatkan daftar tahun unik dari data proyek (diurutkan dari yang terbaru)
+  const uniqueYears = useMemo(() => {
+     const years = projects.map(p => p.tahun).filter(Boolean);
+     return [...new Set(years)].sort((a, b) => b - a);
+  }, [projects]);
+
+  // Memfilter proyek berdasarkan tahun yang dipilih
+  const filteredProjects = useMemo(() => {
+     if (selectedYear === 'Semua') return projects;
+     return projects.filter(p => String(p.tahun) === String(selectedYear));
+  }, [projects, selectedYear]);
 
   return (
     <div className="flex flex-col h-screen w-full bg-[#151515] font-sans relative overflow-hidden">
@@ -3672,6 +3685,13 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden flex items-center justify-center">
          <div className="absolute top-[10%] left-[20%] w-[300px] h-[300px] bg-blue-500/20 rounded-full blur-[120px]"></div>
          <div className="absolute bottom-[10%] right-[20%] w-[300px] h-[300px] bg-slate-400/10 rounded-full blur-[120px]"></div>
+      </div>
+
+      {/* TOMBOL LOGOUT (POJOK KANAN ATAS) */}
+      <div className="absolute top-6 right-4 md:top-10 md:right-10 z-[99999] pointer-events-auto">
+        <button onClick={onLogout} className="p-3 md:p-3.5 bg-rose-500/20 text-rose-400 rounded-2xl hover:bg-rose-500/30 hover:text-rose-300 transition-all hover:scale-105 flex items-center justify-center shadow-lg backdrop-blur-md border border-rose-500/30" title="Keluar dari Sistem">
+           <LogOut size={20} />
+        </button>
       </div>
 
       {/* MENU TOGGLE & AKSI (DI TENGAH ATAS) */}
@@ -3699,9 +3719,6 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
           <button onClick={onViewAbsensi} className="p-3 md:p-3.5 bg-emerald-500/20 text-emerald-400 rounded-2xl hover:bg-emerald-500/30 hover:text-emerald-300 transition-all hover:scale-105 flex items-center justify-center shadow-lg backdrop-blur-md border border-emerald-500/30" title="Data Absensi">
              <Fingerprint size={20} />
           </button>
-          <button onClick={onLogout} className="p-3 md:p-3.5 bg-rose-500/20 text-rose-400 rounded-2xl hover:bg-rose-500/30 hover:text-rose-300 transition-all hover:scale-105 flex items-center justify-center shadow-lg backdrop-blur-md border border-rose-500/30" title="Keluar dari Sistem">
-             <LogOut size={20} />
-          </button>
         </div>
       </div>
 
@@ -3721,6 +3738,27 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
               <p className="text-base text-slate-200 font-medium leading-relaxed mb-8 relative z-10">Pilih Untuk Melihat Secara Detail</p>
               
               <div className="mt-auto w-full flex flex-col gap-3 relative z-10">
+                 {/* Dropdown Filter Tahun */}
+                 <div className="relative">
+                    <select 
+                       className="w-full appearance-none bg-slate-800/80 border border-slate-600 text-blue-300 py-3 pl-5 pr-10 rounded-2xl text-xs font-bold outline-none cursor-pointer hover:bg-slate-700 transition-colors focus:border-blue-400 shadow-inner"
+                       value={selectedYear}
+                       onChange={(e) => {
+                          setSelectedYear(e.target.value);
+                          setSelectedProjectId(''); // Reset pilihan proyek jika tahun diganti
+                       }}
+                    >
+                       <option value="Semua" className="bg-slate-800 text-slate-200">Semua Tahun Anggaran</option>
+                       {uniqueYears.map(year => (
+                          <option key={year} value={year} className="bg-slate-800 text-slate-200">Tahun Anggaran {year}</option>
+                       ))}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-blue-400">
+                       <ChevronDown size={16} />
+                    </div>
+                 </div>
+
+                 {/* Dropdown Pilih Proyek */}
                  <div className="relative">
                     <select 
                        className="w-full appearance-none bg-slate-900/50 border border-slate-600 text-slate-200 py-4 pl-5 pr-10 rounded-2xl text-xs md:text-sm font-bold outline-none cursor-pointer hover:bg-slate-700/50 transition-colors focus:border-white/50 shadow-inner"
@@ -3728,7 +3766,7 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
                        onChange={(e) => setSelectedProjectId(e.target.value)}
                     >
                        <option value="" disabled className="bg-slate-800">-- Pilih Judul Pekerjaan --</option>
-                       {projects && projects.map(p => (
+                       {filteredProjects && filteredProjects.map(p => (
                           <option key={p.id} value={p.id} className="bg-slate-800 text-slate-200">{p.pekerjaan}</option>
                        ))}
                     </select>
