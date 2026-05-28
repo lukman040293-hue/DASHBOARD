@@ -3679,10 +3679,10 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
         {/* Tombol Panah Tengah */}
         <button 
           onClick={() => setIsUIHidden(!isUIHidden)}
-          className="w-12 h-12 md:w-14 md:h-14 bg-slate-800/80 backdrop-blur-xl rounded-full flex items-center justify-center text-white shadow-[0_8px_30px_rgba(0,0,0,0.3)] hover:scale-105 hover:bg-slate-700 transition-all border border-slate-600/50 z-20"
+          className="flex items-center justify-center text-white/80 hover:text-white hover:scale-125 transition-all z-20 drop-shadow-lg"
           title={isUIHidden ? "Tampilkan Menu Akses" : "Sembunyikan Menu"}
         >
-           <ChevronDown size={28} className={`transition-transform duration-500 ${!isUIHidden ? 'rotate-180' : ''}`} />
+           <ChevronDown size={36} strokeWidth={2.5} className={`transition-transform duration-500 ${!isUIHidden ? 'rotate-180' : ''}`} />
         </button>
 
         {/* Deretan Ikon Aksi (Muncul saat diklik) */}
@@ -6114,10 +6114,10 @@ export default function App() {
         {/* TOMBOL TOGGLE SIDEBAR PADA GARIS PEMBATAS */}
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="absolute -right-3.5 top-[152px] p-1 bg-white border border-slate-200 rounded-full shadow-sm text-slate-400 hover:text-blue-600 hover:bg-blue-50 hover:scale-110 transition-all z-[200] cursor-pointer"
+          className="absolute -right-2 top-[152px] text-slate-400 hover:text-blue-600 hover:scale-125 transition-all z-[200] cursor-pointer bg-transparent border-none outline-none"
           title={isSidebarOpen ? "Perkecil Menu" : "Perbesar Menu"}
         >
-          {isSidebarOpen ? <ChevronLeft size={16} strokeWidth={2.5} /> : <ChevronRight size={16} strokeWidth={2.5} />}
+          {isSidebarOpen ? <ChevronLeft size={20} strokeWidth={3} /> : <ChevronRight size={20} strokeWidth={3} />}
         </button>
 
         <div className={`flex flex-col h-full ${isSidebarOpen ? 'p-5' : 'p-4 items-center'}`}>
