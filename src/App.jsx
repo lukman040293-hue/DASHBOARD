@@ -3695,18 +3695,18 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
       </div>
 
       {/* MENU TOGGLE & AKSI (DI TENGAH ATAS) */}
-      <div className={`absolute left-1/2 -translate-x-1/2 z-[99999] flex flex-col items-center pointer-events-auto w-full px-4 transition-all duration-500 ${isModalOpen ? 'top-2' : 'top-6 md:top-10'}`}>
+      <div className={`absolute left-1/2 -translate-x-1/2 z-[99999] flex flex-col items-center pointer-events-none w-full px-4 transition-all duration-500 ${isModalOpen ? 'top-2' : 'top-6 md:top-10'}`}>
         {/* Tombol Panah Tengah */}
         <button 
           onClick={() => setIsUIHidden(!isUIHidden)}
-          className={`flex items-center justify-center text-white/80 hover:text-white hover:scale-125 transition-all z-20 drop-shadow-lg ${isModalOpen ? 'hidden' : ''}`}
+          className={`pointer-events-auto flex items-center justify-center text-white/80 hover:text-white hover:scale-125 transition-all z-20 drop-shadow-lg ${isModalOpen ? 'hidden' : ''}`}
           title={isUIHidden ? "Tampilkan Menu Akses" : "Sembunyikan Menu"}
         >
            <ChevronDown size={36} strokeWidth={2.5} className={`transition-transform duration-500 ${!isUIHidden ? 'rotate-180' : ''}`} />
         </button>
 
         {/* Deretan Ikon Aksi (Muncul saat diklik) */}
-        <div className={`flex flex-wrap justify-center items-center gap-2 md:gap-3 transition-all duration-500 ease-out origin-top absolute z-10 ${isModalOpen ? 'top-0 scale-90 opacity-100 translate-y-0' : `top-16 md:top-20 ${isUIHidden ? 'opacity-0 scale-75 pointer-events-none -translate-y-10' : 'opacity-100 scale-100 translate-y-0'}`}`}>
+        <div className={`pointer-events-auto flex flex-wrap justify-center items-center gap-2 md:gap-3 transition-all duration-500 ease-out origin-top absolute z-10 ${isModalOpen ? 'top-0 scale-90 opacity-100 translate-y-0' : `top-16 md:top-20 ${isUIHidden ? 'opacity-0 scale-75 pointer-events-none -translate-y-10' : 'opacity-100 scale-100 translate-y-0'}`}`}>
           <button onClick={onAddProject} className="p-3 md:p-3.5 bg-emerald-500/20 text-emerald-400 rounded-2xl hover:bg-emerald-500/30 hover:text-emerald-300 transition-all hover:scale-105 flex items-center justify-center shadow-lg backdrop-blur-md border border-emerald-500/30" title="Kamar Proyek Baru">
              <Plus size={20} />
           </button>
