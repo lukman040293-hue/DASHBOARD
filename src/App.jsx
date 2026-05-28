@@ -6152,10 +6152,10 @@ export default function App() {
         {/* TOMBOL TOGGLE SIDEBAR PADA GARIS PEMBATAS */}
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="absolute -right-2 top-[152px] text-slate-400 hover:text-blue-600 hover:scale-125 transition-all z-[200] cursor-pointer bg-transparent border-none outline-none"
+          className="absolute -right-3.5 top-8 flex items-center justify-center w-7 h-7 bg-white border border-slate-200 shadow-sm rounded-full text-slate-400 hover:text-blue-600 hover:scale-110 transition-all z-[200] cursor-pointer"
           title={isSidebarOpen ? "Perkecil Menu" : "Perbesar Menu"}
         >
-          {isSidebarOpen ? <ChevronLeft size={20} strokeWidth={3} /> : <ChevronRight size={20} strokeWidth={3} />}
+          {isSidebarOpen ? <ChevronLeft size={14} strokeWidth={3} /> : <ChevronRight size={14} strokeWidth={3} />}
         </button>
 
         <div className={`flex flex-col h-full ${isSidebarOpen ? 'p-5' : 'p-4 items-center'}`}>
