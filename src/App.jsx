@@ -3660,11 +3660,12 @@ const LoginView = ({ onLogin, error, isProcessing }) => {
 };
 
 // --- VIEW BARU: GERBANG PEMILIHAN MODE ---
-const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddProject, onLogout, onViewAbsensi, onViewRekap, isModalOpen }) => {
+const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddProject, onLogout, onViewAbsensi, onViewRekap, isModalOpen, globalFeeds, globalReadFeeds, onMarkAllGlobalRead, onGlobalNotifClick }) => {
   // State untuk menyimpan ID proyek yang dipilih pada dropdown
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [isUIHidden, setIsUIHidden] = useState(true);
   const [selectedYear, setSelectedYear] = useState('Semua'); // State baru untuk filter tahun
+  const [showNotif, setShowNotif] = useState(false); // State untuk dropdown notifikasi
 
   // Mendapatkan daftar tahun unik dari data proyek (diurutkan dari yang terbaru)
   const uniqueYears = useMemo(() => {
@@ -3678,6 +3679,8 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
      return projects.filter(p => String(p.tahun) === String(selectedYear));
   }, [projects, selectedYear]);
 
+  const unreadCount = (globalFeeds || []).filter(f => !globalReadFeeds.has(f.id)).length;
+
   return (
     <div className="flex flex-col h-screen w-full bg-[#151515] font-sans relative overflow-hidden">
       
@@ -3687,8 +3690,72 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
          <div className="absolute bottom-[10%] right-[20%] w-[300px] h-[300px] bg-slate-400/10 rounded-full blur-[120px]"></div>
       </div>
 
-      {/* TOMBOL LOGOUT (POJOK KANAN ATAS) */}
-      <div className="absolute top-6 right-4 md:top-10 md:right-10 z-[99999] pointer-events-auto">
+      {/* TOMBOL NOTIFIKASI & LOGOUT (POJOK KANAN ATAS) */}
+      <div className="absolute top-6 right-4 md:top-10 md:right-10 z-[99999] pointer-events-auto flex items-center gap-3">
+        
+        {/* LONCENG NOTIFIKASI GLOBAL */}
+        <div className="relative">
+            <button 
+                onClick={() => setShowNotif(!showNotif)} 
+                className={`p-3 md:p-3.5 rounded-2xl transition-all hover:scale-105 flex items-center justify-center shadow-lg backdrop-blur-md border ${unreadCount > 0 ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-slate-500/20 text-slate-300 border-slate-500/30'}`}
+                title="Notifikasi Aktivitas"
+            >
+                <Bell size={20} className={unreadCount > 0 ? 'animate-pulse' : ''} />
+                {unreadCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-[20px] h-[20px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-black shadow-sm border border-slate-800">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                )}
+            </button>
+
+            {/* DROPDOWN NOTIFIKASI */}
+            {showNotif && (
+                <div className="absolute top-full right-0 mt-3 w-80 sm:w-96 bg-slate-800/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-700/50 overflow-hidden flex flex-col max-h-[400px]">
+                    <div className="p-4 border-b border-slate-700/50 flex justify-between items-center bg-slate-800/80 shrink-0">
+                        <span className="text-sm font-black text-white flex items-center gap-2"><Bell size={16} className="text-blue-400"/> Notifikasi Proyek</span>
+                        {unreadCount > 0 && (
+                            <button onClick={onMarkAllGlobalRead} className="text-[10px] text-blue-400 font-bold hover:text-blue-300 transition-colors">Tandai semua dibaca</button>
+                        )}
+                    </div>
+                    <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-700/30 min-h-0">
+                        {globalFeeds && globalFeeds.length > 0 ? (
+                            globalFeeds.map(feed => {
+                                const isUnread = !globalReadFeeds.has(feed.id);
+                                const proj = projects.find(p => p.id === feed.project_id);
+                                const projName = proj ? proj.pekerjaan : 'Proyek tidak ditemukan';
+                                return (
+                                    <div 
+                                        key={feed.id} 
+                                        onClick={() => { onGlobalNotifClick(feed); setShowNotif(false); }}
+                                        className={`p-4 hover:bg-slate-700/50 transition-colors cursor-pointer flex gap-3 items-start ${isUnread ? 'bg-blue-500/10' : ''}`}
+                                    >
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 shadow-sm border ${feed.is_problem ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>
+                                            {feed.is_problem ? <AlertCircle size={14} /> : <Activity size={14} />}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className={`text-[11px] font-black uppercase truncate ${isUnread ? 'text-blue-100' : 'text-slate-300'}`} title={projName}>
+                                                {projName}
+                                            </h4>
+                                            <p className={`text-[10px] truncate mt-0.5 ${isUnread ? 'text-blue-300 font-bold' : 'text-slate-400'}`}>
+                                                {feed.title} masuk
+                                            </p>
+                                            <p className="text-[9px] text-slate-500 font-medium mt-1.5">{new Date(feed.created_at).toLocaleString('id-ID', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'})} WIB</p>
+                                        </div>
+                                        {isUnread && <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0 shadow-[0_0_8px_rgba(59,130,246,0.8)]"></div>}
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div className="p-8 text-center text-slate-500 text-xs font-medium flex flex-col items-center">
+                                <Bell size={32} className="opacity-20 mb-3" />
+                                Belum ada aktivitas proyek
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+
         <button onClick={onLogout} className="p-3 md:p-3.5 bg-rose-500/20 text-rose-400 rounded-2xl hover:bg-rose-500/30 hover:text-rose-300 transition-all hover:scale-105 flex items-center justify-center shadow-lg backdrop-blur-md border border-rose-500/30" title="Keluar dari Sistem">
            <LogOut size={20} />
         </button>
@@ -3735,7 +3802,7 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
               <div className="w-24 h-24 bg-slate-700/60 text-white/70 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-white/10 group-hover:text-white transition-all shadow-sm relative z-10 border border-slate-600/50">
                  <Grid size={40} />
               </div>
-              <p className="text-base text-slate-200 font-medium leading-relaxed mb-8 relative z-10">Pilih Untuk Melihat Secara Detail</p>
+              <p className="text-base text-slate-200 font-medium leading-relaxed mb-8 relative z-10">Lihat Detail</p>
               
               <div className="mt-auto w-full flex flex-col gap-3 relative z-10">
                  {/* Dropdown Filter Tahun */}
@@ -3748,9 +3815,9 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
                           setSelectedProjectId(''); // Reset pilihan proyek jika tahun diganti
                        }}
                     >
-                       <option value="Semua" className="bg-slate-800 text-slate-200">Semua Tahun Anggaran</option>
+                       <option value="Semua" className="bg-slate-800 text-slate-200">Tahun</option>
                        {uniqueYears.map(year => (
-                          <option key={year} value={year} className="bg-slate-800 text-slate-200">Tahun Anggaran {year}</option>
+                          <option key={year} value={year} className="bg-slate-800 text-slate-200">{year}</option>
                        ))}
                     </select>
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-blue-400">
@@ -3923,6 +3990,34 @@ export default function App() {
   const [sCurveData, setSCurveData] = useState([]);
   const [attendances, setAttendances] = useState([]);
   const [employees, setEmployees] = useState([]);
+
+  // STATE NOTIFIKASI GLOBAL
+  const [globalFeeds, setGlobalFeeds] = useState([]);
+  const [globalReadFeeds, setGlobalReadFeeds] = useState(() => {
+     const saved = localStorage.getItem('globalReadFeeds');
+     return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
+  const globalLatestFeedIdRef = useRef(null);
+
+  useEffect(() => {
+     localStorage.setItem('globalReadFeeds', JSON.stringify(Array.from(globalReadFeeds)));
+  }, [globalReadFeeds]);
+
+  const fetchGlobalFeeds = async () => {
+     try {
+        const { data, error } = await supabaseClient
+           .from('field_reports')
+           .select('id, title, created_at, project_id, is_problem')
+           .order('created_at', { ascending: false })
+           .limit(30);
+        if (!error && data) {
+           setGlobalFeeds(data);
+           if (data.length > 0 && !globalLatestFeedIdRef.current) {
+               globalLatestFeedIdRef.current = data[0].id;
+           }
+        }
+     } catch (e) { console.error("Error fetching global feeds:", e); }
+  };
 
   const [supabaseClient, setSupabaseClient] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -4241,6 +4336,7 @@ export default function App() {
         fetchAllProjects(); 
         fetchAttendances();
         fetchEmployees();
+        fetchGlobalFeeds();
      }
   }, [supabaseClient, isLoggedIn]);
 
@@ -4263,6 +4359,27 @@ export default function App() {
       // Refresh daftar proyek di gerbang pemilihan secara berkala
       if (appMode === 'selection' || appMode === 'project_list' || appMode === 'master') {
           fetchAllProjects();
+          
+          // Cek notifikasi global baru
+          const { data: newFeeds } = await supabaseClient
+              .from('field_reports')
+              .select('id, title, project_id')
+              .order('created_at', { ascending: false })
+              .limit(1);
+              
+          if (newFeeds && newFeeds.length > 0) {
+              const currentLatestId = newFeeds[0].id;
+              if (globalLatestFeedIdRef.current && globalLatestFeedIdRef.current !== currentLatestId) {
+                  const isAlreadyExist = globalFeeds.some(f => f.id === currentLatestId);
+                  if (!isAlreadyExist) {
+                      const proj = masterProjects.find(p => p.id === newFeeds[0].project_id);
+                      const projName = proj ? proj.pekerjaan : 'Proyek';
+                      showMsg(`🔔 ${projName} - ${newFeeds[0].title} masuk`, "success");
+                  }
+              }
+              globalLatestFeedIdRef.current = currentLatestId;
+          }
+          fetchGlobalFeeds();
       }
 
       // Refresh data absensi secara berkala jika berada di tampilan absensi
@@ -5908,6 +6025,16 @@ export default function App() {
             onAddProject={() => setShowNewProjectModal(true)}
             onViewRekap={() => setShowGlobalRekap(true)}
             isModalOpen={showGlobalRekap || showNewProjectModal || (deleteConfig && deleteConfig.type === 'project')}
+            globalFeeds={globalFeeds}
+            globalReadFeeds={globalReadFeeds}
+            onMarkAllGlobalRead={() => {
+                setGlobalReadFeeds(new Set(globalFeeds.map(f => f.id)));
+            }}
+            onGlobalNotifClick={(feed) => {
+                setGlobalReadFeeds(prev => { const n = new Set(prev); n.add(feed.id); return n; });
+                const p = masterProjects.find(proj => proj.id === feed.project_id);
+                if (p) handleSelectProject(p);
+            }}
          />
          {showNewProjectModal && (
           <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[5000] p-4">
