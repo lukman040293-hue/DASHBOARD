@@ -3743,7 +3743,7 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
             {showNotif && (
                 <div className="absolute top-full right-0 mt-3 w-80 sm:w-96 bg-slate-800/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-700/50 overflow-hidden flex flex-col max-h-[400px]">
                     <div className="p-4 border-b border-slate-700/50 flex justify-between items-center bg-slate-800/80 shrink-0">
-                        <span className="text-sm font-black text-white flex items-center gap-2"><Bell size={16} className="text-blue-400"/> Notifikasi Proyek</span>
+                        <span className="text-sm font-black text-white flex items-center gap-2"><Bell size={16} className="text-blue-400"/> Notifikasi</span>
                         {unreadCount > 0 && (
                             <button onClick={onMarkAllGlobalRead} className="text-[10px] text-blue-400 font-bold hover:text-blue-300 transition-colors">Tandai semua dibaca</button>
                         )}
@@ -3882,7 +3882,7 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
                        }} 
                        className="w-full py-4 bg-white text-slate-900 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-colors shadow-md animate-in fade-in slide-in-from-bottom-2 flex items-center justify-center gap-2"
                     >
-                       Buka Proyek <ChevronRight size={16} />
+                       Buka <ChevronRight size={16} />
                     </button>
                  )}
               </div>
