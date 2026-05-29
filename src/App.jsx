@@ -1157,7 +1157,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
               <div class="relative flex items-center justify-center pointer-events-auto cursor-pointer group" style="transform: translate(-50%, -50%); width: 48px; height: 48px; z-index: 1000;">
                   <div class="absolute bottom-full mb-3 opacity-0 group-hover:opacity-100 translate-y-3 group-hover:translate-y-0 transition-all duration-300 ease-out w-max max-w-[240px] z-[9999] pointer-events-none flex flex-col items-center">
                      <div class="bg-white/80 backdrop-blur-[70px] rounded-2xl shadow-2xl border border-white/60 overflow-hidden relative w-full p-4">
-                        <h3 class="text-[11px] font-black text-slate-800 leading-relaxed text-left mb-3 line-clamp-3 uppercase tracking-wider">${proj.pekerjaan}</h3>
+                        <h3 class="text-[11px] font-black text-slate-800 leading-relaxed text-left mb-3 line-clamp-3 uppercase tracking-wider">[${proj.tahun || '-'}] ${proj.pekerjaan}</h3>
                         <div class="flex justify-between items-end border-t border-slate-300/40 pt-3">
                            <div class="flex flex-col text-left"><span class="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Status</span><span class="text-[10px] font-black uppercase tracking-widest" style="color: ${hexColor}">${statusText}</span></div>
                            <div class="flex flex-col text-right pl-6"><span class="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Progress</span><span class="text-2xl font-black leading-none drop-shadow-sm" style="color: ${hexColor}">${actualProg.toFixed(1)}<span class="text-sm">%</span></span></div>
@@ -1248,13 +1248,12 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
               coords.forEach(c => bounds.extend(c));
               hasData = true;
 
-              // Label Nama Sketsa
               if (showSketchLabels) {
                 const center = shape.getBounds().getCenter();
-                window.L.marker(center, { interactive: false, zIndexOffset: 100, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `<div style="transform: translate(-50%, -150%); background-color: rgba(0,0,0,0.8); color: ${pathObj.color || (isPolygon ? '#34d399' : '#fbbf24')}; border: 1px ${pathObj.isDashed ? 'dashed' : 'solid'} ${pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')};" class="w-max px-3 py-1.5 rounded-xl text-[9px] font-black whitespace-nowrap shadow-lg uppercase tracking-wider backdrop-blur-md">${p.pekerjaan.substring(0, 15)}... - ${pathObj.name || (isPolygon ? 'Poligon' : 'Sketsa')}</div>`, iconSize: [0, 0] }) }).addTo(routeLayerRef.current);
+                const labelTahun = p.tahun ? `[${p.tahun}] ` : '';
+                window.L.marker(center, { interactive: false, zIndexOffset: 100, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `<div style="transform: translate(-50%, -150%); background-color: rgba(0,0,0,0.8); color: ${pathObj.color || (isPolygon ? '#34d399' : '#fbbf24')}; border: 1px ${pathObj.isDashed ? 'dashed' : 'solid'} ${pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')};" class="w-max px-3 py-1.5 rounded-xl text-[10px] font-black whitespace-nowrap shadow-lg uppercase tracking-wider backdrop-blur-md">${labelTahun}${p.pekerjaan.substring(0, 15)}... - ${pathObj.name || (isPolygon ? 'Poligon' : 'Sketsa')}</div>`, iconSize: [0, 0] }) }).addTo(routeLayerRef.current);
               }
 
-              // Kalkulasi Jarak & Titik Koordinat Sketsa
               let segmentTotalDist = 0;
               for (let i = 0; i < coords.length; i++) {
                 if (showSketchPoints) {
@@ -1290,10 +1289,15 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
 
               if (coords.length > 0) {
                 if (coords.length > 1) {
-                  window.L.polyline(coords, { color: segColor, weight: 5, opacity: 0.9 }).addTo(surveyLayerRef.current);
+                  const actualShape = window.L.polyline(coords, { color: segColor, weight: 5, opacity: 0.9 }).addTo(surveyLayerRef.current);
+                  
+                  if (showSketchLabels) {
+                    const center = actualShape.getBounds().getCenter();
+                    const labelTahun = p.tahun ? `[${p.tahun}] ` : '';
+                    window.L.marker(center, { interactive: false, zIndexOffset: 110, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `<div style="transform: translate(-50%, 50%); background-color: rgba(255,255,255,0.95); color: ${segColor}; border: 2px solid ${segColor};" class="w-max px-3 py-1.5 rounded-xl text-[10px] font-black whitespace-nowrap shadow-lg uppercase tracking-wider backdrop-blur-md">${labelTahun}${p.pekerjaan.substring(0, 15)}... - ${seg.name || 'Segmen Realisasi'}</div>`, iconSize: [0, 0] }) }).addTo(surveyLayerRef.current);
+                  }
                 }
 
-                // Gambar garis putus-putus penghubung titik rute terakhir ke Target Akhir (Boundary End Survey)
                 if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
                     const lastPt = coords[coords.length - 1];
                     const boundaryPt = [parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)];
@@ -1367,23 +1371,22 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
     <>
       <div ref={mapContainerRef} className="absolute inset-0 z-0 bg-slate-900" style={{ height: '100%', width: '100%' }} />
       
-      {/* FLOATING TOGGLE LAYERS PETA INDUK (KANAN BAWAH) */}
-      <div className="absolute bottom-6 right-4 md:right-6 z-[9999] flex flex-col items-end gap-2 pointer-events-auto">
-          <button onClick={() => setShowPaths(!showPaths)} className={`bg-black/60 backdrop-blur-md p-2 sm:px-3 sm:py-2.5 sm:w-[150px] rounded-2xl shadow-lg text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center sm:justify-start gap-2 border border-white/10 hover:bg-black/80 transition-all ${!showPaths ? 'text-slate-400' : 'text-white border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]'}`} title="Tampilkan/Sembunyikan Jalur Rencana & Realisasi Seluruh Proyek">
-            {showPaths ? <Eye size={16} className="text-blue-400" /> : <EyeOff size={16} />} 
+      <div className="absolute bottom-[85px] md:bottom-6 right-4 md:right-6 z-[9999] flex flex-row md:flex-col flex-wrap items-end justify-end gap-2 pointer-events-auto max-w-[90vw] md:max-w-none">
+          <button onClick={() => setShowPaths(!showPaths)} className={`bg-black/60 backdrop-blur-md p-2.5 sm:px-3 sm:py-2.5 sm:w-[150px] rounded-2xl shadow-lg text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center sm:justify-start gap-2 border border-white/10 hover:bg-black/80 transition-all ${!showPaths ? 'text-slate-400' : 'text-white border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]'}`} title="Tampilkan/Sembunyikan Jalur Rencana & Realisasi Seluruh Proyek">
+            {showPaths ? <Eye size={16} className="text-blue-400 shrink-0" /> : <EyeOff size={16} className="shrink-0" />} 
             <span className="hidden sm:inline truncate">Jalur Proyek</span>
           </button>
           
           {showPaths && (
              <>
-              <button onClick={() => setShowSketchPoints(!showSketchPoints)} className={`bg-black/60 backdrop-blur-md p-2 sm:px-3 sm:py-2.5 sm:w-[150px] rounded-2xl shadow-lg text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center sm:justify-start gap-2 border border-white/10 hover:bg-black/80 transition-all ${!showSketchPoints ? 'text-slate-400' : 'text-white border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]'}`}>
-                <MapPin size={16} className={showSketchPoints ? "text-emerald-400" : ""} /> <span className="hidden sm:inline truncate">Titik Lokasi</span>
+              <button onClick={() => setShowSketchPoints(!showSketchPoints)} className={`bg-black/60 backdrop-blur-md p-2.5 sm:px-3 sm:py-2.5 sm:w-[150px] rounded-2xl shadow-lg text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center sm:justify-start gap-2 border border-white/10 hover:bg-black/80 transition-all ${!showSketchPoints ? 'text-slate-400' : 'text-white border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]'}`}>
+                <MapPin size={16} className={`shrink-0 ${showSketchPoints ? "text-emerald-400" : ""}`} /> <span className="hidden sm:inline truncate">Titik Lokasi</span>
               </button>
-              <button onClick={() => setShowSketchLabels(!showSketchLabels)} className={`bg-black/60 backdrop-blur-md p-2 sm:px-3 sm:py-2.5 sm:w-[150px] rounded-2xl shadow-lg text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center sm:justify-start gap-2 border border-white/10 hover:bg-black/80 transition-all ${!showSketchLabels ? 'text-slate-400' : 'text-white border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]'}`}>
-                <FileText size={16} className={showSketchLabels ? "text-amber-400" : ""} /> <span className="hidden sm:inline truncate">Label Nama</span>
+              <button onClick={() => setShowSketchLabels(!showSketchLabels)} className={`bg-black/60 backdrop-blur-md p-2.5 sm:px-3 sm:py-2.5 sm:w-[150px] rounded-2xl shadow-lg text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center sm:justify-start gap-2 border border-white/10 hover:bg-black/80 transition-all ${!showSketchLabels ? 'text-slate-400' : 'text-white border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]'}`}>
+                <FileText size={16} className={`shrink-0 ${showSketchLabels ? "text-amber-400" : ""}`} /> <span className="hidden sm:inline truncate">Label Nama</span>
               </button>
-              <button onClick={() => setShowDistances(!showDistances)} className={`bg-black/60 backdrop-blur-md p-2 sm:px-3 sm:py-2.5 sm:w-[150px] rounded-2xl shadow-lg text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center sm:justify-start gap-2 border border-white/10 hover:bg-black/80 transition-all ${!showDistances ? 'text-slate-400' : 'text-white border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.3)]'}`}>
-                <Ruler size={16} className={showDistances ? "text-cyan-400" : ""} /> <span className="hidden sm:inline truncate">Jarak (m/km)</span>
+              <button onClick={() => setShowDistances(!showDistances)} className={`bg-black/60 backdrop-blur-md p-2.5 sm:px-3 sm:py-2.5 sm:w-[150px] rounded-2xl shadow-lg text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center sm:justify-start gap-2 border border-white/10 hover:bg-black/80 transition-all ${!showDistances ? 'text-slate-400' : 'text-white border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.3)]'}`}>
+                <Ruler size={16} className={`shrink-0 ${showDistances ? "text-cyan-400" : ""}`} /> <span className="hidden sm:inline truncate">Jarak (m/km)</span>
               </button>
              </>
           )}
@@ -3340,8 +3343,8 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
       <div ref={mapContainerRef} className="absolute inset-0 z-0" />
       
       {/* --- LEGENDA PETA --- */}
-      <div className="absolute top-6 left-6 z-20 bg-white/95 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-xl p-4 flex flex-col gap-3 pointer-events-auto">
-        <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-b border-slate-200/50 pb-2">Legenda Peta</h4>
+      <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 bg-white/95 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-xl p-3 sm:p-4 flex flex-col gap-2 sm:gap-3 pointer-events-auto max-w-[160px] sm:max-w-xs overflow-hidden">
+        <h4 className="text-[9px] sm:text-[10px] font-black uppercase text-slate-500 tracking-widest border-b border-slate-200/50 pb-1.5 sm:pb-2 truncate">Legenda Peta</h4>
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-3">
             <svg width="16" height="16" viewBox="0 0 384 512" xmlns="http://www.w3.org/2000/svg">
@@ -3397,28 +3400,28 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
         </div>
       </div>
 
-      <div className="absolute top-4 right-4 md:top-6 md:right-6 z-20 flex flex-col items-end gap-2 pointer-events-auto">
-        <button onClick={() => setShowPaths(!showPaths)} className={`bg-white p-2 sm:px-3 sm:py-2 sm:w-[130px] rounded-xl shadow-md text-[10px] sm:text-[11px] font-bold flex items-center justify-center sm:justify-start gap-2 border border-slate-100 hover:bg-slate-50 transition-all ${!showPaths ? 'text-slate-400' : 'text-blue-600'}`}>
+      <div className="absolute bottom-[85px] md:bottom-auto md:top-6 right-4 md:right-6 z-20 flex flex-row md:flex-col flex-wrap items-end justify-end gap-2 pointer-events-auto max-w-[90vw] md:max-w-none">
+        <button onClick={() => setShowPaths(!showPaths)} className={`bg-white p-2.5 sm:px-3 sm:py-2 sm:w-[130px] rounded-xl shadow-md text-[10px] sm:text-[11px] font-bold flex items-center justify-center sm:justify-start gap-2 border border-slate-100 hover:bg-slate-50 transition-all ${!showPaths ? 'text-slate-400' : 'text-blue-600'}`}>
           {showPaths ? <Eye size={16} className="shrink-0" /> : <EyeOff size={16} className="shrink-0" />} 
           <span className="hidden sm:inline truncate">Jalur (Sketsa)</span>
         </button>
         
-        <button onClick={() => setShowPhotos(!showPhotos)} className={`bg-white p-2 sm:px-3 sm:py-2 sm:w-[130px] rounded-xl shadow-md text-[10px] sm:text-[11px] font-bold flex items-center justify-center sm:justify-start gap-2 border border-slate-100 hover:bg-slate-50 transition-all ${!showPhotos ? 'text-slate-400' : 'text-rose-500'}`}>
+        <button onClick={() => setShowPhotos(!showPhotos)} className={`bg-white p-2.5 sm:px-3 sm:py-2 sm:w-[130px] rounded-xl shadow-md text-[10px] sm:text-[11px] font-bold flex items-center justify-center sm:justify-start gap-2 border border-slate-100 hover:bg-slate-50 transition-all ${!showPhotos ? 'text-slate-400' : 'text-rose-500'}`}>
           <ImageIcon size={16} className="shrink-0" /> <span className="hidden sm:inline truncate">Foto Rute</span>
         </button>
 
         <input type="file" accept=".kml" ref={kmlInputRef} onChange={handleImportKML} className="hidden" />
         
-        <button onClick={() => kmlInputRef.current?.click()} className="bg-white text-slate-700 p-2 sm:px-3 sm:py-2 sm:w-[130px] rounded-xl shadow-md text-[10px] sm:text-[11px] font-bold flex items-center justify-center sm:justify-start gap-2 border border-slate-100 hover:bg-slate-50 transition-all">
+        <button onClick={() => kmlInputRef.current?.click()} className="bg-white text-slate-700 p-2.5 sm:px-3 sm:py-2 sm:w-[130px] rounded-xl shadow-md text-[10px] sm:text-[11px] font-bold flex items-center justify-center sm:justify-start gap-2 border border-slate-100 hover:bg-slate-50 transition-all">
           <Upload size={16} className="text-emerald-600 shrink-0" /> <span className="hidden sm:inline truncate">Import KML</span>
         </button>
         
-        <button onClick={handleExportKML} className="bg-emerald-600 text-white p-2 sm:px-3 sm:py-2 sm:w-[130px] rounded-xl shadow-md text-[10px] sm:text-[11px] font-bold flex items-center justify-center sm:justify-start gap-2 border border-emerald-500 hover:bg-emerald-700 transition-all">
+        <button onClick={handleExportKML} className="bg-emerald-600 text-white p-2.5 sm:px-3 sm:py-2 sm:w-[130px] rounded-xl shadow-md text-[10px] sm:text-[11px] font-bold flex items-center justify-center sm:justify-start gap-2 border border-emerald-500 hover:bg-emerald-700 transition-all">
           <Download size={16} className="shrink-0" /> <span className="hidden sm:inline truncate">Export KML</span>
         </button>
 
         {!showPlanEditor && userRole !== 'guest' && (
-          <button onClick={() => { setShowPlanEditor(true); setInputMode('plan'); }} className="bg-blue-600 text-white p-2 sm:px-3 sm:py-2 sm:w-[130px] rounded-xl shadow-md text-[10px] sm:text-[11px] font-bold flex items-center justify-center sm:justify-start gap-2 border border-blue-500 hover:bg-blue-700 transition-all">
+          <button onClick={() => { setShowPlanEditor(true); setInputMode('plan'); }} className="bg-blue-600 text-white p-2.5 sm:px-3 sm:py-2 sm:w-[130px] rounded-xl shadow-md text-[10px] sm:text-[11px] font-bold flex items-center justify-center sm:justify-start gap-2 border border-blue-500 hover:bg-blue-700 transition-all">
             <Ruler size={16} className="shrink-0" /> <span className="hidden sm:inline truncate">Editor Rute</span>
           </button>
         )}
