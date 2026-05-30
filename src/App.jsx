@@ -1249,9 +1249,12 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
               hasData = true;
 
               if (showSketchLabels) {
-                const center = shape.getBounds().getCenter();
-                const labelTahun = p.tahun ? `[${p.tahun}] ` : '';
-                window.L.marker(center, { interactive: false, zIndexOffset: 100, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `<div style="transform: translate(-50%, -150%); background-color: rgba(0,0,0,0.8); color: ${pathObj.color || (isPolygon ? '#34d399' : '#fbbf24')}; border: 1px ${pathObj.isDashed ? 'dashed' : 'solid'} ${pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')};" class="w-max px-3 py-1.5 rounded-xl text-[10px] font-black whitespace-nowrap shadow-lg uppercase tracking-wider backdrop-blur-md">${labelTahun}${p.pekerjaan.substring(0, 15)}... - ${pathObj.name || (isPolygon ? 'Poligon' : 'Sketsa')}</div>`, iconSize: [0, 0] }) }).addTo(routeLayerRef.current);
+                const middleIndex = Math.floor(coords.length / 2);
+                const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
+                window.L.marker(centerPoint, { interactive: false, zIndexOffset: 100, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `
+                  <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 2px ${pathObj.isDashed ? 'dashed' : 'solid'} ${pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')};" class="w-max px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-lg uppercase tracking-wider backdrop-blur-md text-center">
+                    ${p.tahun || 'Tanpa Tahun'}
+                  </div>`, iconSize: [0, 0] }) }).addTo(routeLayerRef.current);
               }
 
               let segmentTotalDist = 0;
@@ -1292,9 +1295,12 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
                   const actualShape = window.L.polyline(coords, { color: segColor, weight: 5, opacity: 0.9 }).addTo(surveyLayerRef.current);
                   
                   if (showSketchLabels) {
-                    const center = actualShape.getBounds().getCenter();
-                    const labelTahun = p.tahun ? `[${p.tahun}] ` : '';
-                    window.L.marker(center, { interactive: false, zIndexOffset: 110, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `<div style="transform: translate(-50%, 50%); background-color: rgba(255,255,255,0.95); color: ${segColor}; border: 2px solid ${segColor};" class="w-max px-3 py-1.5 rounded-xl text-[10px] font-black whitespace-nowrap shadow-lg uppercase tracking-wider backdrop-blur-md">${labelTahun}${p.pekerjaan.substring(0, 15)}... - ${seg.name || 'Segmen Realisasi'}</div>`, iconSize: [0, 0] }) }).addTo(surveyLayerRef.current);
+                    const middleIndex = Math.floor(coords.length / 2);
+                    const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
+                    window.L.marker(centerPoint, { interactive: false, zIndexOffset: 110, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `
+                      <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 2px solid ${segColor};" class="w-max px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-lg uppercase tracking-wider backdrop-blur-md text-center">
+                        ${p.tahun || 'Tanpa Tahun'}
+                      </div>`, iconSize: [0, 0] }) }).addTo(surveyLayerRef.current);
                   }
                 }
 
@@ -3130,13 +3136,16 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
 
           // TAMPILKAN NAMA/KETERANGAN JALUR DI TENGAH GARIS
           if (showSketchLabels) {
-            const center = shape.getBounds().getCenter();
-            window.L.marker(center, {
+            const middleIndex = Math.floor(coords.length / 2);
+            const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
+            window.L.marker(centerPoint, {
               interactive: false,
               zIndexOffset: 100,
               icon: window.L.divIcon({
                 className: 'bg-transparent border-0 overflow-visible',
-                html: `<div style="transform: translate(-50%, -150%); background-color: rgba(255,255,255,0.95); color: ${pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')}; border: 2px ${pathObj.isDashed ? 'dashed' : 'solid'} ${pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')};" class="w-max px-3 py-1.5 rounded-xl text-[10px] font-black whitespace-nowrap shadow-lg uppercase tracking-wider backdrop-blur-md">${pathObj.name || (isPolygon ? 'Poligon' : 'Garis Sketsa')}</div>`,
+                html: `<div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 2px ${pathObj.isDashed ? 'dashed' : 'solid'} ${pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')};" class="min-w-[100px] max-w-[160px] px-3 py-2 rounded-xl text-[10px] font-normal whitespace-normal shadow-lg uppercase tracking-wider backdrop-blur-md text-center leading-tight">
+                        ${pathObj.name || (isPolygon ? 'Poligon' : 'Garis Sketsa')}
+                       </div>`,
                 iconSize: [0, 0]
               })
             }).addTo(routeLayerRef.current);
@@ -3212,13 +3221,16 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
 
              // TAMPILKAN NAMA/KETERANGAN JALUR REALISASI DI TENGAH GARIS
              if (showSketchLabels) {
-                const center = actualShape.getBounds().getCenter();
-                window.L.marker(center, {
+                const middleIndex = Math.floor(coords.length / 2);
+                const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
+                window.L.marker(centerPoint, {
                   interactive: false,
                   zIndexOffset: 110,
                   icon: window.L.divIcon({
                     className: 'bg-transparent border-0 overflow-visible',
-                    html: `<div style="transform: translate(-50%, 50%); background-color: rgba(255,255,255,0.95); color: ${segColor}; border: 2px solid ${segColor};" class="w-max px-3 py-1.5 rounded-xl text-[10px] font-black whitespace-nowrap shadow-lg uppercase tracking-wider backdrop-blur-md">${seg.name || 'Segmen Realisasi'}</div>`,
+                    html: `<div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 2px solid ${segColor};" class="min-w-[100px] max-w-[160px] px-3 py-2 rounded-xl text-[10px] font-normal whitespace-normal shadow-lg uppercase tracking-wider backdrop-blur-md text-center leading-tight">
+                            ${seg.name || 'Segmen Realisasi'}
+                           </div>`,
                     iconSize: [0, 0]
                   })
                 }).addTo(surveyLayerRef.current);
