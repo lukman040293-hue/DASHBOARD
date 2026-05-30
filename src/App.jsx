@@ -1253,7 +1253,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
                 const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
                 window.L.marker(centerPoint, { interactive: false, zIndexOffset: 100, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `
                   <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 1px solid #000000;" class="w-max px-3 py-1.5 rounded-xl text-[11px] font-normal shadow-lg uppercase tracking-wider backdrop-blur-md text-center">
-                    ${p.tahun || 'Tanpa Tahun'}
+                    ${pathObj.name || (isPolygon ? 'Poligon' : 'Garis Sketsa')}
                   </div>`, iconSize: [0, 0] }) }).addTo(routeLayerRef.current);
               }
 
