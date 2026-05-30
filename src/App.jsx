@@ -3309,9 +3309,26 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
                 const isVid = /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(firstImage || '');
 
                 if (!isNaN(lat) && !isNaN(lng)) {
-                     // Membersihkan deskripsi dari data koordinat agar tooltip terlihat rapi
-                     const cleanDesc = desc.replace(/(Koordinat:|Awal\(|Lat\s*|Lng\s*).*$/gm, '').replace(/Catatan:\s*/g, '').trim();
-                     const shortTitle = feed.title || 'Dokumentasi Lapangan';
+                     // Mengekstrak HANYA catatan / inputan manual dari user
+                     let cleanDesc = '';
+                     if (desc.includes('Catatan:')) {
+                         cleanDesc = desc.substring(desc.indexOf('Catatan:') + 8).trim();
+                     } else if (desc.includes('📝 CATATAN / KENDALA / SARAN:')) {
+                         cleanDesc = desc.substring(desc.indexOf('📝 CATATAN / KENDALA / SARAN:') + 29).trim();
+                     } else {
+                         // Bersihkan baris-baris template jika tidak ada label Catatan yang jelas
+                         cleanDesc = desc.replace(/^Penambahan titik.*$/gm, '')
+                                         .replace(/^Tim lapangan telah mengirimkan.*$/gm, '')
+                                         .replace(/^(Panjang|Lebar|Model) Eks\..*$/gm, '')
+                                         .replace(/^Koordinat:.*$/gm, '')
+                                         .replace(/^Awal\(.*$/gm, '')
+                                         .replace(/^Lat\s*[-0-9.]+.*$/gm, '')
+                                         .trim();
+                     }
+                     
+                     if (cleanDesc === '-' || cleanDesc === '') {
+                         cleanDesc = 'Tidak ada catatan';
+                     }
 
                      // Icon Marker (Bulat, tidak membesar zoom) - Seperti Pin Google Maps
                      const iconHtml = `
@@ -3321,19 +3338,21 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
                         </div>
                      `;
 
-                     // Popup HTML (Muncul saat Icon di klik)
+                     // Popup HTML (Menghilangkan title template dan hanya menampilkan catatan)
                      const popupHtml = `
-                        <div class="flex flex-col min-w-[180px] max-w-[220px]">
-                            <div class="w-full h-[120px] rounded-lg overflow-hidden bg-slate-100 relative shrink-0 mb-2 shadow-inner border border-slate-200">
+                        <div class="flex flex-col min-w-[200px] max-w-[240px] drop-shadow-xl relative mt-1 group/popup">
+                            <div class="w-full h-[140px] rounded-t-xl overflow-hidden relative shrink-0">
                                 ${isVid ? 
-                                    `<video src="${firstImage}" class="w-full h-full object-cover bg-slate-800" controls></video>` : 
+                                    `<video src="${firstImage}" class="w-full h-full object-cover bg-black" controls></video>` : 
                                     `<a href="${firstImage}" target="_blank" title="Klik untuk memperbesar foto"><img src="${firstImage}" loading="lazy" class="w-full h-full object-cover hover:scale-105 transition-transform" /></a>`
                                 }
                             </div>
-                            <div class="flex flex-col gap-1 text-left w-full mt-1">
-                                <span class="text-[12px] font-black text-blue-600 leading-tight w-full" title="${shortTitle}">${shortTitle}</span>
-                                ${cleanDesc ? `<span class="text-[10px] font-medium text-slate-600 leading-snug w-full whitespace-normal">${cleanDesc}</span>` : ''}
-                                <span class="text-[9px] font-bold text-slate-400 mt-1 border-t border-slate-100 pt-1">
+                            <div class="flex flex-col text-left w-full bg-white p-3.5 rounded-b-xl relative">
+                                <!-- Segitiga penunjuk ke bawah -->
+                                <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white rotate-45 shadow-[2px_2px_4px_rgba(0,0,0,0.1)] -z-10"></div>
+                                
+                                <span class="text-[11px] font-medium text-slate-700 leading-snug w-full whitespace-normal relative z-10 ${cleanDesc === 'Tidak ada catatan' ? 'italic text-slate-400' : ''}">${cleanDesc}</span>
+                                <span class="text-[9px] font-bold text-slate-400 mt-2 border-t border-slate-100 pt-1.5 relative z-10">
                                     ${new Date(feed.created_at).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'})}
                                 </span>
                             </div>
@@ -3353,7 +3372,8 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
                          closeButton: true,
                          minWidth: 180,
                          maxWidth: 240,
-                         autoPanPadding: [50, 50] // Menghindari popup terpotong tepi layar
+                         autoPanPadding: [50, 50], // Menghindari popup terpotong tepi layar
+                         className: 'custom-photo-popup'
                      });
 
                      marker.addTo(photoLayerRef.current);
@@ -4193,7 +4213,7 @@ export default function App() {
     document.title = "SynxBuild - Command Center";
   }, []);
 
-  // --- KUNCI KE FONT WINDOWS (SEGOE UI / ARIAL) ---
+  // --- KUNCI KE FONT WINDOWS (SEGOE UI / ARIAL) & HAPUS BACKGROUND POPUP ---
   useEffect(() => {
     let fontEl = document.getElementById('windows-font-style');
     if (!fontEl) {
@@ -4205,6 +4225,27 @@ export default function App() {
         }
         .font-mono {
            font-family: Consolas, "Courier New", monospace !important;
+        }
+        
+        /* OVERRIDE LEAFLET DEFAULT POPUP BACKGROUND */
+        .custom-photo-popup .leaflet-popup-content-wrapper {
+           background: transparent !important;
+           box-shadow: none !important;
+           padding: 0 !important;
+        }
+        .custom-photo-popup .leaflet-popup-content {
+           margin: 0 !important;
+           width: auto !important;
+        }
+        .custom-photo-popup .leaflet-popup-tip-container {
+           display: none !important; /* Sembunyikan segitiga bawaan karena sudah pakai custom */
+        }
+        .custom-photo-popup a.leaflet-popup-close-button {
+           color: #ffffff !important;
+           text-shadow: 0px 2px 4px rgba(0,0,0,0.8);
+           top: 4px !important;
+           right: 4px !important;
+           z-index: 50 !important;
         }
       `;
       document.head.appendChild(fontEl);
