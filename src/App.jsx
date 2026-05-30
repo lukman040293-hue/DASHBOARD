@@ -3313,41 +3313,50 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
                      const cleanDesc = desc.replace(/(Koordinat:|Awal\(|Lat\s*|Lng\s*).*$/gm, '').replace(/Catatan:\s*/g, '').trim();
                      const shortTitle = feed.title || 'Dokumentasi Lapangan';
 
+                     // Icon Marker (Bulat, tidak membesar zoom) - Seperti Pin Google Maps
                      const iconHtml = `
-                        <div class="relative flex flex-col items-center group cursor-pointer pointer-events-auto" style="transform: translate(-50%, -100%);">
-                            <div class="w-[160px] bg-white p-2 rounded-xl shadow-[0_8px_20px_rgba(0,0,0,0.2)] group-hover:shadow-[0_12px_30px_rgba(0,0,0,0.3)] border border-slate-200 relative z-10 group-hover:scale-110 group-hover:-translate-y-2 transition-transform duration-300 origin-bottom flex flex-col">
-                                
-                                <!-- Frame Foto -->
-                                <div class="w-full h-[100px] rounded-lg bg-slate-100 overflow-hidden relative shrink-0">
-                                    ${isVid ? 
-                                        `<video src="${firstImage}" class="w-full h-full object-cover bg-slate-800"></video>
-                                         <div class="absolute inset-0 flex items-center justify-center pointer-events-none"><svg width="24" height="24" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></div>` : 
-                                        `<img src="${firstImage}" loading="lazy" class="w-full h-full object-cover" />`
-                                    }
-                                </div>
-                                
-                                <!-- Keterangan Teks (1 Frame) -->
-                                <div class="pt-2 pb-1 flex flex-col gap-0.5 text-left w-full overflow-hidden">
-                                    <span class="text-[10px] font-black text-blue-600 truncate w-full" title="${shortTitle}">${shortTitle}</span>
-                                    ${cleanDesc ? `<span class="text-[8px] font-medium text-slate-600 line-clamp-2 leading-snug w-full whitespace-normal" title="${cleanDesc}">${cleanDesc}</span>` : ''}
-                                    <span class="text-[7px] font-bold text-slate-400 mt-0.5 border-t border-slate-100 pt-1">
-                                        ${new Date(feed.created_at).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'})}
-                                    </span>
-                                </div>
-                            </div>
-                            
-                            <!-- Segitiga penunjuk ke bawah -->
-                            <div class="w-4 h-4 bg-white rotate-45 -mt-2 shadow-md relative z-0 border-r border-b border-slate-200"></div>
+                        <div style="transform: translate(-50%, -50%);" class="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.2)] border-2 border-blue-500 text-blue-500 hover:scale-110 hover:bg-blue-50 transition-transform cursor-pointer relative group">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                            ${isVid ? `<div class="absolute -top-1 -right-1 bg-rose-500 text-white p-0.5 rounded-full shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></div>` : ''}
                         </div>
                      `;
-                     window.L.marker([lat, lng], {
+
+                     // Popup HTML (Muncul saat Icon di klik)
+                     const popupHtml = `
+                        <div class="flex flex-col min-w-[180px] max-w-[220px]">
+                            <div class="w-full h-[120px] rounded-lg overflow-hidden bg-slate-100 relative shrink-0 mb-2 shadow-inner border border-slate-200">
+                                ${isVid ? 
+                                    `<video src="${firstImage}" class="w-full h-full object-cover bg-slate-800" controls></video>` : 
+                                    `<a href="${firstImage}" target="_blank" title="Klik untuk memperbesar foto"><img src="${firstImage}" loading="lazy" class="w-full h-full object-cover hover:scale-105 transition-transform" /></a>`
+                                }
+                            </div>
+                            <div class="flex flex-col gap-1 text-left w-full mt-1">
+                                <span class="text-[12px] font-black text-blue-600 leading-tight w-full" title="${shortTitle}">${shortTitle}</span>
+                                ${cleanDesc ? `<span class="text-[10px] font-medium text-slate-600 leading-snug w-full whitespace-normal">${cleanDesc}</span>` : ''}
+                                <span class="text-[9px] font-bold text-slate-400 mt-1 border-t border-slate-100 pt-1">
+                                    ${new Date(feed.created_at).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'})}
+                                </span>
+                            </div>
+                        </div>
+                     `;
+
+                     const marker = window.L.marker([lat, lng], {
                         icon: window.L.divIcon({
                             className: 'bg-transparent border-0 overflow-visible',
                             html: iconHtml,
                             iconSize: [0,0]
                         }),
                         zIndexOffset: 6000
-                     }).addTo(photoLayerRef.current);
+                     });
+
+                     marker.bindPopup(popupHtml, {
+                         closeButton: true,
+                         minWidth: 180,
+                         maxWidth: 240,
+                         autoPanPadding: [50, 50] // Menghindari popup terpotong tepi layar
+                     });
+
+                     marker.addTo(photoLayerRef.current);
                 }
             }
         });
