@@ -1252,7 +1252,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
                 const middleIndex = Math.floor(coords.length / 2);
                 const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
                 window.L.marker(centerPoint, { interactive: false, zIndexOffset: 100, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `
-                  <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 2px ${pathObj.isDashed ? 'dashed' : 'solid'} ${pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')};" class="w-max px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-lg uppercase tracking-wider backdrop-blur-md text-center">
+                  <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 1px solid #000000;" class="w-max px-3 py-1.5 rounded-xl text-[11px] font-normal shadow-lg uppercase tracking-wider backdrop-blur-md text-center">
                     ${p.tahun || 'Tanpa Tahun'}
                   </div>`, iconSize: [0, 0] }) }).addTo(routeLayerRef.current);
               }
@@ -1298,7 +1298,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
                     const middleIndex = Math.floor(coords.length / 2);
                     const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
                     window.L.marker(centerPoint, { interactive: false, zIndexOffset: 110, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `
-                      <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 2px solid ${segColor};" class="w-max px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-lg uppercase tracking-wider backdrop-blur-md text-center">
+                      <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 1px solid #000000;" class="w-max px-3 py-1.5 rounded-xl text-[11px] font-normal shadow-lg uppercase tracking-wider backdrop-blur-md text-center">
                         ${p.tahun || 'Tanpa Tahun'}
                       </div>`, iconSize: [0, 0] }) }).addTo(surveyLayerRef.current);
                   }
