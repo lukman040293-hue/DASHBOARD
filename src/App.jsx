@@ -1285,23 +1285,31 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
 
         // B. GAMBAR JALUR REALISASI (AKTUAL LAPANGAN)
         if (showPaths && actualSegsToRender.length > 0) {
+          let allActualCoordsForLabel = []; // Kumpulkan semua kordinat realisasi untuk titik tengah label tahun
+
           actualSegsToRender.forEach(seg => {
             if (seg.points && seg.points.length > 0) {
               const coords = seg.points.map(pt => [parseFloat(pt.lat), parseFloat(pt.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
               const segColor = seg.color || '#3b82f6';
 
               if (coords.length > 0) {
+                allActualCoordsForLabel = allActualCoordsForLabel.concat(coords); // Gabungkan semua kordinat
+
                 if (coords.length > 1) {
                   const actualShape = window.L.polyline(coords, { color: segColor, weight: 5, opacity: 0.9 }).addTo(surveyLayerRef.current);
                   
-                  if (showSketchLabels) {
-                    const middleIndex = Math.floor(coords.length / 2);
-                    const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
-                    window.L.marker(centerPoint, { interactive: false, zIndexOffset: 110, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `
-                      <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 1px solid #000000;" class="w-max px-3 py-1.5 rounded-xl text-[11px] font-normal shadow-lg uppercase tracking-wider backdrop-blur-md text-center">
-                        ${p.tahun || 'Tanpa Tahun'}
-                      </div>`, iconSize: [0, 0] }) }).addTo(surveyLayerRef.current);
-                  }
+                  // MENAMBAHKAN POPUP KETIKA GARIS REALISASI DI KLIK
+                  actualShape.bindPopup(`
+                    <div class="p-1 min-w-[150px]">
+                      <div class="font-black text-xs text-slate-800 mb-1 border-b border-slate-200 pb-1.5 leading-tight">${p.pekerjaan}</div>
+                      <div class="text-[10px] text-slate-600 space-y-1 mt-2">
+                        <div class="flex justify-between gap-3"><span>Segmen:</span> <span class="font-bold text-blue-600 text-right">${seg.name || 'Realisasi'}</span></div>
+                        <div class="flex justify-between gap-3"><span>Panjang:</span> <span class="font-bold text-slate-800 text-right">${p.panjang_rencana || '-'} m</span></div>
+                        <div class="flex justify-between gap-3"><span>Lebar:</span> <span class="font-bold text-slate-800 text-right">${p.lebar_rencana || '-'} m</span></div>
+                        <div class="flex justify-between gap-3"><span>Saluran:</span> <span class="font-bold text-slate-800 text-right">${p.jenis_model || '-'}</span></div>
+                      </div>
+                    </div>
+                  `);
                 }
 
                 if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
@@ -1343,6 +1351,16 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
               }
             }
           });
+
+          // TAMPILKAN SATU LABEL TAHUN PERWAKILAN PER PROYEK
+          if (showSketchLabels && allActualCoordsForLabel.length > 0) {
+            const middleIndex = Math.floor(allActualCoordsForLabel.length / 2);
+            const centerPoint = window.L.latLng(allActualCoordsForLabel[middleIndex][0], allActualCoordsForLabel[middleIndex][1]);
+            window.L.marker(centerPoint, { interactive: false, zIndexOffset: 120, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `
+              <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 1px solid #000000;" class="w-max px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-lg uppercase tracking-wider backdrop-blur-md text-center">
+                ${p.tahun || 'Tanpa Tahun'}
+              </div>`, iconSize: [0, 0] }) }).addTo(surveyLayerRef.current);
+          }
         }
 
         // C. GAMBAR TITIK PUSAT (MARKER UTAMA PROYEK)
