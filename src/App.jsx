@@ -3309,19 +3309,35 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
                 const isVid = /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(firstImage || '');
 
                 if (!isNaN(lat) && !isNaN(lng)) {
+                     // Membersihkan deskripsi dari data koordinat agar tooltip terlihat rapi
+                     const cleanDesc = desc.replace(/(Koordinat:|Awal\(|Lat\s*|Lng\s*).*$/gm, '').replace(/Catatan:\s*/g, '').trim();
+                     const shortTitle = feed.title || 'Dokumentasi Lapangan';
+
                      const iconHtml = `
                         <div class="relative flex flex-col items-center group cursor-pointer pointer-events-auto" style="transform: translate(-50%, -100%);">
-                            <div class="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity z-[10000] pointer-events-none whitespace-nowrap bg-white text-slate-800 text-[10px] font-bold py-1.5 px-2.5 rounded-lg shadow-xl border border-slate-200">
-                                ${new Date(feed.created_at).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'})}
+                            <div class="w-[160px] bg-white p-2 rounded-xl shadow-[0_8px_20px_rgba(0,0,0,0.2)] group-hover:shadow-[0_12px_30px_rgba(0,0,0,0.3)] border border-slate-200 relative z-10 group-hover:scale-110 group-hover:-translate-y-2 transition-transform duration-300 origin-bottom flex flex-col">
+                                
+                                <!-- Frame Foto -->
+                                <div class="w-full h-[100px] rounded-lg bg-slate-100 overflow-hidden relative shrink-0">
+                                    ${isVid ? 
+                                        `<video src="${firstImage}" class="w-full h-full object-cover bg-slate-800"></video>
+                                         <div class="absolute inset-0 flex items-center justify-center pointer-events-none"><svg width="24" height="24" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></div>` : 
+                                        `<img src="${firstImage}" loading="lazy" class="w-full h-full object-cover" />`
+                                    }
+                                </div>
+                                
+                                <!-- Keterangan Teks (1 Frame) -->
+                                <div class="pt-2 pb-1 flex flex-col gap-0.5 text-left w-full overflow-hidden">
+                                    <span class="text-[10px] font-black text-blue-600 truncate w-full" title="${shortTitle}">${shortTitle}</span>
+                                    ${cleanDesc ? `<span class="text-[8px] font-medium text-slate-600 line-clamp-2 leading-snug w-full whitespace-normal" title="${cleanDesc}">${cleanDesc}</span>` : ''}
+                                    <span class="text-[7px] font-bold text-slate-400 mt-0.5 border-t border-slate-100 pt-1">
+                                        ${new Date(feed.created_at).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'})}
+                                    </span>
+                                </div>
                             </div>
-                            <div class="w-[160px] h-[110px] bg-white p-1.5 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.3)] relative z-10 group-hover:scale-[1.4] group-hover:-translate-y-2 transition-transform duration-300 origin-bottom border border-slate-200/80 overflow-hidden">
-                                ${isVid ? 
-                                    `<video src="${firstImage}" class="w-full h-full object-cover rounded-lg bg-slate-800"></video>
-                                     <div class="absolute inset-0 flex items-center justify-center pointer-events-none"><svg width="24" height="24" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></div>` : 
-                                    `<img src="${firstImage}" loading="lazy" class="w-full h-full object-cover rounded-lg bg-slate-100" />`
-                                }
-                            </div>
-                            <div class="w-4 h-4 bg-white rotate-45 -mt-2.5 shadow-[2px_2px_5px_rgba(0,0,0,0.15)] relative z-0 border-r border-b border-slate-200/80"></div>
+                            
+                            <!-- Segitiga penunjuk ke bawah -->
+                            <div class="w-4 h-4 bg-white rotate-45 -mt-2 shadow-md relative z-0 border-r border-b border-slate-200"></div>
                         </div>
                      `;
                      window.L.marker([lat, lng], {
