@@ -1083,6 +1083,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
   const surveyLayerRef = useRef(null); // LAYER BARU UNTUK JALUR REALISASI
   const tileLayerRef = useRef(null); 
   const isInitialFitDone = useRef(false);
+  const prevProjectsStrRef = useRef(''); // REFERENSI CACHE UNTUK MENCEGAH PETA BERKEDIP
 
   useEffect(() => {
     const checkLeaflet = setInterval(() => {
@@ -1165,6 +1166,21 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
   // --- LOGIKA UTAMA RENDER PETA INDUK (MARKER + JALUR) ---
   useEffect(() => {
     if (isMapReady && mapInstanceRef.current && markerLayerRef.current && routeLayerRef.current && surveyLayerRef.current) {
+      
+      // MENCEGAH PETA DIGAMBAR ULANG (YANG MEMBUAT POPUP TERTUTUP) JIKA DATA TIDAK BERUBAH
+      const currentProjectsStr = JSON.stringify(allProjects.map(p => ({
+         id: p.id, status: p.status, prog: p.actual_progress, plan: p.planned_path, act: p.actual_segments_data
+      })));
+      
+      const hasAnyLayer = markerLayerRef.current.getLayers().length > 0 || 
+                          routeLayerRef.current.getLayers().length > 0 || 
+                          surveyLayerRef.current.getLayers().length > 0;
+      
+      if (prevProjectsStrRef.current === currentProjectsStr && hasAnyLayer) {
+         return; 
+      }
+      prevProjectsStrRef.current = currentProjectsStr;
+
       markerLayerRef.current.clearLayers();
       routeLayerRef.current.clearLayers();
       surveyLayerRef.current.clearLayers();
@@ -1200,19 +1216,19 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
         const hexColor = isRunning ? '#3b82f6' : '#f43f5e';
 
         const popupContent = `
-            <div class="text-left min-w-[200px]">
-              <h3 class="text-[11px] font-black text-slate-800 leading-relaxed text-left mb-3 uppercase tracking-wider">[${proj.tahun || '-'}] ${proj.pekerjaan}</h3>
-              <div class="flex justify-between items-end border-t border-slate-200 pt-3 mb-3">
+            <div class="text-left min-w-[240px] p-1">
+              <h3 class="text-sm font-black text-slate-800 leading-snug text-left mb-4 uppercase tracking-wider border-b border-slate-200 pb-3"><span class="text-slate-400 font-bold mr-1">[${proj.tahun || '-'}]</span> ${proj.pekerjaan}</h3>
+              <div class="flex justify-between items-center mb-5 bg-white">
                  <div class="flex flex-col text-left">
-                    <span class="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Status</span>
-                    <span class="text-[10px] font-black uppercase tracking-widest" style="color: ${hexColor}">${statusText}</span>
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Status</span>
+                    <span class="text-xs font-black uppercase tracking-widest px-2 py-1 rounded-md bg-slate-50 border border-slate-100" style="color: ${hexColor}">${statusText}</span>
                  </div>
-                 <div class="flex flex-col text-right pl-6">
-                    <span class="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Progress</span>
-                    <span class="text-xl font-black leading-none drop-shadow-sm" style="color: ${hexColor}">${actualProg.toFixed(1)}<span class="text-xs">%</span></span>
+                 <div class="flex flex-col text-right pl-4">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Progress</span>
+                    <span class="text-2xl font-black leading-none drop-shadow-sm" style="color: ${hexColor}">${actualProg.toFixed(1)}<span class="text-sm">%</span></span>
                  </div>
               </div>
-              <button id="${uniqueId}" class="w-full bg-blue-600 text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5 mt-1">
+              <button id="${uniqueId}" class="w-full bg-blue-600 text-white py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-md hover:bg-blue-700 transition-all flex items-center justify-center gap-1.5 mt-1 transform active:scale-95">
                 Buka Dashboard
               </button>
             </div>
@@ -1272,20 +1288,23 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
       const bindProjectPopup = (layer, proj, pathName) => {
         const uniqueId = `btn-detail-${proj.id}-${Math.random().toString(36).substr(2, 9)}`;
         const popupContent = `
-            <div class="text-left min-w-[200px]">
-              <h4 class="text-[11px] font-black text-slate-800 uppercase mb-2 leading-tight border-b border-slate-200 pb-2">${proj.pekerjaan}</h4>
-              <div class="text-[10px] font-bold text-slate-500 mb-2">${pathName}</div>
-              <div class="flex flex-col gap-1.5 text-[10px] text-slate-700 mb-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                 <div class="flex justify-between"><span>Panjang:</span> <span class="font-black">${proj.panjang_rencana ? proj.panjang_rencana + ' m' : '-'}</span></div>
-                 <div class="flex justify-between"><span>Lebar:</span> <span class="font-black">${proj.lebar_rencana ? proj.lebar_rencana + ' m' : '-'}</span></div>
-                 <div class="flex justify-between"><span>Saluran:</span> <span class="font-black truncate max-w-[100px]" title="${proj.jenis_model || '-'}">${proj.jenis_model || '-'}</span></div>
+            <div class="text-left min-w-[240px] p-1">
+              <h4 class="text-sm font-black text-slate-800 uppercase mb-1 leading-tight">${proj.pekerjaan}</h4>
+              <div class="text-xs font-bold text-blue-600 mb-3 border-b border-slate-200 pb-3">${pathName}</div>
+              <div class="flex flex-col gap-2 text-xs text-slate-700 mb-4 bg-white">
+                 <div class="flex justify-between items-center border-b border-slate-100 pb-1.5"><span>Panjang:</span> <span class="font-black text-slate-900">${proj.panjang_rencana ? proj.panjang_rencana + ' m' : '-'}</span></div>
+                 <div class="flex justify-between items-center border-b border-slate-100 pb-1.5"><span>Lebar:</span> <span class="font-black text-slate-900">${proj.lebar_rencana ? proj.lebar_rencana + ' m' : '-'}</span></div>
+                 <div class="flex justify-between items-center pb-1"><span>Saluran:</span> <span class="font-black text-slate-900 truncate max-w-[120px]" title="${proj.jenis_model || '-'}">${proj.jenis_model || '-'}</span></div>
               </div>
-              <button id="${uniqueId}" class="w-full bg-blue-600 text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5">
+              <button id="${uniqueId}" class="w-full bg-blue-600 text-white py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-md hover:bg-blue-700 transition-all flex items-center justify-center gap-1.5 transform active:scale-95">
                 Klik Detail
               </button>
             </div>
         `;
-        layer.bindPopup(popupContent);
+        layer.bindPopup(popupContent, {
+            closeButton: true,
+            autoPanPadding: [50, 50]
+        });
         layer.on('popupopen', () => {
             const btn = document.getElementById(uniqueId);
             if (btn) {
@@ -2845,6 +2864,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
   const mapContainerRef = useRef(null); const mapInstanceRef = useRef(null);
   const tileLayerRef = useRef(null); const routeLayerRef = useRef(null); const surveyLayerRef = useRef(null); const photoLayerRef = useRef(null);
   const kmlInputRef = useRef(null);
+  const prevPhotoFeedsRef = useRef([]);
 
   // --- FUNGSI IMPORT KML ---
   const handleImportKML = (e) => {
@@ -3189,7 +3209,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
 
     const createDistLabel = (text, isTotal, colorHex) => window.L.divIcon({
       className: 'bg-transparent border-0 overflow-visible',
-      html: `<div style="transform: translate(-50%, ${isTotal ? '-150%' : '-50%'}); background-color: ${isTotal ? colorHex : 'rgba(255,255,255,0.9)'}; color: ${isTotal ? '#fff' : colorHex}; border-color: ${colorHex};" class="w-max px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap border shadow-sm">${isTotal ? 'Total: ' : ''}${text}</div>`,
+      html: `<div style="transform: translate(-50%, ${isTotal ? '-150%' : '-50%'}); background-color: ${isTotal ? colorHex : 'rgba(255,255,255,0.9)'}; color: ${isTotal ? '#fff' : colorHex}; border-color: ${colorHex};" class="w-max px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap border shadow-sm pointer-events-none">${isTotal ? 'Total: ' : ''}${text}</div>`,
       iconSize: [0, 0]
     });
 
@@ -3224,10 +3244,10 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
             const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
             window.L.marker(centerPoint, {
               interactive: false,
-              zIndexOffset: 100,
+              zIndexOffset: 7000,
               icon: window.L.divIcon({
                 className: 'bg-transparent border-0 overflow-visible',
-                html: `<div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 2px ${pathObj.isDashed ? 'dashed' : 'solid'} ${pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')};" class="min-w-[100px] max-w-[160px] px-3 py-2 rounded-xl text-[10px] font-normal whitespace-normal shadow-lg uppercase tracking-wider backdrop-blur-md text-center leading-tight">
+                html: `<div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 2px ${pathObj.isDashed ? 'dashed' : 'solid'} ${pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')};" class="min-w-[100px] max-w-[160px] px-3 py-2 rounded-xl text-[10px] font-normal whitespace-normal shadow-lg uppercase tracking-wider backdrop-blur-md text-center leading-tight pointer-events-none">
                         ${pathObj.name || (isPolygon ? 'Poligon' : 'Garis Sketsa')}
                        </div>`,
                 iconSize: [0, 0]
@@ -3254,7 +3274,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
             if (i < coords.length - 1) {
               const pt1 = window.L.latLng(coords[i][0], coords[i][1]); const pt2 = window.L.latLng(coords[i + 1][0], coords[i + 1][1]);
               const dist = pt1.distanceTo(pt2); segmentTotalDist += dist;
-              if (showDistances) window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')) }).addTo(routeLayerRef.current);
+              if (showDistances) window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 7200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')) }).addTo(routeLayerRef.current);
             }
             
             // Draw total distance label at the last point
@@ -3268,12 +3288,12 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
                   // Menambahkan label jarak untuk garis penutup (closing segment) pada Poligon
                   window.L.marker([(ptStart.lat + ptEnd.lat) / 2, (ptStart.lng + ptEnd.lng) / 2], {
                       interactive: false,
-                      zIndexOffset: 200,
+                      zIndexOffset: 7200,
                       icon: createDistLabel(closeDist > 1000 ? `${(closeDist / 1000).toFixed(2)} km` : `${Math.round(closeDist)} m`, false, pathObj.color || '#10b981')
                   }).addTo(routeLayerRef.current);
               }
               const finalDist = segmentTotalDist + closeDist;
-              window.L.marker([coords[i][0], coords[i][1]], { interactive: false, zIndexOffset: 200, icon: createDistLabel(finalDist > 1000 ? `${(finalDist / 1000).toFixed(2)} km` : `${Math.round(finalDist)} m${isPolygon?' (Keliling)':''}`, true, pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')) }).addTo(routeLayerRef.current);
+              window.L.marker([coords[i][0], coords[i][1]], { interactive: false, zIndexOffset: 7200, icon: createDistLabel(finalDist > 1000 ? `${(finalDist / 1000).toFixed(2)} km` : `${Math.round(finalDist)} m${isPolygon?' (Keliling)':''}`, true, pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')) }).addTo(routeLayerRef.current);
             }
           }
         }
@@ -3309,10 +3329,10 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
                 const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
                 window.L.marker(centerPoint, {
                   interactive: false,
-                  zIndexOffset: 110,
+                  zIndexOffset: 7100,
                   icon: window.L.divIcon({
                     className: 'bg-transparent border-0 overflow-visible',
-                    html: `<div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 2px solid ${segColor};" class="min-w-[100px] max-w-[160px] px-3 py-2 rounded-xl text-[10px] font-normal whitespace-normal shadow-lg uppercase tracking-wider backdrop-blur-md text-center leading-tight">
+                    html: `<div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 2px solid ${segColor};" class="min-w-[100px] max-w-[160px] px-3 py-2 rounded-xl text-[10px] font-normal whitespace-normal shadow-lg uppercase tracking-wider backdrop-blur-md text-center leading-tight pointer-events-none">
                             ${seg.name || 'Segmen Realisasi'}
                            </div>`,
                     iconSize: [0, 0]
@@ -3366,10 +3386,10 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
                 const pt2 = window.L.latLng(coords[i + 1][0], coords[i + 1][1]);
                 const dist = pt1.distanceTo(pt2); 
                 segmentTotalDist += dist;
-                window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, segColor) }).addTo(surveyLayerRef.current);
+                window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 7200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, segColor) }).addTo(surveyLayerRef.current);
              }
              const lastPt = coords[coords.length - 1];
-             window.L.marker([lastPt[0], lastPt[1]], { interactive: false, zIndexOffset: 200, icon: createDistLabel(segmentTotalDist > 1000 ? `${(segmentTotalDist / 1000).toFixed(2)} km` : `${Math.round(segmentTotalDist)} m`, true, segColor) }).addTo(surveyLayerRef.current);
+             window.L.marker([lastPt[0], lastPt[1]], { interactive: false, zIndexOffset: 7200, icon: createDistLabel(segmentTotalDist > 1000 ? `${(segmentTotalDist / 1000).toFixed(2)} km` : `${Math.round(segmentTotalDist)} m`, true, segColor) }).addTo(surveyLayerRef.current);
           }
 
           hasActualData = true;
@@ -3388,13 +3408,27 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
   // --- EFEK BARU: MENAMPILKAN FOTO MARKER DI PETA ---
   useEffect(() => {
     if (!isMapLoaded || !mapInstanceRef.current || !photoLayerRef.current) return;
-    photoLayerRef.current.clearLayers();
+    
+    if (!showPhotos) {
+        photoLayerRef.current.clearLayers();
+        prevPhotoFeedsRef.current = [];
+        return;
+    }
 
-    if (showPhotos && feeds && feeds.length > 0) {
-        // Hapus filter yang membatasi hanya 'Update Progress Rute Realisasi' agar foto survei juga bisa muncul
-        // Namun kita tetap harus mengekstrak koordinat dari deskripsi
+    if (feeds && feeds.length > 0) {
         const photoFeeds = feeds.filter(f => f.media_url);
         
+        // Cek apakah data foto benar-benar berubah (mencegah popup tertutup otomatis saat polling)
+        const currentIds = photoFeeds.map(f => f.id).join(',');
+        const prevIds = prevPhotoFeedsRef.current.map(f => f.id).join(',');
+        
+        if (currentIds === prevIds && photoLayerRef.current.getLayers().length > 0) {
+            return; // Data tidak berubah, biarkan marker dan popup tetap tampil
+        }
+        
+        photoLayerRef.current.clearLayers();
+        prevPhotoFeedsRef.current = photoFeeds;
+
         photoFeeds.forEach(feed => {
             const desc = feed.description || '';
             const latMatch = desc.match(/Lat\s*([-0-9.]+)/) || desc.match(/Awal\s*\(([-0-9.]+)/);
@@ -3430,28 +3464,28 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
 
                      // Icon Marker (Bulat, tidak membesar zoom) - Seperti Pin Google Maps
                      const iconHtml = `
-                        <div style="transform: translate(-50%, -50%);" class="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.2)] border-2 border-blue-500 text-blue-500 hover:scale-110 hover:bg-blue-50 transition-transform cursor-pointer relative group">
+                        <div style="transform: translate(-50%, -50%);" class="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.2)] border border-slate-200 text-blue-600 hover:scale-110 hover:bg-blue-50 transition-transform cursor-pointer relative group">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
                             ${isVid ? `<div class="absolute -top-1 -right-1 bg-rose-500 text-white p-0.5 rounded-full shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></div>` : ''}
                         </div>
                      `;
 
-                     // Popup HTML (Menghilangkan title template dan hanya menampilkan catatan)
+                     // Popup HTML (Memperbesar ukuran foto & menghilangkan border abu-abu agar menyatu dengan putih)
                      const popupHtml = `
-                        <div class="flex flex-col min-w-[200px] max-w-[240px] drop-shadow-xl relative mt-1 group/popup">
-                            <div class="w-full h-[140px] rounded-t-xl overflow-hidden relative shrink-0">
+                        <div class="flex flex-col min-w-[260px] max-w-[300px] drop-shadow-2xl bg-white rounded-2xl overflow-hidden relative mt-1 group/popup border border-slate-100">
+                            <div class="w-full h-[240px] relative shrink-0 bg-slate-100">
                                 ${isVid ? 
-                                    `<video src="${firstImage}" class="w-full h-full object-cover bg-black" controls></video>` : 
+                                    `<video src="${firstImage}" class="w-full h-full object-cover" controls></video>` : 
                                     `<a href="${firstImage}" target="_blank" title="Klik untuk memperbesar foto"><img src="${firstImage}" loading="lazy" class="w-full h-full object-cover hover:scale-105 transition-transform" /></a>`
                                 }
                             </div>
-                            <div class="flex flex-col text-left w-full bg-white p-3.5 rounded-b-xl relative">
+                            <div class="flex flex-col text-left w-full p-4 relative bg-white">
                                 <!-- Segitiga penunjuk ke bawah -->
                                 <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white rotate-45 shadow-[2px_2px_4px_rgba(0,0,0,0.1)] -z-10"></div>
                                 
-                                <span class="text-[11px] font-medium text-slate-700 leading-snug w-full whitespace-normal relative z-10 ${cleanDesc === 'Tidak ada catatan' ? 'italic text-slate-400' : ''}">${cleanDesc}</span>
-                                <span class="text-[9px] font-bold text-slate-400 mt-2 border-t border-slate-100 pt-1.5 relative z-10">
-                                    ${new Date(feed.created_at).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'})}
+                                <span class="text-sm font-bold text-slate-700 leading-relaxed w-full whitespace-normal relative z-10 ${cleanDesc === 'Tidak ada catatan' ? 'italic text-slate-400' : ''}">${cleanDesc}</span>
+                                <span class="text-[10px] font-bold text-slate-400 mt-3 border-t border-slate-100 pt-2 relative z-10">
+                                    ${new Date(feed.created_at).toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'})}
                                 </span>
                             </div>
                         </div>
@@ -3466,11 +3500,12 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
                         zIndexOffset: 6000
                      });
 
+                     // Mencegah popup menutup otomatis
                      marker.bindPopup(popupHtml, {
                          closeButton: true,
-                         minWidth: 180,
-                         maxWidth: 240,
-                         autoPanPadding: [50, 50], // Menghindari popup terpotong tepi layar
+                         minWidth: 260,
+                         maxWidth: 300,
+                         autoPanPadding: [50, 50],
                          className: 'custom-photo-popup'
                      });
 
@@ -4340,10 +4375,24 @@ export default function App() {
         }
         .custom-photo-popup a.leaflet-popup-close-button {
            color: #ffffff !important;
-           text-shadow: 0px 2px 4px rgba(0,0,0,0.8);
-           top: 4px !important;
-           right: 4px !important;
+           background-color: rgba(0,0,0,0.5) !important;
+           border-radius: 50% !important;
+           width: 26px !important;
+           height: 26px !important;
+           line-height: 26px !important;
+           text-align: center !important;
+           text-shadow: none !important;
+           top: 10px !important;
+           right: 10px !important;
            z-index: 50 !important;
+           padding: 0 !important;
+           font-weight: bold;
+           transition: all 0.3s ease;
+        }
+        .custom-photo-popup a.leaflet-popup-close-button:hover {
+           background-color: rgba(244,63,94,0.9) !important; /* Rose-500 */
+           color: white !important;
+           transform: scale(1.1);
         }
       `;
       document.head.appendChild(fontEl);
@@ -6355,46 +6404,23 @@ export default function App() {
                      </div>
                      <div>
                         <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Nama Lengkap <span className="text-rose-500">*</span></label>
-                        <input type="text" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={employeeForm.name} onChange={e => setEmployeeForm({ ...employeeForm, name: e.target.value })} placeholder="Nama Lengkap Karyawan" required />
+                        <input type="text" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={employeeForm.name} onChange={e => setEmployeeForm({ ...employeeForm, name: e.target.value })} required />
                      </div>
-                     <div>
-                        <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Jabatan / Role <span className="text-rose-500">*</span></label>
-                        <select className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={employeeForm.role} onChange={e => setEmployeeForm({ ...employeeForm, role: e.target.value })} required>
-                           <option value="Pelaksana">Pelaksana</option>
-                           <option value="Pengawas">Pengawas</option>
-                           <option value="Petugas K3">Petugas K3</option>
-                           <option value="Mandor">Mandor</option>
-                           <option value="Site Engineer">Site Engineer</option>
-                           <option value="Inspector">Inspector</option>
-                           <option value="Operator Alat">Operator Alat</option>
-                           <option value="Kantor">Kantor</option>
-                        </select>
+                     <div className="grid grid-cols-2 gap-4">
+                        <div>
+                           <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Jabatan <span className="text-rose-500">*</span></label>
+                           <input type="text" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={employeeForm.role} onChange={e => setEmployeeForm({ ...employeeForm, role: e.target.value })} required />
+                        </div>
+                        <div>
+                           <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">PIN Login (6 Digit) <span className="text-rose-500">*</span></label>
+                           <input type="text" maxLength="6" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all font-mono tracking-widest" value={employeeForm.pin} onChange={e => setEmployeeForm({ ...employeeForm, pin: e.target.value.replace(/\D/g, '') })} required />
+                        </div>
                      </div>
-                     <div>
-                        <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">PIN / Password (Angka) <span className="text-rose-500">*</span></label>
-                        <input type="text" inputMode="numeric" pattern="[0-9]*" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-mono font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={employeeForm.pin} onChange={e => setEmployeeForm({ ...employeeForm, pin: e.target.value.replace(/\D/g, '') })} placeholder="Misal: 123456" required title="Hanya gunakan karakter Angka" />
-                     </div>
-                     <button type="submit" disabled={isProcessing} className="w-full bg-blue-600 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest mt-4 hover:bg-blue-700 transition-colors shadow-md">
-                        {isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : (employeeForm.id ? 'Simpan Perubahan' : 'Tambah Karyawan')}
+                     <button type="submit" disabled={isProcessing} className="w-full bg-blue-600 text-white py-4 rounded-2xl text-xs font-bold uppercase mt-4 hover:bg-blue-700 transition-colors shadow-md">
+                        {isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Simpan Karyawan'}
                      </button>
                   </form>
                </div>
-            </div>
-         )}
-
-         {deleteConfig && deleteConfig.type === 'employee' && (
-            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[9000] p-4">
-              <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-2xl relative text-center">
-                <div className="mx-auto w-14 h-14 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-5"><AlertCircle size={28} /></div>
-                <h3 className="text-xl font-black mb-2 text-slate-800">Apakah Anda Yakin?</h3>
-                <p className="text-xs text-slate-500 mb-8 font-medium leading-relaxed">
-                   Data karyawan atas nama <b>{deleteConfig.name}</b> akan dihapus secara permanen.
-                </p>
-                <div className="flex gap-3">
-                  <button onClick={() => setDeleteConfig(null)} className="flex-1 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors">Batal</button>
-                  <button onClick={confirmDeleteData} disabled={isProcessing} className="flex-1 py-3.5 bg-rose-500 text-white rounded-xl text-sm font-bold hover:bg-rose-600 transition-colors shadow-md">{isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Ya, Hapus'}</button>
-                </div>
-              </div>
             </div>
          )}
        </>
@@ -6402,1553 +6428,113 @@ export default function App() {
   }
 
   if (appMode === 'master') {
-    return (
-      <>
-        {notification && (
-          <div className={`fixed top-10 left-1/2 -translate-x-1/2 z-[6000] px-6 py-4 rounded-2xl shadow-xl border backdrop-blur-xl animate-in slide-in-from-top-5 flex items-center gap-3 ${notification.type === 'error' ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
-            <span className="text-xs font-bold uppercase tracking-tight">{String(notification.msg || '')}</span>
-          </div>
-        )}
-        
-        <MasterDashboardView 
-            allProjects={masterProjects || []} 
-            onSelectProject={handleSelectProject} 
-            onAddProject={() => setShowNewProjectModal(true)} 
+     return (
+       <>
+         {notification && (
+            <div className={`fixed top-10 left-1/2 -translate-x-1/2 z-[8000] px-6 py-4 rounded-2xl shadow-xl border backdrop-blur-xl animate-in slide-in-from-top-5 pointer-events-none flex items-center gap-3 ${notification.type === 'error' ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+              <span className="text-xs font-bold uppercase tracking-tight">{String(notification.msg || '')}</span>
+            </div>
+         )}
+         <MasterDashboardView 
+            allProjects={masterProjects || []}
+            onSelectProject={handleSelectProject}
+            onAddProject={() => setShowNewProjectModal(true)}
             onBackToSelection={handleBackToSelection}
             onViewRekap={() => setShowGlobalRekap(true)}
-        />
-
-        {showNewProjectModal && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[5000] p-4">
-            <div className="bg-white rounded-[32px] p-8 w-full max-w-md shadow-2xl relative">
-              <button onClick={() => setShowNewProjectModal(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-700 transition-colors"><X size={20} /></button>
-              <h3 className="text-lg font-black mb-6">Buat Kamar Proyek Baru</h3>
-              <form onSubmit={handleCreateProject} className="space-y-4">
-                <div>
-                  <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Nama Pekerjaan <span className="text-rose-500">*</span></label>
-                  <input type="text" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={newProjectForm.pekerjaan} onChange={e => setNewProjectForm({ ...newProjectForm, pekerjaan: e.target.value })} placeholder="Misal: Peningkatan Jalan Baru..." required />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Tahun <span className="text-rose-500">*</span></label>
-                  <input type="number" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={newProjectForm.tahun} onChange={e => setNewProjectForm({ ...newProjectForm, tahun: e.target.value })} placeholder="Misal: 2024" required />
-                </div>
-                <button type="submit" disabled={isProcessing} className="w-full bg-blue-600 text-white py-4 rounded-2xl text-xs font-bold uppercase mt-4 hover:bg-blue-700 transition-colors shadow-md">
-                  {isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Buat Proyek Sekarang'}
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
-        {deleteConfig && deleteConfig.type === 'project' && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[6000] p-4">
-            <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-2xl relative text-center">
-              <div className="mx-auto w-14 h-14 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-5"><AlertCircle size={28} /></div>
-              <h3 className="text-xl font-black mb-2 text-slate-800">Hapus Proyek?</h3>
-              <p className="text-xs text-rose-600 mb-8 font-medium leading-relaxed bg-rose-50 p-3 rounded-xl border border-rose-100">Kamar proyek <b>{deleteConfig.name}</b> dan seluruh data didalamnya akan dihapus permanen!</p>
-              <div className="flex gap-3">
-                <button onClick={() => setDeleteConfig(null)} className="flex-1 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors">Batal</button>
-                <button onClick={confirmDeleteData} disabled={isProcessing} className="flex-1 py-3.5 bg-rose-500 text-white rounded-xl text-sm font-bold hover:bg-rose-600 transition-colors shadow-md">{isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Ya, Hapus'}</button>
-              </div>
-            </div>
-          </div>
-        )}
-        {renderGlobalRekapModal()}
-      </>
-    );
+         />
+         {renderGlobalRekapModal()}
+       </>
+     );
   }
 
-  if (activeMenu === 'presentation') {
+  if (appMode === 'project' && projectData) {
+    const isRunning = projectData.status === 'Running' || parseFloat(projectData.actual_progress || 0) > 0;
+    const progress = Number(projectData.actual_progress || 0);
+
     return (
-      <PresentationView 
-        projectData={projectData} 
-        processedSCurveData={processedSCurveData} 
-        photos={photos} 
-        actualProg={actualProg} 
-        onExit={() => setActiveMenu('dashboard')} 
-      />
+      <div className="flex h-screen bg-slate-50 w-full font-sans overflow-hidden">
+        {/* Sidebar */}
+        <aside className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-white border-r border-slate-200 flex flex-col transition-all duration-300 z-30 shrink-0`}>
+          <div className="h-20 flex items-center justify-between px-4 border-b border-slate-200 shrink-0">
+             <div className={`flex items-center gap-3 overflow-hidden ${!isSidebarOpen && 'hidden'}`}>
+                <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shrink-0"><Activity size={24}/></div>
+                <div className="flex flex-col whitespace-nowrap"><span className="font-black text-slate-800 text-sm tracking-tight leading-tight">SynxBuild</span><span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Command Center</span></div>
+             </div>
+             <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-xl transition-colors mx-auto shrink-0"><Menu size={18}/></button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto py-6 px-3 flex flex-col gap-1.5 custom-scrollbar">
+             <button onClick={handleBackFromProject} className={`flex items-center gap-3 p-3 rounded-xl transition-all font-bold group mb-4 ${!isSidebarOpen ? 'justify-center' : ''} text-slate-600 hover:bg-slate-100`}>
+                 <ArrowLeft size={18} className="shrink-0" />
+                 {isSidebarOpen && <span className="text-xs uppercase tracking-wider">Kembali</span>}
+             </button>
+
+             <div className={`text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2 px-3 ${!isSidebarOpen && 'hidden'}`}>Menu Utama</div>
+             
+             <button onClick={() => setActiveMenu('dashboard')} className={`flex items-center gap-3 p-3 rounded-xl transition-all font-bold group ${activeMenu === 'dashboard' ? 'bg-blue-50 text-blue-600 shadow-sm' : 'text-slate-500 hover:bg-slate-50'} ${!isSidebarOpen ? 'justify-center' : ''}`} title="Dashboard Ringkasan">
+                 <LayoutDashboard size={18} className="shrink-0" /> {isSidebarOpen && <span className="text-xs uppercase tracking-wider truncate">Dashboard</span>}
+             </button>
+             <button onClick={() => setActiveMenu('map')} className={`flex items-center gap-3 p-3 rounded-xl transition-all font-bold group ${activeMenu === 'map' ? 'bg-emerald-50 text-emerald-600 shadow-sm' : 'text-slate-500 hover:bg-slate-50'} ${!isSidebarOpen ? 'justify-center' : ''}`} title="Peta Interaktif & Rute">
+                 <MapIcon size={18} className="shrink-0" /> {isSidebarOpen && <span className="text-xs uppercase tracking-wider truncate">Peta Rute & Titik</span>}
+             </button>
+             <button onClick={() => setActiveMenu('schedule')} className={`flex items-center gap-3 p-3 rounded-xl transition-all font-bold group ${activeMenu === 'schedule' ? 'bg-amber-50 text-amber-600 shadow-sm' : 'text-slate-500 hover:bg-slate-50'} ${!isSidebarOpen ? 'justify-center' : ''}`} title="Jadwal (Kurva S & Gantt)">
+                 <CalendarDays size={18} className="shrink-0" /> {isSidebarOpen && <span className="text-xs uppercase tracking-wider truncate">Jadwal & Progres</span>}
+             </button>
+             <button onClick={() => setActiveMenu('gallery')} className={`flex items-center gap-3 p-3 rounded-xl transition-all font-bold group ${activeMenu === 'gallery' ? 'bg-rose-50 text-rose-600 shadow-sm' : 'text-slate-500 hover:bg-slate-50'} ${!isSidebarOpen ? 'justify-center' : ''}`} title="Dokumentasi Lapangan">
+                 <ImageIcon size={18} className="shrink-0" /> {isSidebarOpen && <span className="text-xs uppercase tracking-wider truncate">Galeri Lapangan</span>}
+             </button>
+
+             <div className={`text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2 px-3 mt-4 ${!isSidebarOpen && 'hidden'}`}>Lainnya</div>
+             
+             <button onClick={() => setActiveMenu('bim')} className={`flex items-center gap-3 p-3 rounded-xl transition-all font-bold group ${activeMenu === 'bim' ? 'bg-indigo-50 text-indigo-600 shadow-sm' : 'text-slate-500 hover:bg-slate-50'} ${!isSidebarOpen ? 'justify-center' : ''}`} title="3D BIM Viewer">
+                 <MonitorPlay size={18} className="shrink-0" /> {isSidebarOpen && <span className="text-xs uppercase tracking-wider truncate">3D BIM Viewer</span>}
+             </button>
+          </div>
+        </aside>
+
+        {/* --- MAIN CONTENT AREA --- */}
+        <main className="flex-1 flex flex-col min-w-0 bg-slate-50 relative h-screen">
+          <header className="h-20 bg-white border-b border-slate-200 px-6 sm:px-10 flex justify-between items-center shrink-0 z-20 shadow-sm gap-4">
+             <div className="flex flex-col min-w-0">
+                <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight truncate">{projectData.pekerjaan}</h2>
+                <div className="flex items-center gap-2 mt-1">
+                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded border border-slate-200">TAHUN {projectData.tahun || '-'}</span>
+                   <span className="text-slate-300">•</span>
+                   <span className={`text-[10px] font-black uppercase tracking-widest ${isRunning ? 'text-blue-600' : 'text-rose-600'}`}>{isRunning ? 'Pelaksanaan' : 'Persiapan'}</span>
+                </div>
+             </div>
+             
+             <div className="flex items-center gap-3 shrink-0">
+                <button onClick={() => setShowEditProjectModal(true)} className="p-2.5 bg-slate-50 text-slate-600 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-colors border border-slate-200 shadow-sm" title="Pengaturan Proyek"><Settings size={20}/></button>
+             </div>
+          </header>
+
+          <div className="flex-1 overflow-y-auto relative custom-scrollbar flex flex-col bg-slate-50">
+             {activeMenu === 'dashboard' && (
+                <div className="p-6 md:p-10 flex-1 flex flex-col gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                        <StatCard icon={TrendingUp} label="Progres Fisik" value={`${Number(actualProg !== null ? actualProg : (projectData.actual_progress || 0)).toFixed(2)}%`} status={isDeviasiPositive ? 'good' : 'warning'} sub={`Deviasi: ${isDeviasiPositive ? '+' : ''}${deviasi}%`} />
+                        <StatCard icon={CalendarDays} label="Waktu Pelaksanaan" value={sisaWaktuInfo.value} status={sisaWaktuInfo.status} sub={sisaWaktuInfo.sub} />
+                        <StatCard icon={Banknote} label="Posisi Termin" value={`Termin ${toRoman(terminNum)}`} status="neutral" sub={`Pencairan: ${terminPct}%`} />
+                        <StatCard icon={Activity} label="Status Proyek" value={projectData.status === 'Running' ? 'Berjalan' : 'Persiapan'} status={projectData.status === 'Running' ? 'good' : 'warning'} sub={lastUpdatedWeek !== '-' ? `Update Kurva S: ${lastUpdatedWeek}` : 'Belum ada data Kurva S'} />
+                    </div>
+                    <div className="flex-1 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col items-center justify-center text-slate-400">
+                        <LayoutDashboard size={48} className="opacity-20 mb-4" />
+                        <h3 className="text-lg font-black text-slate-700">Pusat Kendali Proyek</h3>
+                        <p className="text-xs">Gunakan menu di samping untuk mengakses Peta Titik, Jadwal Gantt Chart, dan Galeri Foto.</p>
+                    </div>
+                </div>
+             )}
+             {activeMenu === 'map' && <SiteMapView projectData={projectData} onUpdateRoutes={handleRoutesUpdate} isUpdating={isProcessing} showMsg={showMsg} feeds={feeds} userRole="admin" />}
+             {activeMenu === 'schedule' && <GanttChartView projectData={projectData} onSaveSchedule={handleSaveSchedule} isProcessing={isProcessing} userRole="admin" />}
+             {activeMenu === 'gallery' && <DokumentasiView feeds={feeds} onView={handleViewLog} onDelete={setDeleteConfig} userRole="admin" />}
+             {activeMenu === 'bim' && <TwinViewer />}
+          </div>
+        </main>
+
+      </div>
     );
   }
 
-  return (
-    <div className="flex flex-col md:flex-row h-screen bg-[#f4f7fe] text-slate-800 overflow-hidden font-sans">
-
-      {/* NOTIFIKASI */}
-      {notification && (
-        <div className={`fixed top-10 left-1/2 -translate-x-1/2 z-[8000] px-6 py-4 rounded-2xl shadow-xl border backdrop-blur-xl animate-in slide-in-from-top-5 pointer-events-none flex items-center gap-3 ${notification.type === 'error' ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
-          <span className="text-xs font-bold uppercase tracking-tight">{String(notification.msg || '')}</span>
-        </div>
-      )}
-
-      <aside className={`hidden md:flex border-r border-slate-200 flex-col bg-white shrink-0 shadow-sm relative z-[100] pointer-events-auto transition-all duration-300 ${isSidebarOpen ? 'w-56' : 'w-[88px]'}`}>
-        
-        {/* TOMBOL TOGGLE SIDEBAR PADA GARIS PEMBATAS */}
-        <button
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="absolute -right-3.5 top-8 flex items-center justify-center w-7 h-7 bg-white border border-slate-200 shadow-sm rounded-full text-slate-400 hover:text-blue-600 hover:scale-110 transition-all z-[200] cursor-pointer"
-          title={isSidebarOpen ? "Perkecil Menu" : "Perbesar Menu"}
-        >
-          {isSidebarOpen ? <ChevronLeft size={14} strokeWidth={3} /> : <ChevronRight size={14} strokeWidth={3} />}
-        </button>
-
-        <div className={`flex flex-col h-full ${isSidebarOpen ? 'p-5' : 'p-4 items-center'}`}>
-          {/* LOGO DI ATAS */}
-          <div className={`flex items-center ${isSidebarOpen ? 'gap-2.5 px-1 mb-8' : 'justify-center mb-8'} transition-all`}>
-            <Activity size={24} className="text-blue-600 shrink-0" />
-            {isSidebarOpen && <h1 className="text-lg font-black tracking-tight text-slate-800 animate-in fade-in duration-300">Dashboard</h1>}
-          </div>
-
-          {/* TOMBOL KEMBALI */}
-          <button type="button" onClick={handleBackFromProject} className={`flex items-center ${isSidebarOpen ? 'gap-2 px-4 justify-start' : 'justify-center px-0'} mb-6 text-[10px] uppercase tracking-widest font-black text-slate-500 hover:text-blue-600 transition-colors bg-white hover:bg-slate-50 py-3 rounded-xl border border-slate-200 shadow-sm hover:shadow-md cursor-pointer relative z-50 pointer-events-auto w-full`} title={previousAppMode === 'master' ? 'Kembali ke Peta' : 'Ke Menu Utama'}>
-            <ArrowLeft size={16} className="shrink-0" />
-            {isSidebarOpen && <span className="truncate">{previousAppMode === 'master' ? 'Kembali ke Peta' : 'Ke Menu Utama'}</span>}
-          </button>
-
-          <nav className="space-y-1.5 w-full">
-            <button onClick={() => setActiveMenu('dashboard')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'dashboard' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Overview"><LayoutDashboard size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Overview</span>}</button>
-            <button onClick={() => setActiveMenu('map')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'map' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Geo-Map"><MapIcon size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Geo-Map</span>}</button>
-            <button onClick={() => setActiveMenu('schedule')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'schedule' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Jadwal"><CalendarDays size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Jadwal</span>}</button>
-            <button onClick={() => setActiveMenu('contract')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'contract' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Data Kontrak"><Briefcase size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Data Kontrak</span>}</button>
-            <button onClick={() => setActiveMenu('dokumentasi')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'dokumentasi' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Dokumentasi"><ImageIcon size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Dokumentasi</span>}</button>
-            <button onClick={() => setActiveMenu('3d-twin')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === '3d-twin' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="3D Digital Twin"><Globe2 size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">3D Digital Twin</span>}</button>
-            <button onClick={() => setActiveMenu('admin')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'admin' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Arsip Dokumen"><FolderEdit size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Arsip Dokumen</span>}</button>
-            <button onClick={() => setActiveMenu('presentation')} className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 justify-start' : 'justify-center'} py-3.5 rounded-xl text-xs font-bold transition-all ${activeMenu === 'presentation' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`} title="Presentasi"><MonitorPlay size={18} className="shrink-0" /> {isSidebarOpen && <span className="truncate">Presentasi</span>}</button>
-          </nav>
-        </div>
-      </aside>
-
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-200 flex justify-around items-center p-2 z-[200] pb-safe shadow-[0_-4px_24px_rgba(0,0,0,0.02)]">
-        <button onClick={() => setActiveMenu('dashboard')} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeMenu === 'dashboard' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-700'}`}><LayoutDashboard size={20} /><span className="text-[8px] font-black uppercase tracking-widest">Overview</span></button>
-        <button onClick={() => setActiveMenu('map')} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeMenu === 'map' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-700'}`}><MapIcon size={20} /><span className="text-[8px] font-black uppercase tracking-widest">Peta</span></button>
-        <button onClick={() => setActiveMenu('3d-twin')} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeMenu === '3d-twin' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-700'}`}><Globe2 size={20} /><span className="text-[8px] font-black uppercase tracking-widest">3D BIM</span></button>
-        <button onClick={() => setActiveMenu('dokumentasi')} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeMenu === 'dokumentasi' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-700'}`}><ImageIcon size={20} /><span className="text-[8px] font-black uppercase tracking-widest">Galeri</span></button>
-        <button onClick={() => setActiveMenu('admin')} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeMenu === 'admin' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-700'}`}><FolderEdit size={20} /><span className="text-[8px] font-black uppercase tracking-widest">Arsip</span></button>
-      </nav>
-
-      <main className="flex-1 overflow-hidden flex flex-col relative bg-[#f4f7fe] pb-20 md:pb-0 h-full">
-        {activeMenu === 'dashboard' && (
-          <div className="h-full flex flex-col">
-
-            <header className="px-4 py-3 md:px-6 md:py-4 flex flex-col gap-3 border-b border-slate-200 bg-white/50 backdrop-blur-md relative z-[100] shadow-sm shrink-0 pointer-events-auto">
-              
-              {/* BARIS 1: KEMBALI, JUDUL & TOMBOL AKSI */}
-              <div className="flex justify-between items-center gap-2 md:gap-3 w-full">
-                
-                {/* TOMBOL KEMBALI MOBILE */}
-                <div className="md:hidden shrink-0">
-                  <button type="button" onClick={handleBackFromProject} className="p-2 bg-white border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-blue-600 transition-colors cursor-pointer block relative z-[99999] pointer-events-auto" title="Kembali ke Menu Utama">
-                    <ArrowLeft size={18} />
-                  </button>
-                </div>
-                
-                {/* JUDUL PEKERJAAN (Akan mengalah dan truncate jika sempit) */}
-                <div className="min-w-0 flex-1 pr-2">
-                  <h2 className="text-[11px] md:text-xs lg:text-sm font-normal uppercase tracking-tight text-slate-800 leading-snug truncate w-full pointer-events-auto" title={String(projectData?.pekerjaan || 'JUDUL PEKERJAAN KONTRAK')}>
-                    {String(projectData?.pekerjaan || 'JUDUL PEKERJAAN KONTRAK')}
-                  </h2>
-                </div>
-
-                {/* AKSI KANAN: Bell, Settings, Main Action (Dipindah ke baris atas) */}
-                <div className="flex items-center gap-1.5 md:gap-2 shrink-0 relative z-[99999]">
-                  <button type="button" onClick={() => setReadFeeds(new Set(safeFeeds.map(f => f.id)))} className="relative z-50 p-2 text-slate-400 hover:text-blue-600 transition-colors bg-white hover:bg-blue-50 rounded-xl shadow-sm border border-slate-200 cursor-pointer pointer-events-auto" title="Tandai semua log sudah dibaca">
-                    <Bell size={16} />
-                    {safeFeeds.filter(f => !readFeeds.has(f.id)).length > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-rose-500 text-white text-[8px] font-black border border-white shadow-sm animate-pulse pointer-events-none">
-                        {safeFeeds.filter(f => !readFeeds.has(f.id)).length > 99 ? '99+' : safeFeeds.filter(f => !readFeeds.has(f.id)).length}
-                      </span>
-                    )}
-                  </button>
-
-                  <button type="button" onClick={() => setShowEditProjectModal(true)} className="relative z-50 p-2 text-slate-400 hover:text-blue-600 transition-colors bg-white hover:bg-blue-50 rounded-xl shadow-sm border border-slate-200 cursor-pointer pointer-events-auto" title="Pengaturan Proyek"><Settings size={16} /></button>
-
-                  {/* TOMBOL UPDATE RUTE */}
-                  <button type="button" onClick={() => setShowAppendRouteModal(true)} className="bg-emerald-600 text-white px-3 py-2 md:px-4 md:py-2.5 rounded-xl text-[10px] font-bold uppercase flex items-center justify-center gap-1.5 md:gap-2 hover:bg-emerald-700 transition-colors shadow-md cursor-pointer relative z-50 pointer-events-auto" title="Tambah Progress Rute Realisasi">
-                    <MapPin size={14} className="md:w-4 md:h-4" />
-                    <span className="hidden sm:inline">Update Rute</span>
-                    <span className="sm:hidden">Rute</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleOpenReportModal()}
-                    className="bg-blue-600 text-white px-3 py-2 md:px-5 md:py-2.5 rounded-xl text-[10px] font-bold uppercase flex items-center justify-center gap-1.5 md:gap-2 hover:bg-blue-700 transition-colors shadow-md cursor-pointer relative z-50 pointer-events-auto"
-                  >
-                    <Camera size={14} className="md:w-4 md:h-4" />
-                    <span className="hidden sm:inline">Lapor Lapangan</span>
-                    <span className="sm:hidden">Lapor</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* BARIS 2: INFO TEKNIS */}
-              <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 w-full">
-                
-                {/* INFO TEKNIS */}
-                <div className="flex flex-col md:flex-row items-start md:items-center gap-3 w-full">
-                  <div className="flex flex-wrap items-center gap-2">
-                     <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-3 py-2 rounded-lg shadow-sm text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                       <Ruler size={14} className="text-blue-500" /> Panjang: <span className="text-slate-800 font-black">{projectData?.panjang_rencana ? `${projectData.panjang_rencana} m` : '-'}</span>
-                     </div>
-                     <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-3 py-2 rounded-lg shadow-sm text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                       <Ruler size={14} className="rotate-90 text-amber-500" /> Lebar: <span className="text-slate-800 font-black">{projectData?.lebar_rencana ? `${projectData.lebar_rencana} m` : '-'}</span>
-                     </div>
-                     <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-3 py-2 rounded-lg shadow-sm text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                       <HardHat size={14} className="text-emerald-500 shrink-0" /> <span className="shrink-0">Saluran:</span> <span className="text-slate-800 font-black truncate max-w-[120px]" title={projectData?.jenis_model || '-'}>{projectData?.jenis_model || '-'}</span>
-                     </div>
-                  </div>
-                </div>
-              </div>
-
-            </header>
-
-            <div className="p-4 md:p-6 lg:p-8 flex-1 overflow-y-auto no-scrollbar relative z-10">
-
-              <div className="animate-in fade-in zoom-in-95 duration-500 w-full flex flex-col pb-10">
-
-                {/* MAIN GRID LAYOUT - RESTRUCTURED UNTUK SEJAJAR */}
-                <div className="flex flex-col gap-6 mb-8">
-
-                  {/* BARIS 1: STATISTIK & LOG AKTIVITAS */}
-                  <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 md:gap-6 lg:h-[300px]">
-                      
-                      {/* STATISTIK (KIRI 8 KOLOM) */}
-                      <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 lg:h-full">
-                        <CircularStatCard label="Progress Fisik" icon={Activity} percentage={actualProg !== null ? actualProg : (projectData?.actual_progress || 0)} trend={true} isPositive={isDeviasiPositive} dropShadowColor="emerald" subContent={<div className="flex flex-col items-center mt-1"><span className="text-[12px] md:text-sm font-bold uppercase tracking-wider text-slate-800">{String(lastUpdatedWeek).replace('M', 'Minggu Ke-').replace('W', 'Minggu Ke-')}</span><div className="text-[10px] font-medium flex items-center gap-1.5 mt-1 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100"><span className="text-slate-400 uppercase tracking-wider">Deviasi:</span><span className={isDeviasiPositive ? "text-emerald-500 font-bold" : "text-rose-500 font-bold"}>{isDeviasiPositive ? '+' : ''}{deviasi}%</span></div></div>} />
-                        <CircularStatCard label="TAGIHAN" icon={Banknote} percentage={terminPct ? parseFloat(terminPct) : 0} dropShadowColor="blue" subContent={<div className="flex flex-col items-center mt-1"><span className="text-[12px] md:text-sm font-bold uppercase tracking-wider text-slate-800">Termin {toRoman(String(terminNum))}</span><span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mt-1 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100">{projectData?.updated_at ? `TGL: ${new Date(projectData.updated_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}` : (projectData?.created_at ? `TGL: ${new Date(projectData.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}` : 'Belum diupdate')}</span></div>} />
-                        <StatCard icon={Clock} label="Sisa Waktu" value={sisaWaktuInfo.value} sub={sisaWaktuInfo.sub} status={sisaWaktuInfo.status} />
-                      </div>
-
-                      {/* LOG AKTIVITAS (KANAN 4 KOLOM) */}
-                      <div className="lg:col-span-4 flex flex-col h-[380px] lg:h-full min-h-0">
-                        <div className="bg-white rounded-[24px] p-4 md:p-5 border border-slate-100 shadow-sm flex flex-col h-full overflow-hidden">
-                          <h3 className="text-[10px] font-bold text-slate-500 mb-2 tracking-wider uppercase flex justify-between items-center shrink-0">Log Aktivitas <div className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" /></h3>
-                          <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 flex flex-col divide-y divide-slate-100 min-h-0">
-                            {persiapanSidebarFeeds.length > 0 ? (
-                              persiapanSidebarFeeds.slice(0, 10).map(f => <FeedItem key={f.id} item={f} onView={handleViewLog} onDelete={() => setDeleteConfig({ id: f.id, type: 'media' })} isUnread={!readFeeds.has(f.id)} />)
-                            ) : (
-                              <div className="text-center text-slate-400 text-xs font-bold py-10 opacity-50 m-auto">Belum ada aktivitas</div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                    </div>
-
-                    {/* BARIS 2: KURVA S & ITEM PEKERJAAN */}
-                    <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 lg:h-[550px]">
-                      
-                      {/* KURVA S (KIRI 7 KOLOM) */}
-                      <div className="lg:col-span-7 bg-white p-6 md:p-8 rounded-[32px] border border-slate-100 shadow-sm flex flex-col h-[450px] lg:h-full min-h-0 overflow-hidden">
-                        <div className="flex justify-between items-center mb-6 shrink-0"><h3 className="text-lg font-bold text-slate-800">Kurva S Pekerjaan</h3><button onClick={() => setShowEditProjectModal(true)} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl text-xs font-bold uppercase flex items-center gap-2"><TrendingUp size={14} /> Input Kurva</button></div>
-                        <div className="flex-1 w-full -ml-4 min-h-0">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <ComposedChart data={processedSCurveData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                              <defs>
-                                <linearGradient id="colorRencanaDash" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.2}/>
-                                  <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
-                                </linearGradient>
-                                <linearGradient id="colorRealisasiDash" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                                </linearGradient>
-                              </defs>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                              <XAxis dataKey="n" stroke="#475569" fontSize={12} fontWeight="normal" axisLine={false} tickLine={false} />
-                              <YAxis domain={[0, 100]} stroke="#475569" fontSize={12} fontWeight="normal" axisLine={false} tickLine={false} tickFormatter={(value) => `${value}%`} />
-                              <Tooltip content={(props) => <SChartTooltip {...props} />} />
-                              <Legend verticalAlign="bottom" align="center" content={(p) => (
-                                <div className="flex flex-col items-center pt-6">
-                                  <div className="flex gap-6 mb-2">{(p.payload || []).map((entry, index) => (<div key={index} className="flex items-center gap-2"><span className="block w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }}></span><span className="text-xs uppercase font-bold text-slate-700">{safeRender(entry.value)}</span></div>))}</div>
-                                  <p className="text-xs text-slate-500 mt-2 font-normal uppercase">Update terakhir: {projectData?.updated_at ? new Date(projectData.updated_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</p>
-                                </div>
-                              )} />
-                              <Area type="monotone" dataKey="r" stroke="#06b6d4" strokeWidth={2} fill="url(#colorRencanaDash)" name="Rencana (M=Mingguan)" dot={{ r: 3, strokeWidth: 2, fill: '#ffffff' }} />
-                              <Area type="monotone" dataKey="a" stroke="#3b82f6" strokeWidth={3} fill="url(#colorRealisasiDash)" name="Progres Fisik (M=Mingguan)" dot={{ r: 3.5, strokeWidth: 2, fill: '#ffffff' }} />
-                            </ComposedChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </div>
-
-                      {/* ITEM PEKERJAAN (KANAN 5 KOLOM) */}
-                      <div className="lg:col-span-5 bg-white/80 backdrop-blur-xl p-5 md:p-6 lg:p-8 rounded-[32px] border border-slate-200/60 shadow-lg text-left flex flex-col relative group overflow-hidden h-[450px] lg:h-full">
-                        <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-[80px] opacity-10 transition-opacity duration-700 group-hover:opacity-20 -mr-20 -mt-20 pointer-events-none bg-blue-500"></div>
-                        <div className="flex justify-between items-center mb-5 border-b border-slate-200/60 pb-4 shrink-0 relative z-10">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-50/80 text-blue-600 rounded-xl shadow-sm border border-blue-100/50"><Ruler size={16} strokeWidth={2.5} /></div>
-                            <h3 className="text-sm font-black text-slate-800 tracking-tight uppercase">Progress Item Pekerjaan</h3>
-                          </div>
-                        </div>
-
-                        <div className="relative z-10 flex-1 overflow-hidden flex flex-col">
-                          {(!projectData?.item_utama_data || projectData.item_utama_data.length === 0) ? (
-                            <div className="text-center py-10 bg-slate-50/30 rounded-2xl border border-dashed border-slate-200 m-auto w-full">
-                              <Ruler size={24} className="mx-auto text-slate-300 mb-2" />
-                              <p className="text-xs font-bold text-slate-400">Belum ada item utama yang diatur.</p>
-                            </div>
-                          ) : (
-                            <div className="overflow-y-auto custom-scrollbar w-full flex-1 pr-1">
-                              <table className="w-full text-left border-collapse">
-                                <thead className="sticky top-0 bg-white/40 backdrop-blur-md z-20">
-                                  <tr className="border-b border-slate-200/60">
-                                    <th className="pb-3 pr-2 text-xs font-black text-slate-500 uppercase tracking-widest w-full">Item Pekerjaan</th>
-                                    <th className="pb-3 px-2 text-xs font-black text-slate-500 uppercase tracking-widest text-right whitespace-nowrap">Hari Ini</th>
-                                    <th className="pb-3 px-2 text-xs font-black text-slate-500 uppercase tracking-widest text-right whitespace-nowrap">Total</th>
-                                    <th className="pb-3 px-2 text-xs font-black text-slate-500 uppercase tracking-widest text-right whitespace-nowrap">Sat.</th>
-                                    <th className="pb-3 pl-2 text-xs font-black text-slate-500 uppercase tracking-widest text-right whitespace-nowrap">Progress</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100/50">
-                                  {projectData.item_utama_data.map((item, idx) => (
-                                    <tr key={item.id || idx} className="hover:bg-blue-50/40 transition-colors group border-b border-slate-50 last:border-0">
-                                      <td className="py-4 pr-2">
-                                        <span className="text-sm font-normal text-slate-800 leading-tight block truncate uppercase" title={item.nama}>
-                                          {item.nama}
-                                        </span>
-                                      </td>
-                                      <td className="py-4 px-2 text-right text-sm font-normal text-slate-600">
-                                        {item.bobot || '-'}
-                                      </td>
-                                      <td className="py-4 px-2 text-right text-sm font-normal text-slate-600">
-                                        {item.nilai || '-'}
-                                      </td>
-                                      <td className="py-4 px-2 text-right text-sm font-normal text-slate-600 uppercase">
-                                        {item.satuan || '-'}
-                                      </td>
-                                      <td className="py-4 pl-2 text-right">
-                                        <span className="text-base font-black text-blue-600 drop-shadow-sm">{item.persen}%</span>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                    </div>
-
-                    {/* BARIS 3: LAPORAN & DOKUMENTASI */}
-                    <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 lg:h-[360px]">
-                      
-                      {/* LAPORAN (KIRI 5 KOLOM) */}
-                      <div
-                        className={`lg:col-span-5 bg-white p-5 md:p-6 rounded-[32px] border flex flex-col h-[350px] lg:h-full relative transition-all duration-300 min-h-0 overflow-hidden ${isDraggingReport ? 'border-rose-400 shadow-xl scale-[1.02] bg-rose-50/30' : 'border-slate-100 shadow-sm'}`}
-                        onDragOver={(e) => { e.preventDefault(); setIsDraggingReport(true); }}
-                        onDragLeave={(e) => { e.preventDefault(); setIsDraggingReport(false); }}
-                        onDrop={handleDropReportUpload}
-                      >
-                        {isDraggingReport && (
-                          <div className="absolute inset-0 z-50 bg-white/90 backdrop-blur-sm rounded-[32px] flex flex-col items-center justify-center border-2 border-dashed border-rose-400 m-2 pointer-events-none">
-                            <div className="bg-rose-100 p-4 rounded-full shadow-sm text-rose-600 mb-3 animate-bounce"><FileText size={32} /></div>
-                            <h3 className="text-sm font-black text-slate-800">Lepaskan file PDF di sini</h3>
-                          </div>
-                        )}
-                        <div className="flex justify-between items-center mb-5 shrink-0 border-b border-slate-100 pb-4">
-                          <h3 className="text-[11px] font-black text-slate-800 uppercase flex items-center gap-2 tracking-wider"><FileText size={16} className="text-rose-500" /> Laporan</h3>
-                          <button onClick={() => reportFileInputRef.current?.click()} className="bg-rose-50 text-rose-600 px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase flex items-center gap-1.5 hover:bg-rose-100 transition-colors shadow-sm">
-                            {isProcessing ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />} <span className="hidden xl:inline">Upload</span>
-                          </button>
-                          <input type="file" accept=".pdf" className="hidden" ref={reportFileInputRef} onChange={handleDirectReportUpload} />
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 flex flex-col min-h-0">
-                          {weeklyReports.length > 0 ? (
-                            <div className="flex-1 flex flex-col gap-4 pb-2">
-                              {weeklyReports.slice(0, 1).map(doc => (
-                                <div key={doc.id} onClick={() => window.open(doc.file_url, '_blank')} className="group border border-slate-200 rounded-3xl overflow-hidden hover:shadow-2xl hover:border-blue-400 hover:-translate-y-1.5 transition-all duration-300 cursor-pointer bg-white relative flex flex-col flex-1 min-h-[220px]">
-                                  <div className="absolute inset-0 bg-slate-100 flex items-center justify-center overflow-hidden">
-                                    <div className="w-full h-full group-hover:scale-105 transition-transform duration-700">
-                                      <PdfThumbnailReal fileUrl={doc.file_url} />
-                                    </div>
-                                  </div>
-                                  <button onClick={(e) => { e.stopPropagation(); setDeleteConfig({ id: doc.id, type: 'doc' }); }} className="absolute top-3 right-3 p-2 bg-white/90 text-rose-500 rounded-xl opacity-0 group-hover:opacity-100 transition-all z-20 hover:bg-rose-50 shadow-md backdrop-blur-sm"><Trash size={14} /></button>
-                                  <div className="absolute inset-x-0 bottom-0 pt-24 pb-4 px-5 bg-gradient-to-t from-slate-900/95 via-slate-900/60 to-transparent flex flex-col justify-end z-10 pointer-events-none">
-                                    <div className="flex justify-between items-end gap-3">
-                                      <div className="flex flex-col">
-                                        <h4 className="text-[11px] font-bold text-white line-clamp-2 leading-snug mb-1 break-all group-hover:text-blue-300 transition-colors" title={doc.name}>{String(doc.name || '')}</h4>
-                                        <p className="text-[9px] font-medium text-slate-300">{new Date(doc.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
-                                      </div>
-                                      <div className="bg-rose-500/90 backdrop-blur-sm border border-rose-400 text-white text-[8px] font-black tracking-widest px-2 py-1.5 rounded-lg shadow-sm shrink-0 uppercase">PDF</div>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div
-                              onClick={() => reportFileInputRef.current?.click()}
-                              className="flex flex-col items-center justify-center flex-1 h-full text-center border-2 border-dashed border-slate-200 rounded-3xl cursor-pointer hover:bg-rose-50/50 hover:border-rose-300 transition-all group m-1"
-                            >
-                              <div className="p-4 bg-rose-50 text-rose-500 rounded-full mb-3 group-hover:scale-110 group-hover:bg-rose-100 transition-all shadow-sm">
-                                <Upload size={28} />
-                              </div>
-                              <p className="text-xs font-black text-slate-700 mb-1 uppercase tracking-widest">Upload Laporan</p>
-                              <p className="text-[9px] font-bold uppercase tracking-widest leading-relaxed text-slate-400">Tarik & Lepas File PDF<br />atau Klik di Sini</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* DOKUMENTASI LAPANGAN (KANAN 7 KOLOM) */}
-                      <div className="lg:col-span-7 bg-white p-5 md:p-6 lg:p-8 rounded-[32px] border border-slate-100 shadow-sm flex flex-col text-left h-[350px] lg:h-full relative group overflow-hidden">
-                        <div className="absolute top-0 right-0 w-40 h-40 rounded-full blur-[50px] opacity-10 transition-opacity duration-700 group-hover:opacity-30 -mr-10 -mt-10 pointer-events-none bg-blue-500"></div>
-                        <div className="flex justify-between items-center w-full mb-5 border-b border-slate-100 pb-4 relative z-10 shrink-0">
-                          <span className="text-slate-800 text-[11px] uppercase font-black tracking-wider leading-tight flex items-center gap-2"><ImageIcon size={16} className="text-blue-500" /> Dokumentasi Lapangan</span>
-                          <button onClick={() => setActiveMenu('dokumentasi')} className="px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-transform duration-500 shadow-sm bg-blue-50 text-blue-600 border border-blue-100/80 hover:bg-blue-100 cursor-pointer pointer-events-auto" title="Lihat Galeri">
-                            Lihat Semua
-                          </button>
-                        </div>
-                        
-                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 relative z-10 flex flex-col gap-4">
-                          {photos.length > 0 ? (
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                              {photos.slice(0, 3).map((item, idx) => (
-                                <div key={item.display_id || item.id || idx} className="w-full flex flex-col gap-2 group/item cursor-pointer" onClick={() => setSelectedLog(item)}>
-                                  <div className="h-32 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 relative shrink-0">
-                                    {isVideo(item.media_url) ? (
-                                      <video src={item.media_url} className="w-full h-full object-cover group-hover/item:scale-105 transition-transform duration-500" />
-                                    ) : (
-                                      <img src={item.media_url} alt={item.title} className="w-full h-full object-cover group-hover/item:scale-105 transition-transform duration-500" />
-                                    )}
-                                    <div className="absolute inset-0 bg-black/0 group-hover/item:bg-black/10 transition-colors duration-300 rounded-2xl" />
-                                    {item.is_problem && (
-                                      <div className="absolute top-2 right-2 bg-rose-500 text-white p-1 rounded-lg shadow-md"><AlertCircle size={12} /></div>
-                                    )}
-                                  </div>
-                                  <div>
-                                    <h4 className="text-[10px] font-bold text-slate-800 line-clamp-1 group-hover/item:text-blue-600 transition-colors">{String(item.title || '')}</h4>
-                                    <p className="text-[9px] font-bold text-slate-400 mt-0.5">
-                                      {new Date(item.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}
-                                    </p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="text-center py-8 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 flex-1 flex flex-col justify-center w-full">
-                              <ImageIcon size={32} className="mx-auto text-slate-300 mb-3" />
-                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Belum ada foto dokumentasi</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                    </div>
-                  </div>
-
-                </div>
-            </div>
-          </div>
-        )}
-
-        {activeMenu === 'dokumentasi' && (<DokumentasiView feeds={safeFeeds} onView={setSelectedLog} onDelete={setDeleteConfig} />)}
-        {activeMenu === 'map' && (<div className="h-full p-4 md:p-8"><SiteMapView projectData={projectData} feeds={safeFeeds} onUpdateRoutes={handleRoutesUpdate} isUpdating={isProcessing} showMsg={showMsg} /></div>)}
-        {activeMenu === '3d-twin' && (<TwinViewer />)}
-        {activeMenu === 'schedule' && (<GanttChartView projectData={projectData} onSaveSchedule={handleSaveSchedule} isProcessing={isProcessing} />)}
-
-        {activeMenu === 'contract' && (
-          <div className="h-full flex flex-col overflow-hidden">
-            <div className="px-6 py-6 md:px-10 flex justify-between items-center border-b border-slate-200 bg-white/50 backdrop-blur-md">
-              <div className="flex items-center gap-4"><div className="p-3 bg-white shadow-sm border border-slate-100 rounded-2xl hidden sm:block"><Briefcase className="text-blue-500" /></div><div><h3 className="text-xl font-bold">DATA KONTRAK (DATA INFORMASI)</h3><p className="text-[10px] text-slate-500 uppercase mt-1">Detail Informasi</p></div></div>
-              {!isEditingContract ? (<button onClick={() => setIsEditingContract(true)} className="bg-white px-6 py-3 rounded-2xl text-xs font-bold uppercase shadow-sm border border-slate-200 flex gap-2"><Edit3 size={16} className="text-blue-500" /> EDIT DATA</button>) : (<div className="flex gap-3"><button onClick={() => setIsEditingContract(false)} className="bg-white px-6 py-3 rounded-2xl text-xs font-bold uppercase border border-slate-200">BATAL</button><button onClick={handleUpdateStakeholder} className="bg-blue-600 text-white px-6 py-3 rounded-2xl text-xs font-bold uppercase shadow-md flex gap-2"><Save size={16} /> SIMPAN</button></div>)}
-            </div>
-            <div className="p-6 md:p-10 flex-1 overflow-y-auto custom-scrollbar">
-              {!isEditingContract ? (
-                <div className="flex flex-col gap-12 w-full mx-auto">
-                  <ContractTable title="OWNER ( PERANGKAT DAERAH )" icon={<Building2 size={16} />} dataArray={dinasData} colorClass="text-blue-600" bgClass="bg-blue-100" />
-                  <ContractTable title="DATA INFORMASI KONTRAKTOR / PELAKSANA" icon={<HardHat size={16} />} dataArray={kontraktorData} colorClass="text-amber-600" bgClass="bg-amber-100" />
-                  <ContractTable title="DATA INFORMASI KONSULTAN SUPERVISI/PENGAWAS" icon={<ShieldCheck size={16} />} dataArray={konsultanData} colorClass="text-emerald-600" bgClass="bg-emerald-100" />
-                </div>
-              ) : (
-                <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 md:p-10 w-full mx-auto space-y-12">
-
-                  <div className="space-y-4">
-                    <div className="mb-2 border-b border-slate-200 pb-4">
-                      <h3 className="text-base font-black uppercase text-blue-600">1. INPUT DATA OWNER (DINAS)</h3>
-                    </div>
-                    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                      <div className="hidden sm:flex bg-slate-200 border-b border-slate-300 py-3.5 px-6 justify-between items-center">
-                        <div className="text-xs font-black uppercase tracking-wider text-slate-800">Daftar Perangkat Daerah</div>
-                        <div className="flex gap-2">
-                          <button type="button" onClick={() => setMasterForm({ ...masterForm, dinas: [...masterForm.dinas, { type: 'keterangan', role: 'Instansi', name: '', nip: '' }] })} className="text-[10px] font-bold text-slate-600 bg-white border border-slate-200 shadow-sm px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-slate-50"><Plus size={12} /> Keterangan</button>
-                          <button type="button" onClick={() => setMasterForm({ ...masterForm, dinas: [...masterForm.dinas, { type: 'personil', role: '', name: '', nip: '' }] })} className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 shadow-sm px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-blue-100"><Plus size={12} /> Personil</button>
-                        </div>
-                      </div>
-                      <div className="p-4 sm:p-6 space-y-3">
-                        {(masterForm.dinas || []).map((d, i) => {
-                          const isPersonil = d.type === 'personil' || (d.type === undefined && String(d.role || '').toLowerCase() !== 'instansi' && String(d.role || '').toLowerCase() !== '');
-                          return (
-                            <div key={i} className="flex flex-col md:flex-row gap-4 p-4 bg-slate-50 border border-slate-100 rounded-2xl group items-start">
-                              <div className="w-full md:w-1/3">
-                                {isPersonil ? (
-                                  <input type="text" placeholder="Nama Lengkap" className="w-full p-2.5 rounded-xl border border-slate-200 text-sm font-bold bg-white focus:outline-blue-400" value={d.name} onChange={e => { const newD = [...masterForm.dinas]; newD[i].name = e.target.value; setMasterForm({ ...masterForm, dinas: newD }); }} />
-                                ) : (
-                                  <input type="text" placeholder="Label (Misal: Instansi)" className="w-full p-2.5 rounded-xl border border-slate-200 text-sm font-bold bg-white focus:outline-blue-400" value={d.role} onChange={e => { const newD = [...masterForm.dinas]; newD[i].role = e.target.value; setMasterForm({ ...masterForm, dinas: newD }); }} />
-                                )}
-                              </div>
-                              <div className="flex-1 w-full flex flex-col gap-2">
-                                {isPersonil ? (
-                                  <>
-                                    <input type="text" placeholder="Jabatan (Tampil di Kiri Tabel)" className="w-full p-2.5 rounded-xl border border-slate-200 text-sm font-bold bg-white focus:outline-blue-400" value={d.role} onChange={e => { const newD = [...masterForm.dinas]; newD[i].role = e.target.value; setMasterForm({ ...masterForm, dinas: newD }); }} />
-                                    <input type="text" placeholder="NIP (Opsional)" className="w-full p-2.5 rounded-xl border border-slate-200 text-sm font-bold bg-white focus:outline-blue-400" value={d.nip || ''} onChange={e => { const newD = [...masterForm.dinas]; newD[i].nip = e.target.value; setMasterForm({ ...masterForm, dinas: newD }); }} />
-                                  </>
-                                ) : (
-                                  <>
-                                    <input type="text" placeholder="Nama Instansi/Perangkat Daerah" className="w-full p-2.5 rounded-xl border border-slate-200 text-sm font-bold bg-white focus:outline-blue-400" value={d.name} onChange={e => { const newD = [...masterForm.dinas]; newD[i].name = e.target.value; setMasterForm({ ...masterForm, dinas: newD }); }} />
-                                  </>
-                                )}
-                              </div>
-                              {masterForm.dinas.length > 1 && (
-                                <button type="button" onClick={() => { const newD = [...masterForm.dinas]; newD.splice(i, 1); setMasterForm({ ...masterForm, dinas: newD }); }} className="p-2.5 text-rose-400 bg-rose-50 rounded-xl hover:bg-rose-100 transition-colors shrink-0"><Trash size={16} /></button>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="mb-2 border-b border-slate-200 pb-4">
-                      <h3 className="text-base font-black uppercase text-amber-600">2. INPUT DATA KONTRAKTOR / PELAKSANA</h3>
-                    </div>
-                    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                      <div className="hidden sm:flex bg-slate-200 border-b border-slate-300 py-3.5 px-6">
-                        <div className="w-1/3 text-xs font-black uppercase tracking-wider text-slate-800">Informasi / Entitas</div>
-                        <div className="w-2/3 text-xs font-black uppercase tracking-wider text-slate-800 pl-4 border-l border-slate-300/60">Form Input & Keterangan</div>
-                      </div>
-                      <div className="flex flex-col">
-                        {masterForm.kontraktor.fields.map((f, i) => (
-                          <div key={f.id} className="flex flex-col sm:flex-row py-3 px-6 border-b border-slate-100 last:border-0 bg-white hover:bg-slate-50/50 transition-colors gap-3 sm:gap-4 items-start sm:items-center">
-                            <div className="w-full sm:w-1/3 flex gap-2">
-                              <select className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-[10px] font-bold outline-none focus:border-blue-400 shrink-0" value={f.type} onChange={e => {
-                                const newF = [...masterForm.kontraktor.fields];
-                                newF[i].type = e.target.value;
-                                if (e.target.value === 'date') newF[i].value = '';
-                                setMasterForm({ ...masterForm, kontraktor: { ...masterForm.kontraktor, fields: newF } });
-                              }}>
-                                <option value="text">Teks</option>
-                                <option value="date">Tanggal</option>
-                              </select>
-                              <input type="text" placeholder="Nama Field" className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-[11px] font-bold uppercase text-slate-600 outline-none focus:border-blue-400" value={f.label} onChange={e => {
-                                const newF = [...masterForm.kontraktor.fields];
-                                newF[i].label = e.target.value;
-                                setMasterForm({ ...masterForm, kontraktor: { ...masterForm.kontraktor, fields: newF } });
-                              }} />
-                            </div>
-                            <div className="w-full sm:w-2/3 flex gap-2 items-center">
-                              {f.type === 'date' ? (
-                                <input type="date" className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 focus:bg-white focus:border-blue-400 focus:outline-none transition-all" value={f.value} onChange={e => {
-                                  const newF = [...masterForm.kontraktor.fields];
-                                  newF[i].value = e.target.value;
-                                  setMasterForm({ ...masterForm, kontraktor: { ...masterForm.kontraktor, fields: newF } });
-                                }} />
-                              ) : (
-                                <AutoResizeTextarea value={f.value} onChange={e => {
-                                  const newF = [...masterForm.kontraktor.fields];
-                                  newF[i].value = e.target.value;
-                                  setMasterForm({ ...masterForm, kontraktor: { ...masterForm.kontraktor, fields: newF } });
-                                }} placeholder="Isi detail keterangan..." className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 focus:bg-white focus:border-blue-400 focus:outline-none transition-all leading-relaxed" />
-                              )}
-                              <div className="flex gap-1 shrink-0">
-                                <button type="button" onClick={() => {
-                                  const newF = [...masterForm.kontraktor.fields];
-                                  if (i > 0) { const temp = newF[i]; newF[i] = newF[i-1]; newF[i-1] = temp; setMasterForm({ ...masterForm, kontraktor: { ...masterForm.kontraktor, fields: newF } }); }
-                                }} disabled={i === 0} className="p-2 text-slate-400 bg-slate-100 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors disabled:opacity-30" title="Geser ke Atas"><ArrowUp size={14} /></button>
-                                <button type="button" onClick={() => {
-                                  const newF = [...masterForm.kontraktor.fields];
-                                  if (i < newF.length - 1) { const temp = newF[i]; newF[i] = newF[i+1]; newF[i+1] = temp; setMasterForm({ ...masterForm, kontraktor: { ...masterForm.kontraktor, fields: newF } }); }
-                                }} disabled={i === masterForm.kontraktor.fields.length - 1} className="p-2 text-slate-400 bg-slate-100 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors disabled:opacity-30" title="Geser ke Bawah"><ArrowDown size={14} /></button>
-                                <button type="button" onClick={() => {
-                                  const newF = [...masterForm.kontraktor.fields];
-                                  newF.splice(i, 1);
-                                  setMasterForm({ ...masterForm, kontraktor: { ...masterForm.kontraktor, fields: newF } });
-                                }} className="p-2 text-rose-400 bg-rose-50 rounded-lg hover:bg-rose-100 transition-colors ml-1" title="Hapus Field"><Trash size={14} /></button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="p-4 sm:px-6 bg-[#f8fafc] border-t border-slate-200 flex justify-end">
-                        <button type="button" onClick={() => {
-                          setMasterForm({ ...masterForm, kontraktor: { ...masterForm.kontraktor, fields: [...masterForm.kontraktor.fields, { id: Date.now(), label: 'Field Baru', value: '', type: 'text' }] } });
-                        }} className="text-[10px] font-bold text-blue-600 bg-white border border-slate-200 shadow-sm px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-slate-50 w-max"><Plus size={12} /> Tambah Field</button>
-                      </div>
-                      <div className="p-4 sm:p-6 bg-[#f8fafc] border-t border-slate-200">
-                        <div className="flex justify-between items-center mb-4">
-                          <h4 className="text-xs font-bold uppercase text-slate-600">Personil Kontraktor</h4>
-                          <button type="button" onClick={() => setMasterForm({ ...masterForm, kontraktor: { ...masterForm.kontraktor, personil: [...(masterForm.kontraktor.personil || []), { name: '', position: '' }] } })} className="text-[10px] font-bold bg-white border border-slate-200 shadow-sm px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-slate-50"><Plus size={12} />Tambah Personil</button>
-                        </div>
-                        {(masterForm.kontraktor.personil || []).map((p, i) => (
-                          <div key={i} className="flex flex-col md:flex-row gap-2 mb-2 items-center">
-                            <input type="text" placeholder="Nama Lengkap" className="flex-1 w-full p-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-blue-400" value={p.name} onChange={e => { const newP = [...masterForm.kontraktor.personil]; newP[i].name = e.target.value; setMasterForm({ ...masterForm, kontraktor: { ...masterForm.kontraktor, personil: newP } }); }} />
-                            <input type="text" placeholder="Jabatan" className="w-full md:w-1/3 p-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-blue-400" value={p.position} onChange={e => { const newP = [...masterForm.kontraktor.personil]; newP[i].position = e.target.value; setMasterForm({ ...masterForm, kontraktor: { ...masterForm.kontraktor, personil: newP } }); }} />
-                            <button type="button" onClick={() => { const newP = [...masterForm.kontraktor.personil]; newP.splice(i, 1); setMasterForm({ ...masterForm, kontraktor: { ...masterForm.kontraktor, personil: newP } }); }} className="p-2.5 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-100 transition-colors w-full md:w-auto flex justify-center"><Trash size={16} /></button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="mb-2 border-b border-slate-200 pb-4">
-                      <h3 className="text-base font-black uppercase text-emerald-600">3. INPUT DATA KONSULTAN SUPERVISI</h3>
-                    </div>
-                    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                      <div className="hidden sm:flex bg-slate-200 border-b border-slate-300 py-3.5 px-6">
-                        <div className="w-1/3 text-xs font-black uppercase tracking-wider text-slate-800">Informasi / Entitas</div>
-                        <div className="w-2/3 text-xs font-black uppercase tracking-wider text-slate-800 pl-4 border-l border-slate-300/60">Form Input & Keterangan</div>
-                      </div>
-                      <div className="flex flex-col">
-                        {masterForm.konsultan.fields.map((f, i) => (
-                          <div key={f.id} className="flex flex-col sm:flex-row py-3 px-6 border-b border-slate-100 last:border-0 bg-white hover:bg-slate-50/50 transition-colors gap-3 sm:gap-4 items-start sm:items-center">
-                            <div className="w-full sm:w-1/3 flex gap-2">
-                              <select className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-[10px] font-bold outline-none focus:border-blue-400 shrink-0" value={f.type} onChange={e => {
-                                const newF = [...masterForm.konsultan.fields];
-                                newF[i].type = e.target.value;
-                                if (e.target.value === 'date') newF[i].value = '';
-                                setMasterForm({ ...masterForm, konsultan: { ...masterForm.konsultan, fields: newF } });
-                              }}>
-                                <option value="text">Teks</option>
-                                <option value="date">Tanggal</option>
-                              </select>
-                              <input type="text" placeholder="Nama Field" className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-[11px] font-bold uppercase text-slate-600 outline-none focus:border-blue-400" value={f.label} onChange={e => {
-                                const newF = [...masterForm.konsultan.fields];
-                                newF[i].label = e.target.value;
-                                setMasterForm({ ...masterForm, konsultan: { ...masterForm.konsultan, fields: newF } });
-                              }} />
-                            </div>
-                            <div className="w-full sm:w-2/3 flex gap-2 items-center">
-                              {f.type === 'date' ? (
-                                <input type="date" className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 focus:bg-white focus:border-blue-400 focus:outline-none transition-all" value={f.value} onChange={e => {
-                                  const newF = [...masterForm.konsultan.fields];
-                                  newF[i].value = e.target.value;
-                                  setMasterForm({ ...masterForm, konsultan: { ...masterForm.konsultan, fields: newF } });
-                                }} />
-                              ) : (
-                                <AutoResizeTextarea value={f.value} onChange={e => {
-                                  const newF = [...masterForm.konsultan.fields];
-                                  newF[i].value = e.target.value;
-                                  setMasterForm({ ...masterForm, konsultan: { ...masterForm.konsultan, fields: newF } });
-                                }} placeholder="Isi detail keterangan..." className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 focus:bg-white focus:border-blue-400 focus:outline-none transition-all leading-relaxed" />
-                              )}
-                              <div className="flex gap-1 shrink-0">
-                                <button type="button" onClick={() => {
-                                  const newF = [...masterForm.konsultan.fields];
-                                  if (i > 0) { const temp = newF[i]; newF[i] = newF[i-1]; newF[i-1] = temp; setMasterForm({ ...masterForm, konsultan: { ...masterForm.konsultan, fields: newF } }); }
-                                }} disabled={i === 0} className="p-2 text-slate-400 bg-slate-100 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors disabled:opacity-30" title="Geser ke Atas"><ArrowUp size={14} /></button>
-                                <button type="button" onClick={() => {
-                                  const newF = [...masterForm.konsultan.fields];
-                                  if (i < newF.length - 1) { const temp = newF[i]; newF[i] = newF[i+1]; newF[i+1] = temp; setMasterForm({ ...masterForm, konsultan: { ...masterForm.konsultan, fields: newF } }); }
-                                }} disabled={i === masterForm.konsultan.fields.length - 1} className="p-2 text-slate-400 bg-slate-100 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors disabled:opacity-30" title="Geser ke Bawah"><ArrowDown size={14} /></button>
-                                <button type="button" onClick={() => {
-                                  const newF = [...masterForm.konsultan.fields];
-                                  newF.splice(i, 1);
-                                  setMasterForm({ ...masterForm, konsultan: { ...masterForm.konsultan, fields: newF } });
-                                }} className="p-2 text-rose-400 bg-rose-50 rounded-lg hover:bg-rose-100 transition-colors ml-1" title="Hapus Field"><Trash size={14} /></button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="p-4 sm:px-6 bg-[#f8fafc] border-t border-slate-200 flex justify-end">
-                        <button type="button" onClick={() => {
-                          setMasterForm({ ...masterForm, konsultan: { ...masterForm.konsultan, fields: [...masterForm.konsultan.fields, { id: Date.now(), label: 'Field Baru', value: '', type: 'text' }] } });
-                        }} className="text-[10px] font-bold text-blue-600 bg-white border border-slate-200 shadow-sm px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-slate-50 w-max"><Plus size={12} /> Tambah Field</button>
-                      </div>
-                      <div className="p-4 sm:p-6 bg-[#f8fafc] border-t border-slate-200">
-                        <div className="flex justify-between items-center mb-4">
-                          <h4 className="text-xs font-bold uppercase text-slate-600">Personil Konsultan</h4>
-                          <button type="button" onClick={() => setMasterForm({ ...masterForm, konsultan: { ...masterForm.konsultan, personil: [...(masterForm.konsultan.personil || []), { name: '', position: '' }] } })} className="text-[10px] font-bold bg-white border border-slate-200 shadow-sm px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-slate-50"><Plus size={12} />Tambah Personil</button>
-                        </div>
-                        {(masterForm.konsultan.personil || []).map((p, i) => (
-                          <div key={i} className="flex flex-col md:flex-row gap-2 mb-2 items-center">
-                            <input type="text" placeholder="Nama Lengkap" className="flex-1 w-full p-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-blue-400" value={p.name} onChange={e => { const newP = [...masterForm.konsultan.personil]; newP[i].name = e.target.value; setMasterForm({ ...masterForm, konsultan: { ...masterForm.konsultan, personil: newP } }); }} />
-                            <input type="text" placeholder="Jabatan" className="w-full md:w-1/3 p-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-blue-400" value={p.position} onChange={e => { const newP = [...masterForm.konsultan.personil]; newP[i].position = e.target.value; setMasterForm({ ...masterForm, konsultan: { ...masterForm.konsultan, personil: newP } }); }} />
-                            <button type="button" onClick={() => { const newP = [...masterForm.konsultan.personil]; newP.splice(i, 1); setMasterForm({ ...masterForm, konsultan: { ...masterForm.konsultan, personil: newP } }); }} className="p-2.5 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-100 transition-colors w-full md:w-auto flex justify-center"><Trash size={16} /></button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* VIEW: ARSIP (ADMIN) */}
-        {activeMenu === 'admin' && (
-          <div className="h-full flex flex-col">
-            <header className="px-6 py-6 md:px-10 flex justify-between items-center border-b border-slate-200">
-              <div className="flex items-center gap-3"><div className="p-2.5 bg-rose-50 text-rose-600 rounded-xl"><FolderEdit size={24} /></div><div><h2 className="text-xl font-bold">Arsip Dokumen Proyek</h2></div></div>
-              <div className="flex gap-2"><button onClick={() => setShowCategoryManager(true)} className="bg-white border px-4 py-3 rounded-2xl flex items-center gap-2"><Settings size={16} /> Kategori</button><button onClick={() => setShowDocModal(true)} className="bg-blue-600 text-white px-4 py-3 rounded-2xl flex items-center gap-2"><Upload size={16} /> Upload</button></div>
-            </header>
-            <div className="flex-1 p-4 md:p-8 overflow-y-auto custom-scrollbar">
-
-              <div className="mb-6 space-y-4">
-                <div className="bg-white p-2 flex items-center rounded-2xl border border-slate-200 shadow-sm focus-within:border-blue-400 focus-within:shadow-md transition-all">
-                  <div className="pl-4 pr-2 text-slate-400"><Search size={20} /></div>
-                  <input type="text" placeholder="Cari nama dokumen atau arsip..." value={docSearchQuery} onChange={e => setDocSearchQuery(e.target.value)} className="w-full py-3 px-2 bg-transparent outline-none text-sm font-bold text-slate-700" />
-                  {docSearchQuery && (
-                    <button onClick={() => setDocSearchQuery('')} className="pr-4 pl-2 text-rose-400 hover:text-rose-600 transition-colors">
-                      <X size={20} />
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-2 pt-1">
-                  <button onClick={() => setDocFilterCategory('Semua')} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all shadow-sm ${docFilterCategory === 'Semua' ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-200'}`}>Semua</button>
-                  {docCategories.map(c => (
-                    <button key={c} onClick={() => setDocFilterCategory(c)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all shadow-sm ${docFilterCategory === c ? 'bg-blue-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-200'}`}>{c}</button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {filteredDocs.length > 0 ? (
-                  filteredDocs.map(doc => {
-                    const info = getFileIconInfo(doc.name);
-                    return (
-                      <div key={doc.id} className="bg-white border p-4 rounded-2xl flex items-center justify-between group hover:border-blue-300 hover:shadow-md transition-all">
-                        <div className="flex items-center gap-4"><div className={`p-3 rounded-xl ${info.bg} ${info.color}`}><info.icon size={20} /></div><div className="min-w-0"><h4 className="text-sm font-bold truncate" title={doc.name}>{String(doc.name || '')}</h4><div className="text-[10px] text-slate-500 uppercase">{doc.category} - {doc.size}</div></div></div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button onClick={() => setMoveDocConfig({ id: doc.id, category: doc.category, newCategory: doc.category })} className="p-2 text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity bg-blue-50 rounded-lg hover:bg-blue-100" title="Pindah Kategori"><Edit3 size={16} /></button>
-                          <button onClick={() => setDeleteConfig({ id: doc.id, type: 'doc' })} className="p-2 text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity bg-rose-50 rounded-lg hover:bg-rose-100" title="Hapus Dokumen"><Trash size={16} /></button>
-                          <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="bg-slate-50 border border-slate-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 p-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all"><ExternalLink size={14} /> <span className="hidden sm:inline">Buka Dokumen</span></a>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-16 text-center bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
-                    <FolderEdit size={48} className="text-slate-300 mb-4" />
-                    <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">Dokumen Tidak Ditemukan</h3>
-                    <p className="text-xs text-slate-500 font-medium mt-2">Tidak ada dokumen yang sesuai dengan filter atau kata kunci pencarian Anda.</p>
-                    {(docSearchQuery || docFilterCategory !== 'Semua') && (
-                      <button onClick={() => { setDocSearchQuery(''); setDocFilterCategory('Semua'); }} className="mt-4 text-[10px] font-bold bg-white border border-slate-200 text-blue-600 px-4 py-2 rounded-xl shadow-sm hover:bg-blue-50 transition-colors">
-                        Reset Pencarian & Filter
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
-
-      {/* --- SEMUA MODAL POP-UP --- */}
-      {showEditProjectModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[1000] p-4">
-          <div className="bg-white rounded-[32px] p-8 w-full max-w-2xl shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar">
-            <button onClick={() => setShowEditProjectModal(false)} className="absolute top-6 right-6 p-2"><X size={20} /></button>
-            <h3 className="text-lg font-black mb-6">Pengaturan Proyek</h3>
-            <form onSubmit={handleUpdateProject} className="space-y-4">
-              <div><label className="text-[10px] font-bold block mb-1">Nama Pekerjaan</label><input type="text" className="w-full p-3 rounded-xl border bg-slate-50" value={editProjectForm.pekerjaan} onChange={e => setEditProjectForm({ ...editProjectForm, pekerjaan: e.target.value })} required /></div>
-              
-              <div><label className="text-[10px] font-bold block mb-1">Posisi Termin (Ke)</label><input type="text" className="w-full p-3 rounded-xl border bg-slate-50 outline-none focus:border-blue-400" value={editProjectForm.termin_ke} onChange={e => setEditProjectForm({ ...editProjectForm, termin_ke: e.target.value })} /></div>
-              
-              <div><label className="text-[10px] font-bold block mb-1">Persentase (%)</label><input type="number" step="0.01" className="w-full p-3 rounded-xl border bg-slate-50 outline-none focus:border-blue-400" value={editProjectForm.termin_persen} onChange={e => setEditProjectForm({ ...editProjectForm, termin_persen: e.target.value })} /></div>
-              
-              <div><label className="text-[10px] font-bold block mb-1">Progress Fisik (%) - Dari Kurva S</label><input type="text" className="w-full p-3 rounded-xl border border-transparent bg-slate-200 text-slate-500 font-bold outline-none cursor-not-allowed shadow-inner" value={(() => {
-                const cleanActual = String(sCurveForm.actual || '').replace(/\s+/g, '').replace(/,/g, '.').split('-').filter(Boolean);
-                return cleanActual.length > 0 ? (parseFloat(cleanActual[cleanActual.length - 1]) || 0) : 0;
-              })()} readOnly title="Otomatis diambil dari Realisasi Kurva S di bagian bawah form" /></div>
-              
-              <div><label className="text-[10px] font-bold block mb-1">Waktu Pelaksanaan (Hari)</label><input type="number" className="w-full p-3 rounded-xl border bg-slate-50 outline-none focus:border-blue-400" value={editProjectForm.waktu_pelaksanaan} onChange={e => setEditProjectForm({ ...editProjectForm, waktu_pelaksanaan: e.target.value })} placeholder="0" /></div>
-              
-              <div><label className="text-[10px] font-bold block mb-1">Panjang (m)</label><input type="text" className="w-full p-3 rounded-xl border bg-slate-50 outline-none focus:border-blue-400" value={editProjectForm.panjang_rencana} onChange={e => setEditProjectForm({ ...editProjectForm, panjang_rencana: e.target.value })} /></div>
-              
-              <div><label className="text-[10px] font-bold block mb-1">Lebar (m)</label><input type="text" className="w-full p-3 rounded-xl border bg-slate-50 outline-none focus:border-blue-400" value={editProjectForm.lebar_rencana} onChange={e => setEditProjectForm({ ...editProjectForm, lebar_rencana: e.target.value })} /></div>
-
-              <div><label className="text-[10px] font-bold block mb-1">Jenis / Model Saluran</label><input type="text" className="w-full p-3 rounded-xl border bg-slate-50 outline-none focus:border-blue-400" value={editProjectForm.jenis_model} onChange={e => setEditProjectForm({ ...editProjectForm, jenis_model: e.target.value })} placeholder="Misal: U-Ditch, Batu Kali..." /></div>
-
-              <div className="border-t border-slate-200 pt-5 mt-4">
-                <div className="flex justify-between items-center mb-3">
-                  <label className="text-[11px] font-black uppercase text-blue-600 tracking-widest">Item Utama Proyek</label>
-                  <button type="button" onClick={() => setEditProjectForm(p => ({ ...p, item_utama_data: [...(p.item_utama_data || []), { id: Date.now(), nama: '', bobot: '', nilai: '', satuan: '', persen: 0 }] }))} className="text-[9px] font-bold bg-blue-50 border border-blue-200 text-blue-600 px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm"><Plus size={10} /> Tambah Item</button>
-                </div>
-                <div className="space-y-3">
-                  {(editProjectForm.item_utama_data || []).map((item, idx) => (
-                    <div key={item.id || idx} className="flex flex-col gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200 shadow-sm w-full">
-                      <div className="flex gap-2 items-center">
-                        <input type="text" placeholder="Misal: Pekerjaan Galian" className="w-full p-2 rounded-lg border border-slate-200 text-xs font-bold outline-none focus:border-blue-400" value={item.nama} onChange={e => { const n = [...editProjectForm.item_utama_data]; n[idx].nama = e.target.value; setEditProjectForm({ ...editProjectForm, item_utama_data: n }) }} />
-                        <button type="button" onClick={() => { const n = [...editProjectForm.item_utama_data]; n.splice(idx, 1); setEditProjectForm({ ...editProjectForm, item_utama_data: n }) }} className="p-2 text-rose-500 hover:bg-rose-100 rounded-lg transition-colors shrink-0"><Trash size={14} /></button>
-                      </div>
-                      <div className="grid grid-cols-4 gap-2">
-                        <input type="text" placeholder="Renc. Hari Ini" className="w-full p-2 rounded-lg border border-slate-200 text-xs outline-none focus:border-blue-400 text-center" value={item.bobot || ''} onChange={e => { 
-                          const n = [...editProjectForm.item_utama_data]; 
-                          n[idx].bobot = e.target.value; 
-                          const valH = parseFloat(e.target.value) || 0;
-                          const valT = parseFloat(n[idx].nilai) || 0;
-                          n[idx].persen = parseFloat(((valT * valH) / 100).toFixed(2));
-                          setEditProjectForm({ ...editProjectForm, item_utama_data: n }) 
-                        }} title="Rencana Hari Ini" />
-                        <input type="text" placeholder="Total" className="w-full p-2 rounded-lg border border-slate-200 text-xs outline-none focus:border-blue-400 text-center" value={item.nilai || ''} onChange={e => { 
-                          const n = [...editProjectForm.item_utama_data]; 
-                          n[idx].nilai = e.target.value; 
-                          const valT = parseFloat(e.target.value) || 0;
-                          const valH = parseFloat(n[idx].bobot) || 0;
-                          n[idx].persen = parseFloat(((valT * valH) / 100).toFixed(2));
-                          setEditProjectForm({ ...editProjectForm, item_utama_data: n }) 
-                        }} title="Total Volume" />
-                        <input type="text" placeholder="Satuan" className="w-full p-2 rounded-lg border border-slate-200 text-xs outline-none focus:border-blue-400 text-center" value={item.satuan || ''} onChange={e => { const n = [...editProjectForm.item_utama_data]; n[idx].satuan = e.target.value; setEditProjectForm({ ...editProjectForm, item_utama_data: n }) }} title="Satuan" />
-                        <input type="number" placeholder="Progres %" className="w-full p-2 rounded-lg border border-transparent bg-slate-100 text-blue-600 text-xs outline-none font-black text-center cursor-not-allowed shadow-inner" value={item.persen} readOnly title="Progress Otomatis: (Total x Hari Ini) / 100" />
-                      </div>
-                    </div>
-                  ))}
-                  {(!editProjectForm.item_utama_data || editProjectForm.item_utama_data.length === 0) && <p className="text-[10px] text-slate-400 text-center italic py-2 bg-slate-50 rounded-xl border border-dashed border-slate-200">Klik 'Tambah Item' untuk memasukkan data progres item utama.</p>}
-                </div>
-              </div>
-
-              {/* TAMBAHAN BARU: INPUT KURVA S DIGABUNG KE SINI */}
-              <div className="border-t border-slate-200 pt-5 mt-4">
-                <div className="mb-3">
-                  <label className="text-[11px] font-black uppercase text-blue-600 tracking-widest">Data Kurva S Pekerjaan</label>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold block mb-1">Rencana (%) - pisah dengan strip (-)</label>
-                    <textarea className="w-full p-4 rounded-xl border font-mono bg-slate-50 outline-none focus:border-blue-400 text-sm" rows="3" value={sCurveForm.plan} onChange={e => setSCurveForm({ ...sCurveForm, plan: e.target.value })} placeholder="Contoh: 0 - 5.5 - 12 - 25"></textarea>
-                    {/* Live Preview Label M1, M2 */}
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {String(sCurveForm.plan || '').split('-').map((val, idx) => val.trim() !== '' ? (
-                        <div key={idx} className="text-[9px] font-bold px-2 py-1 rounded-md border bg-blue-50 text-blue-600 border-blue-200">M{idx + 1} <span className="opacity-40 mx-0.5">|</span> {val.trim()}%</div>
-                      ) : null)}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold block mb-1">Realisasi (%) - pisah dengan strip (-)</label>
-                    <textarea className="w-full p-4 rounded-xl border font-mono bg-slate-50 outline-none focus:border-blue-400 text-sm" rows="3" value={sCurveForm.actual} onChange={e => setSCurveForm({ ...sCurveForm, actual: e.target.value })} placeholder="Contoh: 0 - 6 - 15"></textarea>
-                    {/* Live Preview Label M1, M2 */}
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {String(sCurveForm.actual || '').split('-').map((val, idx) => val.trim() !== '' ? (
-                        <div key={idx} className="text-[9px] font-bold px-2 py-1 rounded-md border bg-emerald-50 text-emerald-600 border-emerald-200">M{idx + 1} <span className="opacity-40 mx-0.5">|</span> {val.trim()}%</div>
-                      ) : null)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-6 border-t border-slate-200 pt-6">
-                <button type="button" onClick={() => { setShowEditProjectModal(false); setDeleteConfig({ id: projectData.id, type: 'project', name: projectData.pekerjaan }); }} className="w-1/3 bg-rose-50 text-rose-600 py-4 rounded-2xl text-xs font-bold uppercase shadow-sm hover:bg-rose-100 transition-colors flex justify-center items-center gap-2">
-                  <Trash size={16} /> <span className="hidden sm:inline">Hapus Proyek</span>
-                </button>
-                <button type="submit" disabled={isProcessing} className="w-2/3 bg-blue-600 text-white py-4 rounded-2xl text-xs font-bold uppercase shadow-md flex justify-center items-center gap-2">
-                  {isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Simpan Perubahan'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showReportModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-start justify-center z-[1000] p-4 md:p-8 overflow-y-auto">
-          <div className="bg-white rounded-[32px] p-6 md:p-10 w-full max-w-5xl shadow-2xl relative my-auto">
-            <button onClick={() => setShowReportModal(false)} className="absolute top-6 right-6 p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors z-10"><X size={20} /></button>
-            <h3 className="text-2xl font-black mb-6 pr-10 border-b border-slate-200 pb-4 text-slate-800">
-              {reportTab === 'harian' ? 'Input Laporan Harian' : reportTab === 'lapangan' ? 'Input Lapor Lapangan' : 'Input Data Survei (Awal)'}
-            </h3>
-
-            {/* TAB SWITCHER */}
-            <div className="flex gap-2 bg-slate-100 p-1.5 rounded-xl border text-center mb-6 overflow-x-auto custom-scrollbar">
-              <button onClick={() => setReportTab('harian')} className={`flex-1 min-w-[160px] py-3 rounded-lg text-[11px] md:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${reportTab === 'harian' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
-                <FileText size={16} /> Laporan Harian
-              </button>
-              <button onClick={() => setReportTab('lapangan')} className={`flex-1 min-w-[160px] py-3 rounded-lg text-[11px] md:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${reportTab === 'lapangan' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
-                <Camera size={16} /> Lapor Lapangan
-              </button>
-              <button onClick={() => setReportTab('survei')} className={`flex-1 min-w-[160px] py-3 rounded-lg text-[11px] md:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${reportTab === 'survei' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
-                <Ruler size={16} /> Data Survei
-              </button>
-            </div>
-
-            {reportTab === 'harian' && (
-              <form onSubmit={handleReportSubmit} className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
-
-                {/* A. JAM KERJA & LOKASI */}
-                <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-100 space-y-5 w-full">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-200/50 pb-2 gap-2">
-                    <h4 className="text-sm font-black uppercase text-slate-500 tracking-widest">A. Jam Kerja & Lokasi</h4>
-                    <span className="text-[9px] font-bold text-slate-400 bg-white px-2 py-1 rounded border border-slate-200 flex items-center gap-1.5"><Save size={10} className="text-blue-500" /> Waktu Kerja & Lokasi otomatis tersimpan ke template rutinitas</span>
-                  </div>
-
-                  <div className="space-y-4">
-                    <SurveyInputRow label="Lokasi Pekerjaan">
-                      <input type="text" value={dailyReportForm.lokasi} onChange={e => setDailyReportForm(p => ({ ...p, lokasi: e.target.value }))} placeholder="Nama Jalan, Titik Lokasi, atau STA (Opsional)" className="w-full p-3.5 rounded-xl border border-slate-200 bg-white text-sm font-normal text-slate-800 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all shadow-sm" />
-                    </SurveyInputRow>
-
-                    <SurveyInputRow label="Tanggal Laporan">
-                      <input type="date" value={dailyReportForm.tanggal} onChange={e => setDailyReportForm(p => ({ ...p, tanggal: e.target.value }))} className="w-full sm:w-1/3 p-3.5 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all shadow-sm" required />
-                    </SurveyInputRow>
-                  </div>
-
-                  {dailyReportForm.shifts.map((shift, idx) => (
-                    <div key={shift.id} className="relative bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                      {dailyReportForm.shifts.length > 1 && (
-                        <button type="button" onClick={() => setDailyReportForm(p => ({ ...p, shifts: p.shifts.filter((_, i) => i !== idx) }))} className="absolute top-4 right-4 text-rose-400 hover:text-rose-600 bg-rose-50 hover:bg-rose-100 p-1.5 rounded-lg transition-colors" title="Hapus Shift">
-                          <Trash size={14} />
-                        </button>
-                      )}
-                      <h5 className="text-[10px] font-black text-blue-600 mb-3 uppercase tracking-widest flex items-center gap-2">
-                        <Clock size={12}/> Waktu Kerja / Shift {idx + 1}
-                      </h5>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <SurveyInputRow label="Waktu Mulai">
-                          <div className="flex gap-2">
-                            <input type="date" value={shift.tanggalMulai} onChange={e => handleShiftChange(idx, 'tanggalMulai', e.target.value)} className="w-full p-3 rounded-lg border border-slate-200 bg-slate-50 outline-none focus:bg-white focus:border-blue-400 text-xs font-bold transition-colors" />
-                            <input type="time" value={shift.jamMulai} onChange={e => handleShiftChange(idx, 'jamMulai', e.target.value)} className="w-28 p-3 rounded-lg border border-slate-200 bg-slate-50 outline-none focus:bg-white focus:border-blue-400 text-xs font-bold shrink-0 transition-colors" />
-                          </div>
-                        </SurveyInputRow>
-
-                        <SurveyInputRow label="Waktu Selesai (Auto)">
-                          <div className="flex gap-2">
-                            <input type="date" value={shift.tanggalSelesai} onChange={e => handleShiftChange(idx, 'tanggalSelesai', e.target.value)} className="w-full p-3 rounded-lg border border-slate-200 bg-slate-50 outline-none focus:bg-white focus:border-blue-400 text-xs font-bold transition-colors" title="Otomatis menyesuaikan jika lintas jam malam" />
-                            <input type="time" value={shift.jamSelesai} onChange={e => handleShiftChange(idx, 'jamSelesai', e.target.value)} className="w-28 p-3 rounded-lg border border-slate-200 bg-slate-50 outline-none focus:bg-white focus:border-blue-400 text-xs font-bold shrink-0 transition-colors" />
-                          </div>
-                        </SurveyInputRow>
-                      </div>
-                    </div>
-                  ))}
-                  
-                  <button 
-                    type="button" 
-                    onClick={() => setDailyReportForm(p => ({ ...p, shifts: [...p.shifts, { id: Date.now(), tanggalMulai: p.tanggal, jamMulai: '19:00', tanggalSelesai: p.tanggal, jamSelesai: '23:00' }] }))}
-                    className="w-full py-3.5 border-2 border-dashed border-blue-200 text-blue-600 bg-blue-50/50 hover:bg-blue-50 hover:border-blue-400 rounded-xl text-xs font-black uppercase tracking-widest flex justify-center items-center gap-2 transition-all"
-                  >
-                    <Plus size={16} /> Tambah Waktu Kerja / Shift Lembur
-                  </button>
-                </div>
-
-              {/* B. CUACA */}
-              <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-100 space-y-3 w-full">
-                <div className="flex justify-between items-end border-b border-slate-200/50 pb-2 mb-1">
-                  <h4 className="text-sm font-black uppercase text-slate-500 tracking-widest">B. Kondisi Cuaca</h4>
-                  <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-1 rounded-md font-bold uppercase">Auto-Generated</span>
-                </div>
-                <div className="flex flex-col bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm w-full">
-                  <div className="hidden md:flex bg-[#f8fafc] border-b border-slate-200 px-4 py-3 items-center text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
-                    <div className="w-1/2 md:w-2/3 text-left">Waktu Rentang Kerja</div>
-                    <div className="flex-1 text-left px-4">Kondisi Cuaca</div>
-                  </div>
-                  {Object.keys(dailyReportForm.cuaca).map(jam => (
-                    <div key={jam} className="flex border-b border-slate-100 last:border-b-0 items-center hover:bg-slate-50/50 transition-colors w-full">
-                      <label className="w-1/2 md:w-2/3 p-4 bg-slate-50/80 border-r border-slate-100 text-xs font-bold text-slate-600">{jam}</label>
-                      <div className="flex-1 p-2 px-4 shrink-0">
-                        <select
-                          value={dailyReportForm.cuaca[jam]}
-                          onChange={e => setDailyReportForm(p => ({ ...p, cuaca: { ...p.cuaca, [jam]: e.target.value } }))}
-                          className="w-full p-2 rounded-lg border border-slate-200 bg-white outline-none text-sm font-bold text-slate-800 focus:bg-blue-50 focus:border-blue-400 transition-all cursor-pointer"
-                        >
-                          <option value="Cerah">Cerah</option>
-                          <option value="Gerimis">Gerimis</option>
-                          <option value="Hujan">Hujan</option>
-                        </select>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* C. AKTIVITAS */}
-              <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-100 space-y-3 w-full">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-200/50 pb-2 gap-2">
-                   <h4 className="text-sm font-black uppercase text-slate-500 tracking-widest">C. Aktivitas Pekerjaan</h4>
-                   <span className="text-[9px] font-bold text-slate-400 bg-white px-2 py-1 rounded border border-slate-200 flex items-center gap-1.5"><Save size={10} className="text-blue-500" /> Item otomatis tersimpan sebagai template rutinitas</span>
-                </div>
-                <div className="flex flex-col bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm w-full">
-                  <div className="hidden md:flex bg-[#f8fafc] border-b border-slate-200 pl-4 pr-12 py-3 items-center text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
-                    <div className="flex-1 min-w-[200px] text-left">Item Pekerjaan</div><div className="w-[18%]">Kemaren</div><div className="w-[18%]">Hari Ini</div><div className="w-[18%]">Total</div><div className="w-[18%]">Satuan</div>
-                  </div>
-                  {dailyReportForm.aktivitas.map((akt, i) => {
-                    const total = (parseFloat(akt.kemarin) || 0) + (parseFloat(akt.hariIni) || 0);
-                    return (
-                      <div key={i} className="flex flex-col md:flex-row items-center border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors w-full p-2 pr-12 md:py-0 md:pl-0 md:pr-12 relative group/akt">
-                        <div className="w-full md:flex-1 min-w-[200px] p-2 md:px-4">
-                            <input type="text" className="w-full p-2 text-xs font-bold text-slate-700 border-none bg-transparent outline-none focus:bg-slate-50 rounded" value={akt.nama} onChange={e => { const n = [...dailyReportForm.aktivitas]; n[i].nama = e.target.value; setDailyReportForm({ ...dailyReportForm, aktivitas: n }); }} placeholder="Ketik Nama Item Pekerjaan..." />
-                        </div>
-                        <div className="flex w-full md:w-[72%] gap-2 md:gap-0 mt-2 md:mt-0 divide-x divide-slate-100">
-                          <div className="flex-1 p-1 md:p-2"><input type="number" placeholder="0" className="w-full p-2 rounded-lg border bg-white text-xs font-black text-center outline-none focus:border-blue-400" value={akt.kemarin} onChange={e => { const n = [...dailyReportForm.aktivitas]; n[i].kemarin = e.target.value; setDailyReportForm({ ...dailyReportForm, aktivitas: n }); }} /></div>
-                          <div className="flex-1 p-1 md:p-2"><input type="number" placeholder="0" className="w-full p-2 rounded-lg border bg-white text-xs font-black text-center outline-none focus:border-blue-400" value={akt.hariIni} onChange={e => { const n = [...dailyReportForm.aktivitas]; n[i].hariIni = e.target.value; setDailyReportForm({ ...dailyReportForm, aktivitas: n }); }} /></div>
-                          <div className="flex-1 p-1 md:p-2"><input type="number" className="w-full p-2 rounded-lg border border-transparent bg-slate-50 text-blue-600 font-black text-xs text-center cursor-not-allowed" value={total > 0 ? total : ''} readOnly /></div>
-                          <div className="flex-1 p-1 md:p-2"><input type="text" className="w-full p-2 rounded-lg border bg-white text-xs font-bold text-center outline-none focus:border-blue-400" value={akt.satuan} onChange={e => { const n = [...dailyReportForm.aktivitas]; n[i].satuan = e.target.value; setDailyReportForm({ ...dailyReportForm, aktivitas: n }); }} placeholder="m/unit" /></div>
-                        </div>
-
-                        {/* Tombol Hapus */}
-                        <button 
-                          type="button" 
-                          onClick={() => setDailyReportForm(p => ({ ...p, aktivitas: p.aktivitas.filter((_, idx) => idx !== i) }))}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-rose-400 hover:text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-all opacity-0 group-hover/akt:opacity-100 shadow-sm z-10"
-                          title="Hapus Item"
-                        >
-                          <Trash size={14} />
-                        </button>
-                      </div>
-                    )
-                  })}
-                  <div className="p-4 bg-[#f8fafc] border-t border-slate-200 flex justify-end items-center">
-                    <button type="button" onClick={() => setDailyReportForm(p => ({ ...p, aktivitas: [...p.aktivitas, { nama: '', kemarin: '', hariIni: '', satuan: '' }] }))} className="text-[10px] font-bold text-blue-600 bg-white border border-slate-200 shadow-sm px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-slate-50 w-max"><Plus size={12} /> Tambah Item Lainnya</button>
-                  </div>
-                </div>
-              </div>
-
-              {/* D. TENAGA KERJA */}
-              <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-100 space-y-3 w-full">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-200/50 pb-2 gap-2">
-                   <h4 className="text-sm font-black uppercase text-slate-500 tracking-widest">D. Jumlah Tenaga Kerja</h4>
-                   <span className="text-[9px] font-bold text-slate-400 bg-white px-2 py-1 rounded border border-slate-200 flex items-center gap-1.5"><Save size={10} className="text-blue-500" /> Tersimpan di template rutinitas</span>
-                </div>
-                <div className="flex flex-col bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm w-full">
-                  <div className="hidden md:flex bg-[#f8fafc] border-b border-slate-200 px-4 py-3 items-center text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
-                    <div className="w-1/2 md:w-2/3 text-left">Posisi / Jabatan</div>
-                    <div className="flex-1">Jumlah (Orang)</div>
-                  </div>
-                  {(Array.isArray(dailyReportForm.tenagaKerja) ? dailyReportForm.tenagaKerja : []).map((tk, i) => (
-                    <div key={i} className="flex flex-col md:flex-row border-b border-slate-100 last:border-b-0 items-center hover:bg-slate-50/50 transition-colors w-full p-2 pr-12 md:p-0 md:pr-12 relative group/tk">
-                      <div className="w-full md:w-2/3 p-2 md:p-4 md:border-r border-slate-100">
-                         <input type="text" className="w-full text-xs font-bold text-slate-700 bg-transparent outline-none focus:bg-slate-50 p-2 rounded" value={tk.posisi} onChange={e => { const n = [...dailyReportForm.tenagaKerja]; n[i].posisi = e.target.value; setDailyReportForm(p => ({...p, tenagaKerja: n})); }} placeholder="Ketik Posisi..." />
-                      </div>
-                      <div className="w-full md:flex-1 p-2 md:px-4 shrink-0">
-                        <input type="number" min="0" placeholder="0" className="w-full p-2 text-center rounded-lg border border-slate-200 bg-white outline-none text-sm font-bold text-slate-800 focus:bg-blue-50 focus:border-blue-400 transition-all" value={tk.jumlah} onChange={e => { const n = [...dailyReportForm.tenagaKerja]; n[i].jumlah = e.target.value; setDailyReportForm(p => ({...p, tenagaKerja: n})); }} />
-                      </div>
-                      
-                      {/* Tombol Hapus */}
-                      <button 
-                        type="button" 
-                        onClick={() => setDailyReportForm(p => ({ ...p, tenagaKerja: p.tenagaKerja.filter((_, idx) => idx !== i) }))}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-rose-400 hover:text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-all opacity-0 group-hover/tk:opacity-100 shadow-sm z-10"
-                        title="Hapus"
-                      >
-                        <Trash size={14} />
-                      </button>
-                    </div>
-                  ))}
-                  <div className="p-4 bg-[#f8fafc] border-t border-slate-200 flex justify-end items-center">
-                    <button type="button" onClick={() => setDailyReportForm(p => ({ ...p, tenagaKerja: [...p.tenagaKerja, { posisi: '', jumlah: '' }] }))} className="text-[10px] font-bold text-blue-600 bg-white border border-slate-200 shadow-sm px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-slate-50 w-max"><Plus size={12} /> Tambah Posisi Lainnya</button>
-                  </div>
-                </div>
-              </div>
-
-              {/* CATATAN & KENDALA */}
-              <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-100 space-y-3 w-full">
-                <h4 className="text-sm font-black uppercase text-slate-500 tracking-widest border-b border-slate-200/50 pb-2 mb-2">E. Catatan & Kendala Lapangan</h4>
-                <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-sm focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50 transition-all">
-                  <textarea 
-                    rows="4" 
-                    value={dailyReportForm.catatan} 
-                    onChange={e => setDailyReportForm(p => ({ ...p, catatan: e.target.value }))} 
-                    placeholder="Tuliskan catatan, instruksi, kendala atau permasalahan (Opsional)... &#10;Note: Jika ada kata 'kendala' sistem akan otomatis menandai log dengan warna merah." 
-                    className="w-full p-2 outline-none text-sm font-normal text-slate-700 bg-transparent resize-y"
-                  ></textarea>
-                </div>
-              </div>
-
-              {/* F. DOKUMENTASI FOTO (OPSIONAL) */}
-              <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-100 space-y-4 w-full">
-                <div className="flex justify-between items-center border-b border-slate-200/50 pb-2">
-                  <h4 className="text-sm font-black uppercase text-slate-500 tracking-widest">F. Dokumentasi Lapangan (Opsional)</h4>
-                </div>
-                
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
-                  {/* Preview Foto */}
-                  {repFiles && repFiles.map((file, idx) => (
-                    <div key={idx} className="relative aspect-square rounded-xl border border-blue-200 overflow-hidden group bg-white flex items-center justify-center shadow-sm">
-                       {file.type.startsWith('video/') ? (
-                           <MonitorPlay className="text-blue-500" />
-                       ) : (
-                           <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" alt={`preview-${idx}`} />
-                       )}
-                       <button type="button" onClick={() => setRepFiles(p => p.filter((_, i) => i !== idx))} className="absolute top-2 right-2 p-1.5 bg-rose-500 text-white rounded-lg shadow-md hover:bg-rose-600 transition-all z-10" title="Hapus Foto">
-                           <Trash size={12}/>
-                       </button>
-                       <div className="absolute inset-x-0 bottom-0 bg-black/60 backdrop-blur-sm p-1.5 truncate text-[8px] text-white text-center font-bold">
-                           {file.name}
-                       </div>
-                    </div>
-                  ))}
-                  
-                  {/* Tombol Tambah */}
-                  <label className="aspect-square rounded-xl border-2 border-dashed border-blue-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all text-blue-600 bg-white group shadow-sm">
-                     <div className="p-2 bg-blue-100 text-blue-600 rounded-full mb-1 group-hover:scale-110 transition-transform">
-                         <Plus size={24} />
-                     </div>
-                     <span className="text-[10px] font-black uppercase mt-1">Tambah Foto</span>
-                     <input
-                       type="file"
-                       multiple
-                       accept="image/*,video/*"
-                       className="hidden"
-                       onChange={(e) => {
-                         const files = Array.from(e.target.files);
-                         setRepFiles(prev => [...prev, ...files]);
-                         e.target.value = null;
-                       }}
-                     />
-                  </label>
-                </div>
-              </div>
-
-                <div className="flex flex-col sm:flex-row gap-4 mt-6 pt-4 border-t border-slate-200">
-                   <button type="button" onClick={handleSaveTemplate} disabled={isProcessing} className="w-full sm:w-1/3 bg-emerald-50 text-emerald-600 border border-emerald-200 py-4 md:text-sm rounded-2xl font-black uppercase tracking-widest shadow-sm hover:bg-emerald-100 transition-all flex items-center justify-center gap-2">
-                     {isProcessing ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
-                     SIMPAN TEMPLATE FORM
-                   </button>
-                   <button type="submit" disabled={isProcessing} className="w-full sm:w-2/3 bg-blue-600 text-white py-4 md:text-lg rounded-2xl font-black uppercase tracking-widest shadow-2xl hover:bg-blue-700 transition-all flex items-center justify-center gap-3">
-                     {isProcessing ? <Loader2 size={24} className="animate-spin" /> : <CheckCircle2 size={24} />}
-                     {isProcessing ? 'MEMPROSES...' : 'KIRIM LAPORAN'}
-                   </button>
-                </div>
-              </form>
-            )}
-
-            {reportTab === 'lapangan' && (
-              <form onSubmit={handleQuickReportSubmit} className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
-                <div className="bg-emerald-50/50 p-6 md:p-8 rounded-2xl border border-emerald-100 space-y-6 w-full">
-                  
-                  <SurveyInputRow label="Dokumentasi Foto / Video Lapangan">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
-                      {/* Preview Foto */}
-                      {quickRepFiles && quickRepFiles.map((file, idx) => (
-                        <div key={idx} className="relative aspect-square rounded-xl border border-emerald-200 overflow-hidden group bg-white flex items-center justify-center shadow-sm">
-                           {file.type.startsWith('video/') ? (
-                               <MonitorPlay className="text-emerald-500" />
-                           ) : (
-                               <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" alt={`preview-${idx}`} />
-                           )}
-                           <button type="button" onClick={() => setQuickRepFiles(p => p.filter((_, i) => i !== idx))} className="absolute top-2 right-2 p-1.5 bg-rose-500 text-white rounded-lg shadow-md hover:bg-rose-600 transition-all z-10" title="Hapus Foto">
-                               <Trash size={12}/>
-                           </button>
-                           <div className="absolute inset-x-0 bottom-0 bg-black/60 backdrop-blur-sm p-1.5 truncate text-[8px] text-white text-center font-bold">
-                               {file.name}
-                           </div>
-                        </div>
-                      ))}
-                      
-                      {/* Tombol Tambah */}
-                      <label className="aspect-square rounded-xl border-2 border-dashed border-emerald-300 flex flex-col items-center justify-center cursor-pointer hover:border-emerald-500 hover:bg-emerald-50 transition-all text-emerald-600 bg-white group shadow-sm">
-                         <div className="p-2 bg-emerald-100 text-emerald-600 rounded-full mb-1 group-hover:scale-110 transition-transform">
-                             <Plus size={24} />
-                         </div>
-                         <span className="text-[10px] font-black uppercase mt-1">Tambah Media</span>
-                         <input
-                           type="file"
-                           multiple
-                           accept="image/*,video/*"
-                           className="hidden"
-                           onChange={(e) => {
-                             const files = Array.from(e.target.files);
-                             setQuickRepFiles(prev => [...prev, ...files]);
-                             e.target.value = null;
-                           }}
-                         />
-                      </label>
-                    </div>
-                  </SurveyInputRow>
-
-                  <SurveyInputRow label="Keterangan / Catatan Lapangan">
-                    <textarea 
-                      rows="5" 
-                      value={quickReportNote} 
-                      onChange={e => setQuickReportNote(e.target.value)} 
-                      placeholder="Ketik keterangan mengenai foto di atas, kondisi di lapangan, temuan, atau instruksi..." 
-                      className="w-full p-4 rounded-xl border border-slate-200 bg-white outline-none focus:border-emerald-500 text-sm font-normal shadow-sm"
-                      required
-                    ></textarea>
-                  </SurveyInputRow>
-
-                </div>
-
-                <div className="pt-4 border-t border-slate-200">
-                   <button type="submit" disabled={isProcessing} className="w-full bg-emerald-600 text-white py-4 md:text-lg rounded-2xl font-black uppercase tracking-widest shadow-2xl hover:bg-emerald-700 transition-all flex items-center justify-center gap-3">
-                     {isProcessing ? <Loader2 size={24} className="animate-spin" /> : <CheckCircle2 size={24} />}
-                     {isProcessing ? 'MEMPROSES...' : 'KIRIM LAPORAN LAPANGAN'}
-                   </button>
-                </div>
-              </form>
-            )}
-
-            {reportTab === 'survei' && (
-              <form onSubmit={handleUnifiedSubmit} className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
-                <SurveyInputRow label="Tanggal"><input type="date" value={uForm.tanggal} onChange={e => setUForm(p => ({ ...p, tanggal: e.target.value }))} className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
-                <SurveyInputRow label="Nama Jln/Gg./Blok"><input type="text" value={uForm.namaSegmen} onChange={e => setUForm(p => ({ ...p, namaSegmen: e.target.value }))} placeholder="Misal: Jl. Mawar / Segmen 1" className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
-                
-                <SurveyInputRow label="Titik Koordinat Batas Pekerjaan (Awal & Akhir)">
-                  <div className="space-y-3">
-                     {/* Titik Awal */}
-                     <div className="flex gap-2 items-center bg-slate-50 p-2 rounded-xl border border-slate-100">
-                        <span className="text-[10px] font-black text-slate-500 w-10 text-center shrink-0 uppercase tracking-widest">Awal</span>
-                        <input type="text" placeholder="Lat" value={uForm.points[0]?.lat || ''} onChange={e => {
-                           const n = [...uForm.points]; n[0].lat = e.target.value; setUForm(p => ({...p, points: n}));
-                        }} className="flex-1 p-2 text-xs rounded-lg border bg-white focus:outline-blue-400" />
-                        <input type="text" placeholder="Lng" value={uForm.points[0]?.lng || ''} onChange={e => {
-                           const n = [...uForm.points]; n[0].lng = e.target.value; setUForm(p => ({...p, points: n}));
-                        }} className="flex-1 p-2 text-xs rounded-lg border bg-white focus:outline-blue-400" />
-                        <button type="button" onClick={() => getUnifiedGPS(0)} className="px-3 py-2 bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors font-bold rounded-lg text-[10px] shadow-sm">GPS</button>
-                     </div>
-                     
-                     {/* Titik Akhir */}
-                     <div className="flex gap-2 items-center bg-slate-50 p-2 rounded-xl border border-slate-100">
-                        <span className="text-[10px] font-black text-slate-500 w-10 text-center shrink-0 uppercase tracking-widest">Akhir</span>
-                        <input type="text" placeholder="Lat" value={uForm.points[1]?.lat || ''} onChange={e => {
-                           const n = [...uForm.points]; n[1].lat = e.target.value; setUForm(p => ({...p, points: n}));
-                        }} className="flex-1 p-2 text-xs rounded-lg border bg-white focus:outline-blue-400" />
-                        <input type="text" placeholder="Lng" value={uForm.points[1]?.lng || ''} onChange={e => {
-                           const n = [...uForm.points]; n[1].lng = e.target.value; setUForm(p => ({...p, points: n}));
-                        }} className="flex-1 p-2 text-xs rounded-lg border bg-white focus:outline-blue-400" />
-                        <button type="button" onClick={() => getUnifiedGPS(1)} className="px-3 py-2 bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors font-bold rounded-lg text-[10px] shadow-sm">GPS</button>
-                     </div>
-
-                     <div className="bg-blue-50/50 p-3 rounded-xl border border-dashed border-blue-200">
-                       <p className="text-[10px] text-blue-600 font-bold leading-relaxed">
-                         ℹ️ Cukup isi Titik Awal dan Akhir di lapangan. Admin di dashboard dapat menggambar detail lekukan rutenya secara manual melalui <span className="uppercase text-blue-700">Geo-Map &gt; Editor Rute</span> berdasarkan batas titik ini.
-                       </p>
-                     </div>
-                  </div>
-                </SurveyInputRow>
-
-                <SurveyInputRow label="Panjang Eks."><input type="text" value={uForm.panjang} onChange={e => setUForm(p => ({ ...p, panjang: e.target.value }))} className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
-                <SurveyInputRow label="Lebar Eks."><input type="text" value={uForm.lebar} onChange={e => setUForm(p => ({ ...p, lebar: e.target.value }))} className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
-                <SurveyInputRow label="Jenis/Model Eks."><input type="text" value={uForm.jenis_model_awal} onChange={e => setUForm(p => ({ ...p, jenis_model_awal: e.target.value }))} className="w-full p-3 rounded-xl border bg-slate-50" /></SurveyInputRow>
-                <SurveyInputRow label="Upload Data Ukur (CSV)"><input type="file" accept=".csv" onChange={e => setUDataUkur(e.target.files[0])} className="w-full p-3 rounded-xl border bg-slate-50 text-xs" /></SurveyInputRow>
-                <SurveyInputRow label="Catatan - Kendala - Kondisi"><textarea rows="3" value={uForm.noteDesc} onChange={e => setUForm(p => ({ ...p, noteDesc: e.target.value }))} className="w-full p-3 rounded-xl border bg-slate-50"></textarea></SurveyInputRow>
-                <SurveyInputRow label="Dokumentasi Eks.">
-                  <input type="file" multiple accept="image/*,video/*" onChange={e => {
-                    const files = Array.from(e.target.files);
-                    if (files.length > 5) {
-                      showMsg("Maksimal 5 file, sisanya diabaikan.", "warning");
-                      setUMedia(files.slice(0, 5));
-                    } else {
-                      setUMedia(files);
-                    }
-                  }} className="w-full p-3 rounded-xl border bg-slate-50 text-xs" />
-                  {uMedia.length > 0 && <div className="text-[10px] mt-1.5 text-blue-600 font-bold">{uMedia.length} file siap diunggah</div>}
-                </SurveyInputRow>
-                <button type="submit" disabled={isProcessing} className="w-full bg-cyan-600 text-white py-4 rounded-2xl text-sm font-bold uppercase">{isProcessing ? 'Menyimpan...' : 'Simpan Data Survei'}</button>
-              </form>
-            )}
-
-          </div>
-        </div>
-      )}
-
-      {/* --- MODAL BARU: UPDATE JALUR REALISASI --- */}
-      {showAppendRouteModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-start justify-center z-[1000] p-4 overflow-y-auto">
-          <div className="bg-white rounded-[32px] p-8 w-full max-w-md shadow-2xl relative my-auto">
-            <button onClick={() => setShowAppendRouteModal(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X size={20} /></button>
-            <h3 className="text-xl font-black mb-2 text-emerald-600 flex items-center gap-2"><MapPin size={24} strokeWidth={2.5}/> Update Rute (GPS)</h3>
-            <p className="text-[10px] font-bold text-slate-500 mb-6 bg-emerald-50 p-3.5 rounded-xl border border-emerald-100 leading-relaxed">
-              Gunakan fitur ini di lapangan untuk <b>memperpanjang garis di peta</b> secara otomatis berdasarkan posisi GPS Anda saat ini.
-            </p>
-
-            <form onSubmit={handleAppendRouteSubmit} className="space-y-4">
-               
-               <SurveyInputRow label="Tipe Jalur Target">
-                  <div className="flex gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-100">
-                     <button type="button" onClick={() => { setAppendRouteForm(p => ({ ...p, targetType: 'actual', segmentName: projectData?.actual_segments_data?.[0]?.name || 'Segmen 1' })); setRenameRouteConfig({isEditing:false, newName:''}); setDeleteRouteConfirm(false); setIsAddingNewRoute(false); }} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-all shadow-sm ${appendRouteForm.targetType === 'actual' ? 'bg-blue-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-100'}`}>Realisasi</button>
-                     <button type="button" onClick={() => { setAppendRouteForm(p => ({ ...p, targetType: 'plan', segmentName: projectData?.planned_path?.[0]?.name || 'Jalur 1' })); setRenameRouteConfig({isEditing:false, newName:''}); setDeleteRouteConfirm(false); setIsAddingNewRoute(false); }} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-all shadow-sm ${appendRouteForm.targetType === 'plan' ? 'bg-amber-500 text-white' : 'bg-white text-slate-500 hover:bg-slate-100'}`}>Sketsa</button>
-                  </div>
-               </SurveyInputRow>
-
-               <SurveyInputRow label="Pilih Segmen / Jalur Target">
-                  {isAddingNewRoute ? (
-                     <div className="flex gap-2 items-center animate-in fade-in slide-in-from-right-2">
-                        <input 
-                           type="text" 
-                           value={newRouteName} 
-                           onChange={e => setNewRouteName(e.target.value)} 
-                           className="w-full p-3.5 rounded-xl border border-emerald-300 bg-emerald-50 focus:border-emerald-500 outline-none text-sm font-bold text-emerald-800 placeholder-emerald-400/70 shadow-inner"
-                           placeholder={appendRouteForm.targetType === 'actual' ? "Ketik nama Segmen baru..." : "Ketik nama Sketsa baru..."}
-                           autoFocus
-                           required
-                        />
-                        <button type="button" onClick={() => {
-                           if (newRouteName.trim()) {
-                              setAppendRouteForm(p => ({ ...p, segmentName: newRouteName.trim() }));
-                              setIsAddingNewRoute(false);
-                              setNewRouteName('');
-                           }
-                        }} className="p-3.5 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors shadow-sm shrink-0" title="Simpan Segmen Baru"><CheckCircle2 size={18} /></button>
-                        <button type="button" onClick={() => { setIsAddingNewRoute(false); setNewRouteName(''); }} className="p-3.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-colors shadow-sm shrink-0" title="Batal"><X size={18} /></button>
-                     </div>
-                  ) : !renameRouteConfig.isEditing ? (
-                     <div className="flex gap-2 items-center">
-                        <select 
-                           value={appendRouteForm.segmentName} 
-                           onChange={e => setAppendRouteForm(p => ({ ...p, segmentName: e.target.value }))} 
-                           className="w-full p-3.5 rounded-xl border border-slate-200 bg-white focus:border-emerald-400 outline-none text-sm font-bold text-slate-700 shadow-sm"
-                        >
-                           {appendRouteForm.targetType === 'actual' ? (
-                              <>
-                                 {projectData?.actual_segments_data?.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                                 {(!projectData?.actual_segments_data || projectData.actual_segments_data.length === 0) && <option value="Segmen 1">Segmen 1</option>}
-                              </>
-                           ) : (
-                              <>
-                                 {projectData?.planned_path?.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                                 {(!projectData?.planned_path || projectData.planned_path.length === 0) && <option value="Jalur 1">Jalur 1</option>}
-                              </>
-                           )}
-                           {/* Menampilkan segmen baru yang baru saja diketik agar bisa langsung dipilih tanpa error */}
-                           {appendRouteForm.segmentName && 
-                            !(appendRouteForm.targetType === 'actual' ? projectData?.actual_segments_data : projectData?.planned_path)?.some(s => s.name === appendRouteForm.segmentName) && 
-                            <option value={appendRouteForm.segmentName}>{appendRouteForm.segmentName} (Baru)</option>}
-                        </select>
-                        <button type="button" onClick={() => { setIsAddingNewRoute(true); setNewRouteName(''); }} className="p-3.5 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-colors shadow-sm shrink-0" title="Tambah Segmen/Jalur Baru"><Plus size={18} /></button>
-                        <button type="button" onClick={() => setRenameRouteConfig({ isEditing: true, newName: appendRouteForm.segmentName })} className="p-3.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors shadow-sm shrink-0" title="Edit Nama"><Edit3 size={18} /></button>
-                        <button type="button" onClick={() => setDeleteRouteConfirm(true)} className="p-3.5 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-100 transition-colors shadow-sm shrink-0" title="Hapus Segmen"><Trash size={18} /></button>
-                     </div>
-                  ) : (
-                     <div className="flex gap-2 items-center">
-                        <input type="text" value={renameRouteConfig.newName} onChange={e => setRenameRouteConfig(p => ({ ...p, newName: e.target.value }))} className="w-full p-3.5 rounded-xl border border-slate-200 bg-white focus:border-blue-400 outline-none text-sm font-bold text-slate-700" autoFocus />
-                        <button type="button" onClick={handleRenameRouteTarget} disabled={isProcessing} className="p-3.5 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors shadow-sm shrink-0" title="Simpan"><CheckCircle2 size={18} /></button>
-                        <button type="button" onClick={() => setRenameRouteConfig({ isEditing: false, newName: '' })} className="p-3.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-colors shadow-sm shrink-0" title="Batal"><X size={18} /></button>
-                     </div>
-                  )}
-
-                  {deleteRouteConfirm && (
-                     <div className="mt-2 p-3 bg-rose-50 border border-rose-200 rounded-xl flex flex-col gap-2 animate-in fade-in zoom-in-95 shadow-sm">
-                        <span className="text-[10px] font-bold text-rose-600">Yakin ingin menghapus <b>{appendRouteForm.segmentName}</b>? Seluruh titik didalamnya akan ikut terhapus.</span>
-                        <div className="flex gap-2">
-                           <button type="button" onClick={handleDeleteRouteTarget} disabled={isProcessing} className="flex-1 py-2 bg-rose-500 hover:bg-rose-600 transition-colors text-white text-[10px] font-black rounded-lg shadow-sm">Ya, Hapus</button>
-                           <button type="button" onClick={() => setDeleteRouteConfirm(false)} className="flex-1 py-2 bg-white border border-slate-200 hover:bg-slate-100 transition-colors text-slate-700 text-[10px] font-black rounded-lg shadow-sm">Batal</button>
-                        </div>
-                     </div>
-                  )}
-               </SurveyInputRow>
-               
-               <SurveyInputRow label="Kordinat Lokasi Anda">
-                  <div className="flex gap-2">
-                     <input type="text" placeholder="Latitude" value={appendRouteForm.lat} onChange={e => setAppendRouteForm(p => ({...p, lat: e.target.value}))} className="w-full p-3 rounded-xl border border-slate-200 bg-white text-xs font-mono outline-none focus:border-emerald-400 shadow-inner" required />
-                     <input type="text" placeholder="Longitude" value={appendRouteForm.lng} onChange={e => setAppendRouteForm(p => ({...p, lng: e.target.value}))} className="w-full p-3 rounded-xl border border-slate-200 bg-white text-xs font-mono outline-none focus:border-emerald-400 shadow-inner" required />
-                  </div>
-                  <button type="button" onClick={getAppendGPS} className="w-full mt-3 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-2 shadow-sm border border-emerald-200">
-                     <MapPin size={16} /> Kunci Sinyal GPS
-                  </button>
-               </SurveyInputRow>
-
-               <SurveyInputRow label="Keterangan Rute (Opsional)">
-                  <input type="text" value={appendRouteForm.note} onChange={e => setAppendRouteForm(p => ({ ...p, note: e.target.value }))} placeholder="Misal: Pengecoran hari ini sampai titik ini..." className="w-full p-3.5 rounded-xl border border-slate-200 bg-white text-sm font-normal outline-none focus:border-emerald-400" />
-               </SurveyInputRow>
-
-               <SurveyInputRow label="Dokumentasi Foto Lapangan (Opsional)">
-                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
-                     {/* Preview Foto */}
-                     {appendRouteFiles && appendRouteFiles.map((file, idx) => (
-                        <div key={idx} className="relative aspect-square rounded-xl border border-emerald-200 overflow-hidden group bg-white flex items-center justify-center shadow-sm">
-                           <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" alt={`preview-${idx}`} />
-                           <button type="button" onClick={() => setAppendRouteFiles(p => p.filter((_, i) => i !== idx))} className="absolute top-1 right-1 p-1 bg-rose-500 text-white rounded-md shadow-md hover:bg-rose-600 transition-all z-10" title="Hapus Foto">
-                               <Trash size={10}/>
-                           </button>
-                        </div>
-                     ))}
-                     
-                     {/* Tombol Tambah */}
-                     <label className="aspect-square rounded-xl border-2 border-dashed border-emerald-300 flex flex-col items-center justify-center cursor-pointer hover:border-emerald-500 hover:bg-emerald-50 transition-all text-emerald-600 bg-white group shadow-sm">
-                         <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-full mb-1 group-hover:scale-110 transition-transform">
-                             <Plus size={16} />
-                         </div>
-                         <span className="text-[9px] font-black uppercase mt-0.5">Foto</span>
-                         <input
-                           type="file"
-                           multiple
-                           accept="image/*"
-                           className="hidden"
-                           onChange={(e) => {
-                             const files = Array.from(e.target.files);
-                             setAppendRouteFiles(prev => [...prev, ...files]);
-                             e.target.value = null;
-                           }}
-                         />
-                     </label>
-                  </div>
-               </SurveyInputRow>
-
-               <button type="submit" disabled={isProcessing} className="w-full bg-emerald-600 text-white py-4 rounded-2xl text-xs font-black tracking-widest uppercase mt-6 hover:bg-emerald-700 shadow-md transition-colors flex justify-center items-center gap-2">
-                 {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Save size={16}/>}
-                 {isProcessing ? 'Menyimpan...' : 'Simpan Titik Progress'}
-               </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showSCurveModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[1000] p-4">
-          <div className="bg-white rounded-[32px] p-8 w-full max-w-lg shadow-2xl relative">
-            <button onClick={() => setShowSCurveModal(false)} className="absolute top-6 right-6 p-2"><X size={20} /></button>
-            <h3 className="text-lg font-black mb-6">Input Data Kurva S</h3>
-            <form onSubmit={handleSCurveTextSubmit} className="space-y-4">
-              <div>
-                <label className="text-[10px] font-bold block mb-1">Rencana (%) - pisah dengan strip (-)</label>
-                <textarea className="w-full p-4 rounded-2xl border font-mono bg-slate-50 outline-none focus:border-blue-400 text-sm" rows="3" value={sCurveForm.plan} onChange={e => setSCurveForm({ ...sCurveForm, plan: e.target.value })} placeholder="Contoh: 0 - 5.5 - 12 - 25 - 45 - 70 - 100"></textarea>
-                {/* Live Preview Label M1, M2 */}
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {String(sCurveForm.plan || '').split('-').map((val, idx) => val.trim() !== '' ? (
-                    <div key={idx} className="text-[9px] font-bold px-2 py-1 rounded-md border bg-blue-50 text-blue-600 border-blue-200">M{idx + 1} <span className="opacity-40 mx-0.5">|</span> {val.trim()}%</div>
-                  ) : null)}
-                </div>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold block mb-1">Realisasi (%) - pisah dengan strip (-)</label>
-                <textarea className="w-full p-4 rounded-2xl border font-mono bg-slate-50 outline-none focus:border-blue-400 text-sm" rows="3" value={sCurveForm.actual} onChange={e => setSCurveForm({ ...sCurveForm, actual: e.target.value })} placeholder="Contoh: 0 - 6 - 15 - 28"></textarea>
-                {/* Live Preview Label M1, M2 */}
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {String(sCurveForm.actual || '').split('-').map((val, idx) => val.trim() !== '' ? (
-                    <div key={idx} className="text-[9px] font-bold px-2 py-1 rounded-md border bg-emerald-50 text-emerald-600 border-emerald-200">M{idx + 1} <span className="opacity-40 mx-0.5">|</span> {val.trim()}%</div>
-                  ) : null)}
-                </div>
-              </div>
-              <button type="submit" disabled={isProcessing} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold uppercase mt-4 shadow-md">{isProcessing ? 'Proses...' : 'Simpan Kurva'}</button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showDocModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[1000] p-4">
-          <div className="bg-white rounded-[32px] p-8 w-full max-w-md shadow-2xl relative">
-            <button onClick={() => { setShowDocModal(false); setDocFile(null); }} className="absolute top-6 right-6 p-2"><X size={20} /></button>
-            <h3 className="text-lg font-black mb-6">Upload Dokumen</h3>
-            <form onSubmit={handleDocUpload} className="space-y-4">
-              <div
-                className={`relative flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-2xl transition-all cursor-pointer group
-                  ${isDraggingDoc ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-slate-300 bg-slate-50 hover:bg-slate-100'}
-                  ${docFile ? 'border-emerald-500 bg-emerald-50/50' : ''}`}
-                onDragOver={handleDragOverDoc}
-                onDragLeave={handleDragLeaveDoc}
-                onDrop={handleDropDoc}
-                onClick={() => docInputRef.current?.click()}
-              >
-                <input type="file" ref={docInputRef} className="hidden" onChange={(e) => { if (e.target.files && e.target.files.length > 0) setDocFile(e.target.files[0]); }} />
-                {docFile ? (
-                  <div className="flex flex-col items-center text-center">
-                    <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl mb-3 shadow-sm"><FileText size={28} /></div>
-                    <p className="text-sm font-black text-slate-800 line-clamp-1 px-4">{docFile.name}</p>
-                    <p className="text-[10px] font-bold uppercase tracking-widest mt-1 text-slate-400">Klik untuk mengganti file</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center text-center">
-                    <div className={`p-3 rounded-xl mb-3 transition-colors ${isDraggingDoc ? 'bg-blue-100 text-blue-600 animate-bounce' : 'bg-white shadow-sm border border-slate-200 text-slate-400 group-hover:text-blue-500'}`}><Upload size={28} /></div>
-                    <p className="text-sm font-black text-slate-700">Tarik & Lepas File ke Sini</p>
-                    <p className="text-[10px] font-bold uppercase tracking-widest mt-1 text-slate-400">atau klik untuk mencari</p>
-                  </div>
-                )}
-              </div>
-              <div><select className="w-full p-4 rounded-xl border border-slate-200 bg-slate-50 font-bold outline-none focus:border-blue-400 transition-colors" value={docUploadCategory} onChange={e => setDocUploadCategory(e.target.value)}>{docCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}</select></div>
-              <button type="submit" disabled={isProcessing} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest mt-2 hover:bg-blue-700 transition-colors shadow-md">{isProcessing ? 'Mengunggah...' : 'Simpan Dokumen'}</button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* POP-UP MODAL DETAIL LOG AKTIVITAS */}
-      {selectedLog && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[5000] p-4 md:p-8" onClick={() => setSelectedLog(null)}>
-          <div className="bg-white rounded-[32px] w-full max-w-3xl shadow-2xl relative flex flex-col max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="p-6 md:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
-              <div>
-                <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                  {selectedLog.is_problem ? <AlertCircle className="text-rose-500" /> : <Activity className="text-blue-500" />}
-                  {selectedLog.title}
-                </h3>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1.5 flex items-center gap-1.5">
-                  <Clock size={12} /> {new Date(selectedLog.created_at).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })} WIB
-                </p>
-              </div>
-              <button onClick={() => setSelectedLog(null)} className="p-2 bg-white rounded-full hover:bg-rose-50 hover:text-rose-500 transition-colors border border-slate-200 shadow-sm"><X size={20} /></button>
-            </div>
-            <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1 bg-white">
-              <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-medium mb-8 p-6 bg-slate-50/50 rounded-2xl border border-slate-100">
-                {selectedLog.description}
-              </div>
-              {selectedLog.media_url && (
-                <div className="mt-4">
-                  <h4 className="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest border-b border-slate-100 pb-2">Lampiran Media</h4>
-                  {renderMediaContent(selectedLog.media_url)}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showCategoryManager && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[1000] p-4">
-          <div className="bg-white rounded-[32px] p-8 w-full max-w-sm shadow-2xl relative">
-            <button onClick={() => setShowCategoryManager(false)} className="absolute top-6 right-6 p-2"><X size={20} /></button>
-            <h3 className="text-lg font-black mb-6">Manajemen Kategori</h3>
-            <div className="flex gap-2 mb-6">
-              <input type="text" placeholder="Kategori Baru..." className="flex-1 p-3 rounded-xl border bg-slate-50" value={newCatName} onChange={e => setNewCatName(e.target.value)} />
-              <button onClick={() => {
-                if (newCatName.trim() && !docCategories.includes(newCatName.trim())) {
-                  const newCats = [...docCategories, newCatName.trim()];
-                  setDocCategories(newCats);
-                  if (projectData) supabaseClient.from('projects').update({ doc_categories: newCats }).eq('id', projectData.id).then();
-                  setNewCatName('');
-                }
-              }} className="px-4 bg-slate-800 text-white font-bold rounded-xl">Add</button>
-            </div>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {docCategories.map((cat, idx) => (
-                <div key={cat} draggable onDragStart={(e) => handleDragStart(e, idx)} onDragOver={(e) => handleDragOver(e, idx)} onDragEnd={handleDragEnd} className="flex justify-between p-3 border rounded-xl bg-white">
-                  <span className="font-bold text-xs">{cat}</span>
-                  <button onClick={() => {
-                    const newCats = docCategories.filter(c => c !== cat);
-                    setDocCategories(newCats);
-                    if (projectData) supabaseClient.from('projects').update({ doc_categories: newCats }).eq('id', projectData.id).then();
-                  }} className="text-rose-500 hover:bg-rose-50 p-1.5 rounded-lg transition-colors"><Trash size={14} /></button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {moveDocConfig && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[2000] p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl relative text-center">
-            <h3 className="text-lg font-black mb-4">Pindah Kategori</h3>
-            <select className="w-full p-3 rounded-xl border bg-slate-50 mb-6" value={moveDocConfig.newCategory || moveDocConfig.category} onChange={e => setMoveDocConfig({ ...moveDocConfig, newCategory: e.target.value })}>
-              {docCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-            </select>
-            <div className="flex gap-3">
-              <button onClick={() => setMoveDocConfig(null)} className="flex-1 py-3 bg-slate-100 rounded-xl">Batal</button>
-              <button onClick={handleMoveDocument} disabled={isProcessing} className="flex-1 py-3 bg-blue-600 text-white rounded-xl">Pindahkan</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {deleteConfig && deleteConfig.type !== 'employee' && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[2000] p-4">
-          <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-2xl relative text-center">
-            <div className="mx-auto w-14 h-14 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-5"><AlertCircle size={28} /></div>
-            <h3 className="text-xl font-black mb-2 text-slate-800">
-               {deleteConfig.type === 'project' ? 'Hapus Proyek?' : 'Apakah Anda Yakin?'}
-            </h3>
-            <p className={`text-xs mb-8 font-medium leading-relaxed ${deleteConfig.type === 'project' ? 'text-rose-600 bg-rose-50 p-3 rounded-xl border border-rose-100' : 'text-slate-500'}`}>
-               {deleteConfig.type === 'project' ? (
-                   <>Kamar proyek <b>{deleteConfig.name}</b> dan seluruh data didalamnya akan dihapus permanen!</>
-               ) : (
-                   'Data atau foto ini akan dihapus secara permanen dan tidak dapat dikembalikan lagi.'
-               )}
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setDeleteConfig(null)} className="flex-1 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors">Batal</button>
-              <button onClick={confirmDeleteData} disabled={isProcessing} className="flex-1 py-3.5 bg-rose-500 text-white rounded-xl text-sm font-bold hover:bg-rose-600 transition-colors shadow-md">{isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Ya, Hapus'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* GLOBAL REKAP MODAL */}
-      {renderGlobalRekapModal()}
-
-    </div>
-  );
+  return null;
 }
