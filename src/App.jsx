@@ -1147,7 +1147,6 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
       const createProjectMarker = (proj) => {
         const actualProg = parseFloat(proj.actual_progress || 0);
         const isRunning = proj.status === 'Running' || actualProg > 0;
-        const statusText = isRunning ? 'Pelaksanaan' : 'Persiapan';
         const rgbColor = isRunning ? '59, 130, 246' : '244, 63, 94';
         const hexColor = isRunning ? '#3b82f6' : '#f43f5e';
 
@@ -1155,21 +1154,52 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
           className: 'bg-transparent border-0 overflow-visible',
           html: `
               <div class="relative flex items-center justify-center pointer-events-auto cursor-pointer group" style="transform: translate(-50%, -50%); width: 48px; height: 48px; z-index: 1000;">
-                  <div class="absolute bottom-full mb-3 opacity-0 group-hover:opacity-100 translate-y-3 group-hover:translate-y-0 transition-all duration-300 ease-out w-max max-w-[240px] z-[9999] pointer-events-none flex flex-col items-center">
-                     <div class="bg-white/80 backdrop-blur-[70px] rounded-2xl shadow-2xl border border-white/60 overflow-hidden relative w-full p-4">
-                        <h3 class="text-[11px] font-black text-slate-800 leading-relaxed text-left mb-3 line-clamp-3 uppercase tracking-wider">[${proj.tahun || '-'}] ${proj.pekerjaan}</h3>
-                        <div class="flex justify-between items-end border-t border-slate-300/40 pt-3">
-                           <div class="flex flex-col text-left"><span class="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Status</span><span class="text-[10px] font-black uppercase tracking-widest" style="color: ${hexColor}">${statusText}</span></div>
-                           <div class="flex flex-col text-right pl-6"><span class="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Progress</span><span class="text-2xl font-black leading-none drop-shadow-sm" style="color: ${hexColor}">${actualProg.toFixed(1)}<span class="text-sm">%</span></span></div>
-                        </div>
-                     </div>
-                     <div class="w-4 h-4 rotate-45 -mt-2.5 z-[-1] shadow-sm" style="background: rgba(255,255,255,0.8); backdrop-filter: blur(70px); border-right: 1px solid rgba(255,255,255,0.5); border-bottom: 1px solid rgba(255,255,255,0.5);"></div>
-                  </div>
                   <div class="absolute w-[25px] h-[25px] rounded-full opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500" style="background: radial-gradient(circle, rgba(${rgbColor}, 0.8) 0%, rgba(${rgbColor}, 0.4) 50%, rgba(${rgbColor}, 0) 80%);"></div>
                   <div class="w-[15px] h-[15px] rounded-full z-10 relative group-hover:scale-110 transition-transform duration-300 shadow-sm" style="background-color: ${hexColor}; border: 2px solid white; box-shadow: 0 0 4px 1px rgba(${rgbColor}, 0.6);"></div>
               </div>
             `,
           iconSize: [0, 0]
+        });
+      };
+
+      // 1.5 Fungsi Pop-up Utama Proyek (Klik untuk memunculkan agar tetap tampil)
+      const bindMainProjectPopup = (layer, proj) => {
+        const uniqueId = `btn-main-detail-${proj.id}-${Math.random().toString(36).substr(2, 9)}`;
+        const actualProg = parseFloat(proj.actual_progress || 0);
+        const isRunning = proj.status === 'Running' || actualProg > 0;
+        const statusText = isRunning ? 'Pelaksanaan' : 'Persiapan';
+        const hexColor = isRunning ? '#3b82f6' : '#f43f5e';
+
+        const popupContent = `
+            <div class="text-left min-w-[200px]">
+              <h3 class="text-[11px] font-black text-slate-800 leading-relaxed text-left mb-3 uppercase tracking-wider">[${proj.tahun || '-'}] ${proj.pekerjaan}</h3>
+              <div class="flex justify-between items-end border-t border-slate-200 pt-3 mb-3">
+                 <div class="flex flex-col text-left">
+                    <span class="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Status</span>
+                    <span class="text-[10px] font-black uppercase tracking-widest" style="color: ${hexColor}">${statusText}</span>
+                 </div>
+                 <div class="flex flex-col text-right pl-6">
+                    <span class="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Progress</span>
+                    <span class="text-xl font-black leading-none drop-shadow-sm" style="color: ${hexColor}">${actualProg.toFixed(1)}<span class="text-xs">%</span></span>
+                 </div>
+              </div>
+              <button id="${uniqueId}" class="w-full bg-blue-600 text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5 mt-1">
+                Buka Dashboard
+              </button>
+            </div>
+        `;
+        layer.bindPopup(popupContent, {
+            closeButton: true,
+            autoPanPadding: [50, 50]
+        });
+        layer.on('popupopen', () => {
+            const btn = document.getElementById(uniqueId);
+            if (btn) {
+                btn.onclick = () => {
+                    layer.closePopup();
+                    onSelectProject(proj);
+                };
+            }
         });
       };
 
@@ -1190,17 +1220,13 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
       };
 
       // 4. Fungsi Gambar Pin Map untuk Survei Awal/Akhir
-      const createSurveyPinMarker = (theme, prefix, segName, lat, lng) => {
+      const createSurveyPinMarker = (theme) => {
         const gradId = theme === 'Blue' ? `gB-${Math.random()}` : `gR-${Math.random()}`;
         const stop1 = theme === 'Blue' ? '#38bdf8' : '#fb7185';
         const stop2 = theme === 'Blue' ? '#2563eb' : '#e11d48';
-        const textColor = theme === 'Blue' ? 'text-blue-600' : 'text-rose-600';
         return window.L.divIcon({
           className: 'bg-transparent border-0 overflow-visible',
           html: `<div class="relative flex flex-col items-center group cursor-pointer pointer-events-auto" style="transform: translate(-50%, -100%);">
-                   <div class="absolute bottom-full mb-2.5 px-3 py-1.5 bg-white/95 backdrop-blur-md rounded-xl shadow-[0_8px_20px_rgba(0,0,0,0.15)] border border-slate-200/50 whitespace-nowrap text-center z-[9999] opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100 transition-all duration-300 pointer-events-none origin-bottom">
-                      <div class="text-[9px] font-black uppercase tracking-wide leading-tight text-slate-800"><span class="${textColor}">${prefix}</span><br/>${segName}</div>
-                   </div>
                    <div class="relative origin-bottom group-hover:-translate-y-1 group-hover:scale-110 transition-all duration-300">
                       <svg width="24" height="32" viewBox="0 0 384 512" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5));">
                         <defs><linearGradient id="${gradId}" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="${stop1}" /><stop offset="100%" stop-color="${stop2}" /></linearGradient></defs>
@@ -1210,6 +1236,35 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
                    </div>
                  </div>`,
           iconSize: [0, 0]
+        });
+      };
+
+      // 5. Fungsi Helper untuk Pop-up Keterangan Proyek pada Garis/Jalur
+      const bindProjectPopup = (layer, proj, pathName) => {
+        const uniqueId = `btn-detail-${proj.id}-${Math.random().toString(36).substr(2, 9)}`;
+        const popupContent = `
+            <div class="text-left min-w-[200px]">
+              <h4 class="text-[11px] font-black text-slate-800 uppercase mb-2 leading-tight border-b border-slate-200 pb-2">${proj.pekerjaan}</h4>
+              <div class="text-[10px] font-bold text-slate-500 mb-2">${pathName}</div>
+              <div class="flex flex-col gap-1.5 text-[10px] text-slate-700 mb-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                 <div class="flex justify-between"><span>Panjang:</span> <span class="font-black">${proj.panjang_rencana ? proj.panjang_rencana + ' m' : '-'}</span></div>
+                 <div class="flex justify-between"><span>Lebar:</span> <span class="font-black">${proj.lebar_rencana ? proj.lebar_rencana + ' m' : '-'}</span></div>
+                 <div class="flex justify-between"><span>Saluran:</span> <span class="font-black truncate max-w-[100px]" title="${proj.jenis_model || '-'}">${proj.jenis_model || '-'}</span></div>
+              </div>
+              <button id="${uniqueId}" class="w-full bg-blue-600 text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5">
+                Klik Detail
+              </button>
+            </div>
+        `;
+        layer.bindPopup(popupContent);
+        layer.on('popupopen', () => {
+            const btn = document.getElementById(uniqueId);
+            if (btn) {
+                btn.onclick = () => {
+                    layer.closePopup();
+                    onSelectProject(proj);
+                };
+            }
         });
       };
 
@@ -1245,8 +1300,8 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
                 shape = window.L.polyline(coords, { color: pathObj.color || '#f59e0b', weight: 4, opacity: 0.8, dashArray: pathObj.isDashed ? '10, 10' : null }).addTo(routeLayerRef.current);
               }
               
-              // Tambahan: Bikin Sketsa bisa diklik untuk masuk ke kamar proyek
-              shape.on('click', () => onSelectProject(p));
+              // Tampilkan Pop-up Detail
+              bindProjectPopup(shape, p, pathObj.name || (isPolygon ? 'Poligon' : 'Garis Sketsa'));
 
               coords.forEach(c => bounds.extend(c));
               hasData = true;
@@ -1259,7 +1314,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
                     ${pathObj.name || (isPolygon ? 'Poligon' : 'Garis Sketsa')}
                   </div>`, iconSize: [0, 0] }) }).addTo(routeLayerRef.current);
                   
-                // Tambahan: Label sketsa bisa diklik
+                // Label sketsa tetap bisa diklik untuk shortcut masuk ke proyek
                 skMarker.on('click', () => onSelectProject(p));
               }
 
@@ -1306,14 +1361,14 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
                 if (coords.length > 1) {
                   hasActualLine = true; // Tandai bahwa rute sudah digambar
                   const actualShape = window.L.polyline(coords, { color: segColor, weight: 5, opacity: 0.9 }).addTo(surveyLayerRef.current);
-                  actualShape.on('click', () => onSelectProject(p)); // Garis rute bisa diklik
+                  bindProjectPopup(actualShape, p, seg.name || 'Segmen Realisasi');
                 }
 
                 if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
                     const lastPt = coords[coords.length - 1];
                     const boundaryPt = [parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)];
                     const boundShape = window.L.polyline([lastPt, boundaryPt], { color: segColor, weight: 3, opacity: 0.5, dashArray: '8, 8' }).addTo(surveyLayerRef.current);
-                    boundShape.on('click', () => onSelectProject(p)); // Garis putus-putus bisa diklik
+                    bindProjectPopup(boundShape, p, 'Batas Target ' + (seg.name || 'Segmen'));
                 }
                 
                 if (showSketchPoints) {
@@ -1325,8 +1380,11 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
                 
                 // HANYA GAMBAR PIN MAP/ICON JIKA DATA BERASAL DARI INPUT SURVEI (Memiliki boundary_end)
                 if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
-                    window.L.marker(coords[0], { icon: createSurveyPinMarker('Blue', `Awal Survei`, seg.name, coords[0][0], coords[0][1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
-                    window.L.marker([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)], { icon: createSurveyPinMarker('Red', `Akhir Survei`, seg.name, parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+                    const pinAwal = window.L.marker(coords[0], { icon: createSurveyPinMarker('Blue'), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+                    pinAwal.bindPopup(`<div class="text-[10px] font-black uppercase tracking-wide leading-tight text-slate-800 text-center px-2 py-1"><span class="text-blue-600">Awal Survei</span><br/>${seg.name}</div>`, {closeButton: false, offset: [0, -32]});
+
+                    const pinAkhir = window.L.marker([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)], { icon: createSurveyPinMarker('Red'), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+                    pinAkhir.bindPopup(`<div class="text-[10px] font-black uppercase tracking-wide leading-tight text-slate-800 text-center px-2 py-1"><span class="text-rose-600">Akhir Survei</span><br/>${seg.name}</div>`, {closeButton: false, offset: [0, -32]});
                 }
                 
                 coords.forEach(c => bounds.extend(c));
@@ -1375,10 +1433,10 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
                 radius: 25, stroke: false, fillColor: isRunning ? '#3b82f6' : '#f43f5e', fillOpacity: 0.2, className: 'animate-pulse' 
               }).addTo(markerLayerRef.current);
               
-              areaCircle.on('click', () => onSelectProject(p));
+              bindMainProjectPopup(areaCircle, p);
 
               const marker = window.L.marker([lat, lng], { icon: createProjectMarker(p) }).addTo(markerLayerRef.current);
-              marker.on('click', () => onSelectProject(p));
+              bindMainProjectPopup(marker, p);
               bounds.extend([lat, lng]);
               hasData = true;
             }
@@ -3075,37 +3133,14 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
         });
     };
 
-    const createMarker = (theme, prefix, segName, lat, lng) => {
-        const stop1 = theme === 'Blue' ? '#38bdf8' : '#fb7185';
-        const stop2 = theme === 'Blue' ? '#2563eb' : '#e11d48';
-        const textColor = theme === 'Blue' ? 'text-blue-600' : 'text-rose-600';
-
-        return window.L.divIcon({
-          className: 'bg-transparent border-0 overflow-visible',
-          html: `<div class="relative flex flex-col items-center group cursor-pointer pointer-events-auto" style="transform: translate(-50%, -50%);">
-                   <div class="absolute bottom-full mb-1.5 px-2 py-1 bg-white/95 backdrop-blur-md rounded-lg shadow-[0_4px_10px_rgba(0,0,0,0.15)] border border-slate-200/50 whitespace-nowrap text-center z-[9999] opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100 transition-all duration-300 pointer-events-none origin-bottom">
-                      <div class="text-[8px] font-black uppercase tracking-wide leading-tight text-slate-800"><span class="${textColor}">${prefix}</span><br/>${segName}</div>
-                      <div class="text-[7.5px] font-bold text-slate-500 mt-0.5 tracking-wider font-mono">${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)}</div>
-                   </div>
-                   <div class="w-3.5 h-3.5 rounded-full border-2 border-white shadow-md relative origin-bottom group-hover:scale-110 transition-all duration-300" style="background: linear-gradient(to bottom, ${stop1}, ${stop2});"></div>
-                 </div>`,
-          iconSize: [0, 0]
-        });
-    };
-
-    const createSurveyPinMarker = (theme, prefix, segName, lat, lng) => {
+    const createSurveyPinMarker = (theme) => {
       const gradId = theme === 'Blue' ? 'gradBlueMapPin' : 'gradRedMapPin';
       const stop1 = theme === 'Blue' ? '#38bdf8' : '#fb7185';
       const stop2 = theme === 'Blue' ? '#2563eb' : '#e11d48';
-      const textColor = theme === 'Blue' ? 'text-blue-600' : 'text-rose-600';
 
       return window.L.divIcon({
         className: 'bg-transparent border-0 overflow-visible',
         html: `<div class="relative flex flex-col items-center group cursor-pointer pointer-events-auto" style="transform: translate(-50%, -100%);">
-                 <div class="absolute bottom-full mb-2.5 px-3 py-1.5 bg-white/95 backdrop-blur-md rounded-xl shadow-[0_8px_20px_rgba(0,0,0,0.15)] border border-slate-200/50 whitespace-nowrap text-center z-[9999] opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100 transition-all duration-300 pointer-events-none origin-bottom">
-                    <div class="text-[10px] font-black uppercase tracking-wide leading-tight text-slate-800"><span class="${textColor}">${prefix}</span><br/>${segName}</div>
-                    <div class="text-[8.5px] font-bold text-slate-500 mt-1 tracking-wider font-mono">${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)}</div>
-                 </div>
                  <div class="relative origin-bottom group-hover:-translate-y-1 group-hover:scale-110 transition-all duration-300">
                     <svg width="28" height="38" viewBox="0 0 384 512" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0px 6px 8px rgba(0,0,0,0.4));">
                       <defs>
@@ -3279,10 +3314,12 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
           // HANYA GAMBAR PIN MAP/ICON JIKA DATA BERASAL DARI INPUT SURVEI (Memiliki boundary_end)
           if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
               // Pin Awal Survei (Biru)
-              window.L.marker(coords[0], { icon: createSurveyPinMarker('Blue', `Awal Survei`, seg.name, coords[0][0], coords[0][1]), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+              const pinAwal = window.L.marker(coords[0], { icon: createSurveyPinMarker('Blue'), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+              pinAwal.bindPopup(`<div class="text-[10px] font-black uppercase tracking-wide leading-tight text-slate-800 text-center px-2 py-1"><span class="text-blue-600">Awal Survei</span><br/>${seg.name}<br/><span class="text-[8px] font-bold text-slate-500 font-mono mt-1 block">${Number(coords[0][0]).toFixed(6)}, ${Number(coords[0][1]).toFixed(6)}</span></div>`, {closeButton: false, offset: [0, -38]});
               
               // Pin Akhir Survei (Merah)
-              window.L.marker([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)], { icon: createSurveyPinMarker('Red', `Akhir Survei`, seg.name, parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+              const pinAkhir = window.L.marker([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)], { icon: createSurveyPinMarker('Red'), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+              pinAkhir.bindPopup(`<div class="text-[10px] font-black uppercase tracking-wide leading-tight text-slate-800 text-center px-2 py-1"><span class="text-rose-600">Akhir Survei</span><br/>${seg.name}<br/><span class="text-[8px] font-bold text-slate-500 font-mono mt-1 block">${Number(seg.boundary_end.lat).toFixed(6)}, ${Number(seg.boundary_end.lng).toFixed(6)}</span></div>`, {closeButton: false, offset: [0, -38]});
               
               actualBounds.extend([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)]);
           }
