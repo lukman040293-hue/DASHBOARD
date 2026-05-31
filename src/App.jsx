@@ -1245,16 +1245,22 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
                 shape = window.L.polyline(coords, { color: pathObj.color || '#f59e0b', weight: 4, opacity: 0.8, dashArray: pathObj.isDashed ? '10, 10' : null }).addTo(routeLayerRef.current);
               }
               
+              // Tambahan: Bikin Sketsa bisa diklik untuk masuk ke kamar proyek
+              shape.on('click', () => onSelectProject(p));
+
               coords.forEach(c => bounds.extend(c));
               hasData = true;
 
               if (showSketchLabels) {
                 const middleIndex = Math.floor(coords.length / 2);
                 const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
-                window.L.marker(centerPoint, { interactive: false, zIndexOffset: 100, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `
-                  <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 1px solid #000000;" class="w-max px-3 py-1.5 rounded-xl text-[11px] font-normal shadow-lg uppercase tracking-wider backdrop-blur-md text-center">
+                const skMarker = window.L.marker(centerPoint, { interactive: true, zIndexOffset: 100, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `
+                  <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 1px solid #000000; cursor: pointer;" class="w-max px-3 py-1.5 rounded-xl text-[11px] font-normal shadow-lg uppercase tracking-wider backdrop-blur-md text-center hover:bg-slate-100 hover:scale-105 transition-all">
                     ${pathObj.name || (isPolygon ? 'Poligon' : 'Garis Sketsa')}
                   </div>`, iconSize: [0, 0] }) }).addTo(routeLayerRef.current);
+                  
+                // Tambahan: Label sketsa bisa diklik
+                skMarker.on('click', () => onSelectProject(p));
               }
 
               let segmentTotalDist = 0;
@@ -1284,6 +1290,8 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
         }
 
         // B. GAMBAR JALUR REALISASI (AKTUAL LAPANGAN)
+        let hasActualLine = false; // FLAG: Cek apakah sudah ada garis rute
+
         if (showPaths && actualSegsToRender.length > 0) {
           let allActualCoordsForLabel = []; // Kumpulkan semua kordinat realisasi untuk titik tengah label tahun
 
@@ -1296,26 +1304,16 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
                 allActualCoordsForLabel = allActualCoordsForLabel.concat(coords); // Gabungkan semua kordinat
 
                 if (coords.length > 1) {
+                  hasActualLine = true; // Tandai bahwa rute sudah digambar
                   const actualShape = window.L.polyline(coords, { color: segColor, weight: 5, opacity: 0.9 }).addTo(surveyLayerRef.current);
-                  
-                  // MENAMBAHKAN POPUP KETIKA GARIS REALISASI DI KLIK
-                  actualShape.bindPopup(`
-                    <div class="p-1 min-w-[150px]">
-                      <div class="font-black text-xs text-slate-800 mb-1 border-b border-slate-200 pb-1.5 leading-tight">${p.pekerjaan}</div>
-                      <div class="text-[10px] text-slate-600 space-y-1 mt-2">
-                        <div class="flex justify-between gap-3"><span>Segmen:</span> <span class="font-bold text-blue-600 text-right">${seg.name || 'Realisasi'}</span></div>
-                        <div class="flex justify-between gap-3"><span>Panjang:</span> <span class="font-bold text-slate-800 text-right">${p.panjang_rencana || '-'} m</span></div>
-                        <div class="flex justify-between gap-3"><span>Lebar:</span> <span class="font-bold text-slate-800 text-right">${p.lebar_rencana || '-'} m</span></div>
-                        <div class="flex justify-between gap-3"><span>Saluran:</span> <span class="font-bold text-slate-800 text-right">${p.jenis_model || '-'}</span></div>
-                      </div>
-                    </div>
-                  `);
+                  actualShape.on('click', () => onSelectProject(p)); // Garis rute bisa diklik
                 }
 
                 if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
                     const lastPt = coords[coords.length - 1];
                     const boundaryPt = [parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)];
-                    window.L.polyline([lastPt, boundaryPt], { color: segColor, weight: 3, opacity: 0.5, dashArray: '8, 8' }).addTo(surveyLayerRef.current);
+                    const boundShape = window.L.polyline([lastPt, boundaryPt], { color: segColor, weight: 3, opacity: 0.5, dashArray: '8, 8' }).addTo(surveyLayerRef.current);
+                    boundShape.on('click', () => onSelectProject(p)); // Garis putus-putus bisa diklik
                 }
                 
                 if (showSketchPoints) {
@@ -1356,30 +1354,34 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
           if (showSketchLabels && allActualCoordsForLabel.length > 0) {
             const middleIndex = Math.floor(allActualCoordsForLabel.length / 2);
             const centerPoint = window.L.latLng(allActualCoordsForLabel[middleIndex][0], allActualCoordsForLabel[middleIndex][1]);
-            window.L.marker(centerPoint, { interactive: false, zIndexOffset: 120, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `
-              <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 1px solid #000000;" class="w-max px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-lg uppercase tracking-wider backdrop-blur-md text-center">
+            const yrMarker = window.L.marker(centerPoint, { interactive: true, zIndexOffset: 120, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `
+              <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 1px solid #000000; cursor: pointer;" class="w-max px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-lg uppercase tracking-wider backdrop-blur-md text-center hover:bg-slate-100 hover:scale-105 transition-all">
                 ${p.tahun || 'Tanpa Tahun'}
               </div>`, iconSize: [0, 0] }) }).addTo(surveyLayerRef.current);
+            yrMarker.on('click', () => onSelectProject(p)); // Label tahun bisa diklik
           }
         }
 
         // C. GAMBAR TITIK PUSAT (MARKER UTAMA PROYEK)
-        const lat = parseFloat(p.start_lat);
-        const lng = parseFloat(p.start_lng);
-        if (!isNaN(lat) && !isNaN(lng)) {
-          const actualProg = parseFloat(p.actual_progress || 0);
-          const isRunning = p.status === 'Running' || actualProg > 0;
-          
-          const areaCircle = window.L.circleMarker([lat, lng], {
-            radius: 25, stroke: false, fillColor: isRunning ? '#3b82f6' : '#f43f5e', fillOpacity: 0.2, className: 'animate-pulse' 
-          }).addTo(markerLayerRef.current);
-          
-          areaCircle.on('click', () => onSelectProject(p));
+        // Hanya digambar jika rute belum diperpanjang (Hanya ada 1 titik dari Data Survei Awal)
+        if (!hasActualLine) {
+            const lat = parseFloat(p.start_lat);
+            const lng = parseFloat(p.start_lng);
+            if (!isNaN(lat) && !isNaN(lng)) {
+              const actualProg = parseFloat(p.actual_progress || 0);
+              const isRunning = p.status === 'Running' || actualProg > 0;
+              
+              const areaCircle = window.L.circleMarker([lat, lng], {
+                radius: 25, stroke: false, fillColor: isRunning ? '#3b82f6' : '#f43f5e', fillOpacity: 0.2, className: 'animate-pulse' 
+              }).addTo(markerLayerRef.current);
+              
+              areaCircle.on('click', () => onSelectProject(p));
 
-          const marker = window.L.marker([lat, lng], { icon: createProjectMarker(p) }).addTo(markerLayerRef.current);
-          marker.on('click', () => onSelectProject(p));
-          bounds.extend([lat, lng]);
-          hasData = true;
+              const marker = window.L.marker([lat, lng], { icon: createProjectMarker(p) }).addTo(markerLayerRef.current);
+              marker.on('click', () => onSelectProject(p));
+              bounds.extend([lat, lng]);
+              hasData = true;
+            }
         }
       });
 
