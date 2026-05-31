@@ -1077,6 +1077,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
 
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const boundaryLayerRef = useRef(null); // LAYER BARU UNTUK BATAS WILAYAH
   const markerLayerRef = useRef(null);
   const routeLayerRef = useRef(null); // LAYER BARU UNTUK JALUR RENCANA
   const surveyLayerRef = useRef(null); // LAYER BARU UNTUK JALUR REALISASI
@@ -1095,6 +1096,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
       mapInstanceRef.current = window.L.map(mapContainerRef.current, { zoomControl: false }).setView([-0.4948, 117.1492], 12);
       window.L.control.zoom({ position: 'bottomright' }).addTo(mapInstanceRef.current);
       
+      boundaryLayerRef.current = window.L.layerGroup().addTo(mapInstanceRef.current);
       markerLayerRef.current = window.L.featureGroup().addTo(mapInstanceRef.current);
       routeLayerRef.current = window.L.layerGroup().addTo(mapInstanceRef.current);
       surveyLayerRef.current = window.L.layerGroup().addTo(mapInstanceRef.current);
@@ -1108,6 +1110,33 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
       }, 400);
     }
   }, [isMapLoaded]);
+
+  // --- LOGIKA MENAMPILKAN BATAS WILAYAH SAMARINDA ---
+  useEffect(() => {
+    if (isMapReady && boundaryLayerRef.current) {
+      boundaryLayerRef.current.clearLayers();
+      
+      // Mengambil GeoJSON batas wilayah Kota Samarinda dari OpenStreetMap (Nominatim API)
+      fetch('https://nominatim.openstreetmap.org/search?q=Kota+Samarinda,+Kalimantan+Timur&format=geojson&polygon_geojson=1&limit=1')
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.features && data.features.length > 0) {
+            window.L.geoJSON(data.features[0], {
+              style: {
+                color: '#94a3b8',     // Abu-abu netral agar tidak terlalu mencolok
+                weight: 2.5,
+                opacity: 0.8,
+                fillColor: '#cbd5e1',
+                fillOpacity: 0.02,    // Sangat transparan
+                dashArray: '8, 8'     // Garis putus-putus
+              },
+              interactive: false      // Tidak bisa diklik agar tidak menutupi marker
+            }).addTo(boundaryLayerRef.current);
+          }
+        })
+        .catch(err => console.log('Batas wilayah Samarinda gagal dimuat:', err));
+    }
+  }, [isMapReady]);
 
   useEffect(() => {
     if (isMapReady && mapInstanceRef.current) {
