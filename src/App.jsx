@@ -1093,7 +1093,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
 
   useEffect(() => {
     if (isMapLoaded && mapContainerRef.current && !mapInstanceRef.current) {
-      mapInstanceRef.current = window.L.map(mapContainerRef.current, { zoomControl: false }).setView([-0.4948, 117.1492], 12);
+      mapInstanceRef.current = window.L.map(mapContainerRef.current, { zoomControl: false, closePopupOnClick: false }).setView([-0.4948, 117.1492], 12);
       
       // Memindahkan tombol zoom ke kiri bawah agar tidak tertutup menu opsi layer
       window.L.control.zoom({ position: 'bottomleft' }).addTo(mapInstanceRef.current);
@@ -1418,10 +1418,10 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
                 // HANYA GAMBAR PIN MAP/ICON JIKA DATA BERASAL DARI INPUT SURVEI (Memiliki boundary_end)
                 if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
                     const pinAwal = window.L.marker(coords[0], { icon: createSurveyPinMarker('Blue'), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
-                    pinAwal.bindPopup(`<div class="text-[10px] font-black uppercase tracking-wide leading-tight text-slate-800 text-center px-2 py-1"><span class="text-blue-600">Awal Survei</span><br/>${seg.name}</div>`, {closeButton: false, offset: [0, -32]});
+                    pinAwal.bindPopup(`<div class="text-[10px] font-black uppercase tracking-wide leading-tight text-slate-800 text-center px-2 py-1"><span class="text-blue-600">Awal Survei</span><br/>${seg.name}</div>`, {closeButton: false, offset: [0, -32], autoClose: false, closeOnClick: false});
 
                     const pinAkhir = window.L.marker([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)], { icon: createSurveyPinMarker('Red'), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
-                    pinAkhir.bindPopup(`<div class="text-[10px] font-black uppercase tracking-wide leading-tight text-slate-800 text-center px-2 py-1"><span class="text-rose-600">Akhir Survei</span><br/>${seg.name}</div>`, {closeButton: false, offset: [0, -32]});
+                    pinAkhir.bindPopup(`<div class="text-[10px] font-black uppercase tracking-wide leading-tight text-slate-800 text-center px-2 py-1"><span class="text-rose-600">Akhir Survei</span><br/>${seg.name}</div>`, {closeButton: false, offset: [0, -32], autoClose: false, closeOnClick: false});
                 }
                 
                 coords.forEach(c => bounds.extend(c));
@@ -3064,7 +3064,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
 
   useEffect(() => {
     if (isMapLoaded && mapContainerRef.current && !mapInstanceRef.current) {
-      mapInstanceRef.current = window.L.map(mapContainerRef.current, { zoomControl: false, attributionControl: false }).setView([-0.4948, 117.1492], 15);
+      mapInstanceRef.current = window.L.map(mapContainerRef.current, { zoomControl: false, attributionControl: false, closePopupOnClick: false }).setView([-0.4948, 117.1492], 15);
       
       // Memunculkan kembali tombol zoom di posisi kiri bawah agar tidak tertutup Legenda / Menu
       window.L.control.zoom({ position: 'bottomleft' }).addTo(mapInstanceRef.current);
@@ -3352,11 +3352,11 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
           if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
               // Pin Awal Survei (Biru)
               const pinAwal = window.L.marker(coords[0], { icon: createSurveyPinMarker('Blue'), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
-              pinAwal.bindPopup(`<div class="text-[10px] font-black uppercase tracking-wide leading-tight text-slate-800 text-center px-2 py-1"><span class="text-blue-600">Awal Survei</span><br/>${seg.name}<br/><span class="text-[8px] font-bold text-slate-500 font-mono mt-1 block">${Number(coords[0][0]).toFixed(6)}, ${Number(coords[0][1]).toFixed(6)}</span></div>`, {closeButton: false, offset: [0, -38]});
+              pinAwal.bindPopup(`<div class="text-[10px] font-black uppercase tracking-wide leading-tight text-slate-800 text-center px-2 py-1"><span class="text-blue-600">Awal Survei</span><br/>${seg.name}<br/><span class="text-[8px] font-bold text-slate-500 font-mono mt-1 block">${Number(coords[0][0]).toFixed(6)}, ${Number(coords[0][1]).toFixed(6)}</span></div>`, {closeButton: false, offset: [0, -38], autoClose: false, closeOnClick: false});
               
               // Pin Akhir Survei (Merah)
               const pinAkhir = window.L.marker([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)], { icon: createSurveyPinMarker('Red'), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
-              pinAkhir.bindPopup(`<div class="text-[10px] font-black uppercase tracking-wide leading-tight text-slate-800 text-center px-2 py-1"><span class="text-rose-600">Akhir Survei</span><br/>${seg.name}<br/><span class="text-[8px] font-bold text-slate-500 font-mono mt-1 block">${Number(seg.boundary_end.lat).toFixed(6)}, ${Number(seg.boundary_end.lng).toFixed(6)}</span></div>`, {closeButton: false, offset: [0, -38]});
+              pinAkhir.bindPopup(`<div class="text-[10px] font-black uppercase tracking-wide leading-tight text-slate-800 text-center px-2 py-1"><span class="text-rose-600">Akhir Survei</span><br/>${seg.name}<br/><span class="text-[8px] font-bold text-slate-500 font-mono mt-1 block">${Number(seg.boundary_end.lat).toFixed(6)}, ${Number(seg.boundary_end.lng).toFixed(6)}</span></div>`, {closeButton: false, offset: [0, -38], autoClose: false, closeOnClick: false});
               
               actualBounds.extend([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)]);
           }
@@ -3479,7 +3479,9 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
                          minWidth: 180,
                          maxWidth: 240,
                          autoPanPadding: [50, 50], // Menghindari popup terpotong tepi layar
-                         className: 'custom-photo-popup'
+                         className: 'custom-photo-popup',
+                         autoClose: false,
+                         closeOnClick: false
                      });
 
                      marker.addTo(photoLayerRef.current);
