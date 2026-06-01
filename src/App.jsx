@@ -1506,7 +1506,8 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
     <>
       <div ref={mapContainerRef} className="absolute inset-0 z-0 bg-slate-900" style={{ height: '100%', width: '100%' }} />
       
-      <div className="absolute bottom-[85px] md:bottom-6 right-4 md:right-6 z-[9999] flex flex-row md:flex-col flex-wrap items-end justify-end gap-2 pointer-events-auto max-w-[90vw] md:max-w-none">
+      {/* Posisi ditinggikan ke bottom-[110px] dan md:bottom-28 agar tidak menutupi tombol Zoom (+/-) bawaan Peta di pojok kanan bawah */}
+      <div className="absolute bottom-[110px] md:bottom-28 right-4 md:right-6 z-[9999] flex flex-row md:flex-col flex-wrap items-end justify-end gap-2 pointer-events-auto max-w-[90vw] md:max-w-none">
           <button onClick={() => setShowPaths(!showPaths)} className={`bg-black/60 backdrop-blur-md p-2.5 sm:px-3 sm:py-2.5 sm:w-[150px] rounded-2xl shadow-lg text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center sm:justify-start gap-2 border border-white/10 hover:bg-black/80 transition-all ${!showPaths ? 'text-slate-400' : 'text-white border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]'}`} title="Tampilkan/Sembunyikan Jalur Rencana & Realisasi Seluruh Proyek">
             {showPaths ? <Eye size={16} className="text-blue-400 shrink-0" /> : <EyeOff size={16} className="shrink-0" />} 
             <span className="hidden sm:inline truncate">Jalur Proyek</span>
