@@ -1094,7 +1094,9 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
   useEffect(() => {
     if (isMapLoaded && mapContainerRef.current && !mapInstanceRef.current) {
       mapInstanceRef.current = window.L.map(mapContainerRef.current, { zoomControl: false }).setView([-0.4948, 117.1492], 12);
-      window.L.control.zoom({ position: 'bottomright' }).addTo(mapInstanceRef.current);
+      
+      // Memindahkan tombol zoom ke kiri bawah agar tidak tertutup menu opsi layer
+      window.L.control.zoom({ position: 'bottomleft' }).addTo(mapInstanceRef.current);
       
       boundaryLayerRef.current = window.L.layerGroup().addTo(mapInstanceRef.current);
       markerLayerRef.current = window.L.featureGroup().addTo(mapInstanceRef.current);
@@ -1336,8 +1338,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
                 shape = window.L.polyline(coords, { color: pathObj.color || '#f59e0b', weight: 4, opacity: 0.8, dashArray: pathObj.isDashed ? '10, 10' : null }).addTo(routeLayerRef.current);
               }
               
-              // Tampilkan Pop-up Detail
-              bindProjectPopup(shape, p, pathObj.name || (isPolygon ? 'Poligon' : 'Garis Sketsa'));
+              // Pop-up Detail dinonaktifkan di sini agar HANYA muncul di Jalur Realisasi saja
 
               coords.forEach(c => bounds.extend(c));
               hasData = true;
@@ -1492,21 +1493,20 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
       <div ref={mapContainerRef} className="absolute inset-0 z-0 bg-slate-900" style={{ height: '100%', width: '100%' }} />
       
       <div className="absolute bottom-[85px] md:bottom-6 right-4 md:right-6 z-[9999] flex flex-row md:flex-col flex-wrap items-end justify-end gap-2 pointer-events-auto max-w-[90vw] md:max-w-none">
-          <button onClick={() => setShowPaths(!showPaths)} className={`bg-black/60 backdrop-blur-md p-2.5 sm:px-3 sm:py-2.5 sm:w-[150px] rounded-2xl shadow-lg text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center sm:justify-start gap-2 border border-white/10 hover:bg-black/80 transition-all ${!showPaths ? 'text-slate-400' : 'text-white border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]'}`} title="Tampilkan/Sembunyikan Jalur Rencana & Realisasi Seluruh Proyek">
-            {showPaths ? <Eye size={16} className="text-blue-400 shrink-0" /> : <EyeOff size={16} className="shrink-0" />} 
-            <span className="hidden sm:inline truncate">Jalur Proyek</span>
+          <button onClick={() => setShowPaths(!showPaths)} className={`bg-black/60 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-white/10 hover:bg-black/80 transition-all ${!showPaths ? 'text-slate-400' : 'text-white border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]'}`} title="Tampilkan/Sembunyikan Jalur Rencana & Realisasi Seluruh Proyek">
+            {showPaths ? <Eye size={20} className="text-blue-400 shrink-0" /> : <EyeOff size={20} className="shrink-0" />} 
           </button>
           
           {showPaths && (
              <>
-              <button onClick={() => setShowSketchPoints(!showSketchPoints)} className={`bg-black/60 backdrop-blur-md p-2.5 sm:px-3 sm:py-2.5 sm:w-[150px] rounded-2xl shadow-lg text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center sm:justify-start gap-2 border border-white/10 hover:bg-black/80 transition-all ${!showSketchPoints ? 'text-slate-400' : 'text-white border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]'}`}>
-                <MapPin size={16} className={`shrink-0 ${showSketchPoints ? "text-emerald-400" : ""}`} /> <span className="hidden sm:inline truncate">Titik Lokasi</span>
+              <button onClick={() => setShowSketchPoints(!showSketchPoints)} className={`bg-black/60 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-white/10 hover:bg-black/80 transition-all ${!showSketchPoints ? 'text-slate-400' : 'text-white border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]'}`} title="Tampilkan/Sembunyikan Titik Lokasi">
+                <MapPin size={20} className={`shrink-0 ${showSketchPoints ? "text-emerald-400" : ""}`} />
               </button>
-              <button onClick={() => setShowSketchLabels(!showSketchLabels)} className={`bg-black/60 backdrop-blur-md p-2.5 sm:px-3 sm:py-2.5 sm:w-[150px] rounded-2xl shadow-lg text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center sm:justify-start gap-2 border border-white/10 hover:bg-black/80 transition-all ${!showSketchLabels ? 'text-slate-400' : 'text-white border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]'}`}>
-                <FileText size={16} className={`shrink-0 ${showSketchLabels ? "text-amber-400" : ""}`} /> <span className="hidden sm:inline truncate">Label Nama</span>
+              <button onClick={() => setShowSketchLabels(!showSketchLabels)} className={`bg-black/60 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-white/10 hover:bg-black/80 transition-all ${!showSketchLabels ? 'text-slate-400' : 'text-white border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]'}`} title="Tampilkan/Sembunyikan Label Nama">
+                <FileText size={20} className={`shrink-0 ${showSketchLabels ? "text-amber-400" : ""}`} />
               </button>
-              <button onClick={() => setShowDistances(!showDistances)} className={`bg-black/60 backdrop-blur-md p-2.5 sm:px-3 sm:py-2.5 sm:w-[150px] rounded-2xl shadow-lg text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center sm:justify-start gap-2 border border-white/10 hover:bg-black/80 transition-all ${!showDistances ? 'text-slate-400' : 'text-white border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.3)]'}`}>
-                <Ruler size={16} className={`shrink-0 ${showDistances ? "text-cyan-400" : ""}`} /> <span className="hidden sm:inline truncate">Jarak (m/km)</span>
+              <button onClick={() => setShowDistances(!showDistances)} className={`bg-black/60 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-white/10 hover:bg-black/80 transition-all ${!showDistances ? 'text-slate-400' : 'text-white border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.3)]'}`} title="Tampilkan/Sembunyikan Jarak (m/km)">
+                <Ruler size={20} className={`shrink-0 ${showDistances ? "text-cyan-400" : ""}`} />
               </button>
              </>
           )}
@@ -1515,6 +1515,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
   );
 };
 
+// --- KOMPONEN BARU: PETA INDUK 360 3D (CESIUM) ---
 const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBackToSelection, onViewRekap }) => {
   // State untuk kontrol peta induk
   const [mapType, setMapType] = useState(() => localStorage.getItem('master_mapType') || 'satellite');
