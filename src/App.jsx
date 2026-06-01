@@ -1200,25 +1200,27 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
         const hexColor = isRunning ? '#3b82f6' : '#f43f5e';
 
         const popupContent = `
-            <div class="text-left min-w-[200px]">
-              <h3 class="text-[11px] font-black text-slate-800 leading-relaxed text-left mb-3 uppercase tracking-wider">[${proj.tahun || '-'}] ${proj.pekerjaan}</h3>
-              <div class="flex justify-between items-end border-t border-slate-200 pt-3 mb-3">
+            <div class="text-left min-w-[240px]">
+              <h3 class="text-sm font-black text-slate-800 leading-relaxed text-left mb-3 uppercase tracking-wider border-b border-slate-200 pb-3">[${proj.tahun || '-'}] ${proj.pekerjaan}</h3>
+              <div class="flex justify-between items-end mb-5">
                  <div class="flex flex-col text-left">
-                    <span class="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Status</span>
-                    <span class="text-[10px] font-black uppercase tracking-widest" style="color: ${hexColor}">${statusText}</span>
+                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Status</span>
+                    <span class="text-sm font-black uppercase tracking-widest" style="color: ${hexColor}">${statusText}</span>
                  </div>
                  <div class="flex flex-col text-right pl-6">
-                    <span class="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Progress</span>
-                    <span class="text-xl font-black leading-none drop-shadow-sm" style="color: ${hexColor}">${actualProg.toFixed(1)}<span class="text-xs">%</span></span>
+                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Progress</span>
+                    <span class="text-3xl font-black leading-none drop-shadow-sm" style="color: ${hexColor}">${actualProg.toFixed(1)}<span class="text-base ml-0.5">%</span></span>
                  </div>
               </div>
-              <button id="${uniqueId}" class="w-full bg-blue-600 text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5 mt-1">
+              <button id="${uniqueId}" class="w-full bg-blue-600 text-white py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-md hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5 mt-1">
                 Buka Dashboard
               </button>
             </div>
         `;
         layer.bindPopup(popupContent, {
             closeButton: true,
+            autoClose: true,
+            closeOnClick: true,
             autoPanPadding: [50, 50]
         });
         layer.on('popupopen', () => {
@@ -1272,20 +1274,25 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
       const bindProjectPopup = (layer, proj, pathName) => {
         const uniqueId = `btn-detail-${proj.id}-${Math.random().toString(36).substr(2, 9)}`;
         const popupContent = `
-            <div class="text-left min-w-[200px]">
-              <h4 class="text-[11px] font-black text-slate-800 uppercase mb-2 leading-tight border-b border-slate-200 pb-2">${proj.pekerjaan}</h4>
-              <div class="text-[10px] font-bold text-slate-500 mb-2">${pathName}</div>
-              <div class="flex flex-col gap-1.5 text-[10px] text-slate-700 mb-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                 <div class="flex justify-between"><span>Panjang:</span> <span class="font-black">${proj.panjang_rencana ? proj.panjang_rencana + ' m' : '-'}</span></div>
-                 <div class="flex justify-between"><span>Lebar:</span> <span class="font-black">${proj.lebar_rencana ? proj.lebar_rencana + ' m' : '-'}</span></div>
-                 <div class="flex justify-between"><span>Saluran:</span> <span class="font-black truncate max-w-[100px]" title="${proj.jenis_model || '-'}">${proj.jenis_model || '-'}</span></div>
+            <div class="text-left min-w-[240px]">
+              <h4 class="text-sm font-black text-slate-800 uppercase mb-2 leading-tight border-b border-slate-200 pb-3">${proj.pekerjaan}</h4>
+              <div class="text-xs font-bold text-blue-600 mb-4">${pathName}</div>
+              <div class="flex flex-col gap-2.5 text-xs text-slate-700 mb-5">
+                 <div class="flex justify-between items-center"><span>Panjang:</span> <span class="font-black text-slate-900">${proj.panjang_rencana ? proj.panjang_rencana + ' m' : '-'}</span></div>
+                 <div class="flex justify-between items-center"><span>Lebar:</span> <span class="font-black text-slate-900">${proj.lebar_rencana ? proj.lebar_rencana + ' m' : '-'}</span></div>
+                 <div class="flex justify-between items-center"><span>Saluran:</span> <span class="font-black text-slate-900 truncate max-w-[130px]" title="${proj.jenis_model || '-'}">${proj.jenis_model || '-'}</span></div>
               </div>
-              <button id="${uniqueId}" class="w-full bg-blue-600 text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5">
+              <button id="${uniqueId}" class="w-full bg-blue-600 text-white py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-md hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5">
                 Klik Detail
               </button>
             </div>
         `;
-        layer.bindPopup(popupContent);
+        layer.bindPopup(popupContent, {
+            closeButton: true,
+            autoClose: true,
+            closeOnClick: true,
+            autoPanPadding: [50, 50]
+        });
         layer.on('popupopen', () => {
             const btn = document.getElementById(uniqueId);
             if (btn) {
@@ -4253,7 +4260,7 @@ export default function App() {
   const [quickRepFiles, setQuickRepFiles] = useState([]); // State File Lapor Lapangan
   
   const [newProjectForm, setNewProjectForm] = useState({ pekerjaan: '', tahun: new Date().getFullYear().toString() });
-  const [editProjectForm, setEditProjectForm] = useState({ status: 'Running', pekerjaan: '', termin_ke: '1', termin_persen: '0', panjang_rencana: '', lebar_rencana: '', jenis_model: '', item_utama_data: [], waktu_pelaksanaan: '' });
+  const [editProjectForm, setEditProjectForm] = useState({ status: 'Running', pekerjaan: '', tahun: '', termin_ke: '1', termin_persen: '0', panjang_rencana: '', lebar_rencana: '', jenis_model: '', item_utama_data: [], waktu_pelaksanaan: '' });
   const [sCurveForm, setSCurveForm] = useState({ plan: '', actual: '' });
   const [dailyReportForm, setDailyReportForm] = useState({
     tanggal: new Date().toISOString().split('T')[0],
@@ -4726,7 +4733,7 @@ export default function App() {
         if ((proj.termin_ke || '').toString().includes(',')) { [tKe, tPct] = proj.termin_ke.split(','); } else { tKe = proj.termin_ke || '1'; }
 
         setEditProjectForm({
-          status: proj.status || 'Running', pekerjaan: proj.pekerjaan || '',
+          status: proj.status || 'Running', pekerjaan: proj.pekerjaan || '', tahun: proj.tahun || '',
           termin_ke: tKe, termin_persen: tPct, panjang_rencana: proj.panjang_rencana || '', lebar_rencana: proj.lebar_rencana || '', jenis_model: proj.jenis_model || '',
           item_utama_data: proj.item_utama_data || [], waktu_pelaksanaan: proj.waktu_pelaksanaan || ''
         });
@@ -4861,7 +4868,7 @@ export default function App() {
       // 3. Menyimpan Semuanya Sekaligus
       const { error } = await supabaseClient.from('projects').update({
         name: editProjectForm.pekerjaan,
-        pekerjaan: editProjectForm.pekerjaan, termin_ke: `${editProjectForm.termin_ke},${editProjectForm.termin_persen}`, 
+        pekerjaan: editProjectForm.pekerjaan, tahun: editProjectForm.tahun, termin_ke: `${editProjectForm.termin_ke},${editProjectForm.termin_persen}`, 
         status: autoStatus,
         actual_progress: parseFloat(calculatedProgress.toFixed(2)),
         panjang_rencana: editProjectForm.panjang_rencana, lebar_rencana: editProjectForm.lebar_rencana, jenis_model: editProjectForm.jenis_model,
@@ -7149,6 +7156,8 @@ export default function App() {
             <form onSubmit={handleUpdateProject} className="space-y-4">
               <div><label className="text-[10px] font-bold block mb-1">Nama Pekerjaan</label><input type="text" className="w-full p-3 rounded-xl border bg-slate-50" value={editProjectForm.pekerjaan} onChange={e => setEditProjectForm({ ...editProjectForm, pekerjaan: e.target.value })} required /></div>
               
+              <div><label className="text-[10px] font-bold block mb-1">Tahun Anggaran</label><input type="number" className="w-full p-3 rounded-xl border bg-slate-50 outline-none focus:border-blue-400" value={editProjectForm.tahun} onChange={e => setEditProjectForm({ ...editProjectForm, tahun: e.target.value })} required /></div>
+
               <div><label className="text-[10px] font-bold block mb-1">Posisi Termin (Ke)</label><input type="text" className="w-full p-3 rounded-xl border bg-slate-50 outline-none focus:border-blue-400" value={editProjectForm.termin_ke} onChange={e => setEditProjectForm({ ...editProjectForm, termin_ke: e.target.value })} /></div>
               
               <div><label className="text-[10px] font-bold block mb-1">Persentase (%)</label><input type="number" step="0.01" className="w-full p-3 rounded-xl border bg-slate-50 outline-none focus:border-blue-400" value={editProjectForm.termin_persen} onChange={e => setEditProjectForm({ ...editProjectForm, termin_persen: e.target.value })} /></div>
