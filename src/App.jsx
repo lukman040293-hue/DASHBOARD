@@ -1221,8 +1221,8 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
         `;
         layer.bindPopup(popupContent, {
             closeButton: true,
-            autoClose: true,
-            closeOnClick: true,
+            autoClose: false,
+            closeOnClick: false,
             autoPanPadding: [50, 50]
         });
         layer.on('popupopen', () => {
@@ -1291,8 +1291,8 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
         `;
         layer.bindPopup(popupContent, {
             closeButton: true,
-            autoClose: true,
-            closeOnClick: true,
+            autoClose: false,
+            closeOnClick: false,
             autoPanPadding: [50, 50]
         });
         layer.on('popupopen', () => {
