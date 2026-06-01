@@ -1168,9 +1168,12 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
     if (isMapReady && mapInstanceRef.current && markerLayerRef.current && routeLayerRef.current && surveyLayerRef.current) {
       
       // MENCEGAH PETA DIGAMBAR ULANG (YANG MEMBUAT POPUP TERTUTUP) JIKA DATA TIDAK BERUBAH
-      const currentProjectsStr = JSON.stringify(allProjects.map(p => ({
-         id: p.id, status: p.status, prog: p.actual_progress, plan: p.planned_path, act: p.actual_segments_data
-      })));
+      const currentProjectsStr = JSON.stringify({
+         data: allProjects.map(p => ({
+           id: p.id, status: p.status, prog: p.actual_progress, plan: p.planned_path, act: p.actual_segments_data
+         })),
+         prefs: { showPaths, showDistances, showSketchLabels, showSketchPoints } // Memasukkan status tombol ke dalam cache
+      });
       
       const hasAnyLayer = markerLayerRef.current.getLayers().length > 0 || 
                           routeLayerRef.current.getLayers().length > 0 || 
