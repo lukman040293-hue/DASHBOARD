@@ -1245,7 +1245,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
       // 2. Fungsi Gambar Label Jarak
       const createDistLabel = (text, isTotal, colorHex) => window.L.divIcon({
         className: 'bg-transparent border-0 overflow-visible',
-        html: `<div style="transform: translate(-50%, ${isTotal ? '-150%' : '-50%'}); background-color: ${isTotal ? colorHex : 'rgba(0,0,0,0.8)'}; color: #fff; border: 1px solid ${colorHex};" class="w-max px-2.5 py-1 rounded-lg text-[9px] font-black whitespace-nowrap shadow-sm backdrop-blur-md">${isTotal ? 'Total: ' : ''}${text}</div>`,
+        html: `<div style="transform: translate(-50%, ${isTotal ? '-150%' : '-50%'}); background-color: ${isTotal ? colorHex : 'rgba(255,255,255,0.85)'}; color: ${isTotal ? '#ffffff' : colorHex};" class="w-max px-1.5 py-0.5 rounded-md text-[8px] font-bold whitespace-nowrap shadow-sm backdrop-blur-md border border-white/50 pointer-events-none">${text}</div>`,
         iconSize: [0, 0]
       });
 
@@ -1353,8 +1353,8 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
                 const middleIndex = Math.floor(coords.length / 2);
                 const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
                 const skMarker = window.L.marker(centerPoint, { interactive: false, zIndexOffset: 100, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `
-                  <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 1px solid #000000;" class="w-max px-3 py-1.5 rounded-xl text-[11px] font-normal shadow-lg uppercase tracking-wider backdrop-blur-md text-center transition-all pointer-events-none">
-                    ${pathObj.name || (isPolygon ? 'Poligon' : 'Garis Sketsa')}
+                  <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.9); color: #1e293b;" class="w-max whitespace-nowrap px-2 py-0.5 rounded-full text-[8px] font-bold shadow-sm uppercase tracking-wider backdrop-blur-sm border border-white/60 text-center pointer-events-none">
+                    ${pathObj.name || (isPolygon ? 'Poligon' : 'Garis')}
                   </div>`, iconSize: [0, 0] }) }).addTo(routeLayerRef.current);
               }
 
@@ -1362,20 +1362,21 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
               for (let i = 0; i < coords.length; i++) {
                 if (showSketchPoints) {
                   window.L.marker([coords[i][0], coords[i][1]], { interactive: false, zIndexOffset: 150, icon: window.L.divIcon({ className: 'bg-transparent border-0', html: `<div style="transform: translate(-50%, -50%); background-color: ${pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')};" class="w-2.5 h-2.5 border border-white rounded-full shadow-md"></div>`, iconSize: [0, 0] }) }).addTo(routeLayerRef.current);
-                }
-                if (i < coords.length - 1) {
-                  const pt1 = window.L.latLng(coords[i][0], coords[i][1]); const pt2 = window.L.latLng(coords[i + 1][0], coords[i + 1][1]);
-                  const dist = pt1.distanceTo(pt2); segmentTotalDist += dist;
-                  if (showDistances) window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')) }).addTo(routeLayerRef.current);
-                }
-                if (showDistances && i === coords.length - 1 && i > 0) {
-                  let closeDist = 0;
-                  if (isPolygon && coords.length > 2) {
-                      const ptStart = window.L.latLng(coords[0][0], coords[0][1]);
-                      const ptEnd = window.L.latLng(coords[i][0], coords[i][1]);
-                      closeDist = ptStart.distanceTo(ptEnd);
-                      window.L.marker([(ptStart.lat + ptEnd.lat) / 2, (ptStart.lng + ptEnd.lng) / 2], { interactive: false, zIndexOffset: 200, icon: createDistLabel(closeDist > 1000 ? `${(closeDist / 1000).toFixed(2)} km` : `${Math.round(closeDist)} m`, false, pathObj.color || '#10b981') }).addTo(routeLayerRef.current);
-                  }
+                 if (showSketchLabels) {
+                    const middleIndex = Math.floor(coords.length / 2);
+                    const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
+                    window.L.marker(centerPoint, {
+                      interactive: false,
+                      zIndexOffset: 7100,
+                      icon: window.L.divIcon({
+                        className: 'bg-transparent border-0 overflow-visible',
+                        html: `<div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.9); color: #1e293b;" class="w-max whitespace-nowrap px-2 py-0.5 rounded-full text-[8px] font-bold shadow-sm uppercase tracking-wider backdrop-blur-sm border border-white/60 text-center leading-tight pointer-events-none">
+                                ${seg.name || 'Segmen Realisasi'}
+                               </div>`,
+                        iconSize: [0, 0]
+                      })
+                    }).addTo(surveyLayerRef.current);
+                 }
                   const finalDist = segmentTotalDist + closeDist;
                   window.L.marker([coords[i][0], coords[i][1]], { interactive: false, zIndexOffset: 200, icon: createDistLabel(finalDist > 1000 ? `${(finalDist / 1000).toFixed(2)} km` : `${Math.round(finalDist)} m${isPolygon?' (Keliling)':''}`, true, pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')) }).addTo(routeLayerRef.current);
                 }
@@ -1453,7 +1454,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
             const middleIndex = Math.floor(allActualCoordsForLabel.length / 2);
             const centerPoint = window.L.latLng(allActualCoordsForLabel[middleIndex][0], allActualCoordsForLabel[middleIndex][1]);
             const yrMarker = window.L.marker(centerPoint, { interactive: false, zIndexOffset: 120, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `
-              <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 1px solid #000000;" class="w-max px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-lg uppercase tracking-wider backdrop-blur-md text-center transition-all pointer-events-none">
+              <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.85); color: #334155;" class="w-max px-2 py-0.5 rounded-full text-[9px] font-black shadow-sm uppercase tracking-wider backdrop-blur-sm border border-white/60 text-center pointer-events-none">
                 ${p.tahun || 'Tanpa Tahun'}
               </div>`, iconSize: [0, 0] }) }).addTo(surveyLayerRef.current);
           }
@@ -3212,7 +3213,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
 
     const createDistLabel = (text, isTotal, colorHex) => window.L.divIcon({
       className: 'bg-transparent border-0 overflow-visible',
-      html: `<div style="transform: translate(-50%, ${isTotal ? '-150%' : '-50%'}); background-color: ${isTotal ? colorHex : 'rgba(255,255,255,0.9)'}; color: ${isTotal ? '#fff' : colorHex}; border-color: ${colorHex};" class="w-max px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap border shadow-sm pointer-events-none">${isTotal ? 'Total: ' : ''}${text}</div>`,
+      html: `<div style="transform: translate(-50%, ${isTotal ? '-150%' : '-50%'}); background-color: ${isTotal ? colorHex : 'rgba(255,255,255,0.85)'}; color: ${isTotal ? '#ffffff' : colorHex};" class="w-max px-1.5 py-0.5 rounded-md text-[8px] font-bold whitespace-nowrap border shadow-sm backdrop-blur-md border-white/50 pointer-events-none">${text}</div>`,
       iconSize: [0, 0]
     });
 
@@ -3250,7 +3251,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
               zIndexOffset: 7000,
               icon: window.L.divIcon({
                 className: 'bg-transparent border-0 overflow-visible',
-                html: `<div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 2px ${pathObj.isDashed ? 'dashed' : 'solid'} ${pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')};" class="min-w-[100px] max-w-[160px] px-3 py-2 rounded-xl text-[10px] font-normal whitespace-normal shadow-lg uppercase tracking-wider backdrop-blur-md text-center leading-tight pointer-events-none">
+                html: `<div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.9); color: #1e293b;" class="w-max whitespace-nowrap px-2 py-0.5 rounded-full text-[8px] font-bold shadow-sm uppercase tracking-wider backdrop-blur-sm border border-white/60 text-center leading-tight pointer-events-none">
                         ${pathObj.name || (isPolygon ? 'Poligon' : 'Garis Sketsa')}
                        </div>`,
                 iconSize: [0, 0]
@@ -3335,7 +3336,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
                   zIndexOffset: 7100,
                   icon: window.L.divIcon({
                     className: 'bg-transparent border-0 overflow-visible',
-                    html: `<div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 2px solid ${segColor};" class="min-w-[100px] max-w-[160px] px-3 py-2 rounded-xl text-[10px] font-normal whitespace-normal shadow-lg uppercase tracking-wider backdrop-blur-md text-center leading-tight pointer-events-none">
+                    html: `<div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.9); color: #1e293b;" class="w-max whitespace-nowrap px-2 py-0.5 rounded-full text-[8px] font-bold shadow-sm uppercase tracking-wider backdrop-blur-sm border border-white/60 text-center leading-tight pointer-events-none">
                             ${seg.name || 'Segmen Realisasi'}
                            </div>`,
                     iconSize: [0, 0]
@@ -4234,6 +4235,8 @@ export default function App() {
   // --- Modal States ---
   const [showGlobalRekap, setShowGlobalRekap] = useState(false);
   const [globalDocuments, setGlobalDocuments] = useState([]); // STATE BARU: Menyimpan semua dokumen untuk kebutuhan rekap audit
+  const [rekapFilterYear, setRekapFilterYear] = useState('Semua'); // STATE BARU: Filter tahun untuk rekap
+  
   // STATE BARU: Pilihan Opsi Kolom Tambahan untuk Rekap
   const [rekapOptions, setRekapOptions] = useState({
     status: false,     // Status Pekerjaan
@@ -4255,6 +4258,7 @@ export default function App() {
   useEffect(() => {
     if (showGlobalRekap) {
       if (masterProjects) setSelectedRekapProjects(new Set(masterProjects.map(p => p.id)));
+      setRekapFilterYear('Semua'); // Reset filter saat modal dibuka
       if (supabaseClient) {
         supabaseClient.from('documents').select('project_id, name, file_url').then(({data}) => {
           if (data) setGlobalDocuments(data);
@@ -5971,6 +5975,10 @@ export default function App() {
       return names.length > 0 ? names.join(', ') : '-';
     };
 
+    // Filter Tahun Logika
+    const uniqueRekapYears = [...new Set(masterProjects.map(p => p.tahun).filter(Boolean))].sort((a, b) => b - a);
+    const filteredRekapProjects = masterProjects.filter(p => rekapFilterYear === 'Semua' || String(p.tahun) === String(rekapFilterYear));
+
     return (
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-start justify-center z-[9999] p-4 pt-24 md:p-8 md:pt-32">
         <div className="bg-white/80 backdrop-blur-2xl border border-white/50 rounded-[32px] p-6 md:p-8 w-full max-w-7xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] relative flex flex-col max-h-[calc(100vh-7rem)] md:max-h-[calc(100vh-10rem)]">
@@ -5981,7 +5989,25 @@ export default function App() {
                 <h3 className="text-xl font-black text-slate-800 flex items-center gap-2"><FileSpreadsheet className="text-amber-500" /> Rekapitulasi & Laporan Proyek</h3>
                 <p className="text-xs text-slate-500 font-bold mt-1">Pilih pekerjaan dan kolom data yang ingin Anda unduh</p>
              </div>
-             <button onClick={() => {
+             
+             <div className="flex items-center gap-3 w-full sm:w-auto flex-wrap sm:flex-nowrap">
+                 <div className="relative w-full sm:w-auto">
+                    <select 
+                       className="w-full sm:w-auto appearance-none bg-white border border-slate-300 text-slate-700 py-3 pl-4 pr-10 rounded-xl text-xs font-bold outline-none cursor-pointer hover:bg-slate-50 transition-colors focus:border-amber-500 shadow-sm"
+                       value={rekapFilterYear}
+                       onChange={(e) => setRekapFilterYear(e.target.value)}
+                    >
+                       <option value="Semua">Semua Tahun</option>
+                       {uniqueRekapYears.map(year => (
+                          <option key={year} value={year}>{year}</option>
+                       ))}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                       <ChevronDown size={16} />
+                    </div>
+                 </div>
+
+                 <button onClick={() => {
                 if (selectedRekapProjects.size === 0) {
                    showMsg("Pilih minimal satu proyek untuk diunduh", "warning");
                    return;
@@ -6043,6 +6069,7 @@ export default function App() {
              }} className="bg-amber-500 text-white px-4 py-3 rounded-xl text-xs font-black uppercase shadow-sm hover:bg-amber-600 transition-all flex items-center gap-2 shrink-0 border border-amber-600">
                 <Download size={16} /> Unduh CSV (Excel)
              </button>
+             </div>
           </div>
 
           {/* OPSI FILTER KOLOM TAMBAHAN */}
@@ -6095,13 +6122,23 @@ export default function App() {
                     <input 
                        type="checkbox" 
                        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
-                       checked={masterProjects.length > 0 && selectedRekapProjects.size === masterProjects.length}
-                       ref={input => { if (input) input.indeterminate = selectedRekapProjects.size > 0 && selectedRekapProjects.size < masterProjects.length; }}
-                       onChange={(e) => {
-                         if (e.target.checked) setSelectedRekapProjects(new Set(masterProjects.map(p => p.id)));
-                         else setSelectedRekapProjects(new Set());
+                       checked={filteredRekapProjects.length > 0 && filteredRekapProjects.every(p => selectedRekapProjects.has(p.id))}
+                       ref={input => { 
+                           if (input) {
+                               const selectedInFilter = filteredRekapProjects.filter(p => selectedRekapProjects.has(p.id)).length;
+                               input.indeterminate = selectedInFilter > 0 && selectedInFilter < filteredRekapProjects.length; 
+                           }
                        }}
-                       title="Pilih Semua Pekerjaan"
+                       onChange={(e) => {
+                         const newSet = new Set(selectedRekapProjects);
+                         if (e.target.checked) {
+                             filteredRekapProjects.forEach(p => newSet.add(p.id));
+                         } else {
+                             filteredRekapProjects.forEach(p => newSet.delete(p.id));
+                         }
+                         setSelectedRekapProjects(newSet);
+                       }}
+                       title="Pilih Semua Pekerjaan Tampil"
                     />
                   </th>
                   <th className="p-4 border-b border-slate-200 w-12 text-center">No</th>
@@ -6122,10 +6159,10 @@ export default function App() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/40">
-                {masterProjects.length === 0 ? (
-                  <tr><td colSpan="13" className="p-10 text-center text-slate-500 font-bold text-xs">Belum ada proyek terdaftar.</td></tr>
+                {filteredRekapProjects.length === 0 ? (
+                  <tr><td colSpan="13" className="p-10 text-center text-slate-500 font-bold text-xs">Belum ada proyek terdaftar di tahun ini.</td></tr>
                 ) : (
-                  masterProjects.map((p, idx) => {
+                  filteredRekapProjects.map((p, idx) => {
                     let termin = '1'; let tPct = '0';
                     if ((p.termin_ke || '').toString().includes(',')) { [termin, tPct] = p.termin_ke.split(','); } else { termin = p.termin_ke || '1'; }
                     const actualProg = parseFloat(p.actual_progress || 0);
