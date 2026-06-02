@@ -108,6 +108,12 @@ const toRoman = (num) => {
   return str;
 };
 
+// FUNGSI BARU: Pembersih format koordinat agar koma (,) otomatis menjadi titik (.) dan dikenali peta
+const parseCoordToFloat = (val) => {
+  if (val === null || val === undefined || val === '') return NaN;
+  return parseFloat(String(val).replace(/\s+/g, '').replace(',', '.'));
+};
+
 const buildDynamicFields = (data, initial) => {
   if (data && Array.isArray(data.fields) && data.fields.length > 0) return data.fields;
   return initial;
@@ -1317,8 +1323,8 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
             let pts = seg.points || [];
             let bEnd = seg.boundary_end;
             if (!seg.points) {
-                if (seg.startLat && seg.startLng) pts.push({lat: parseFloat(seg.startLat), lng: parseFloat(seg.startLng)});
-                if (seg.endLat && seg.endLng) bEnd = {lat: parseFloat(seg.endLat), lng: parseFloat(seg.endLng)};
+                if (seg.startLat && seg.startLng) pts.push({lat: parseCoordToFloat(seg.startLat), lng: parseCoordToFloat(seg.startLng)});
+                if (seg.endLat && seg.endLng) bEnd = {lat: parseCoordToFloat(seg.endLat), lng: parseCoordToFloat(seg.endLng)};
             }
             actualSegsToRender.push({ ...seg, points: pts, boundary_end: bEnd });
         });
@@ -1327,7 +1333,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
         if (showPaths && plannedPath.length > 0) {
           plannedPath.forEach((pathObj) => {
             if (!pathObj || !pathObj.points || pathObj.points.length === 0) return;
-            const coords = pathObj.points.map(pt => [parseFloat(pt.lat), parseFloat(pt.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
+            const coords = pathObj.points.map(pt => [parseCoordToFloat(pt.lat), parseCoordToFloat(pt.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
             
             if (coords.length > 0) {
               const isPolygon = pathObj.type === 'polygon';
@@ -1389,7 +1395,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
 
           actualSegsToRender.forEach(seg => {
             if (seg.points && seg.points.length > 0) {
-              const coords = seg.points.map(pt => [parseFloat(pt.lat), parseFloat(pt.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
+              const coords = seg.points.map(pt => [parseCoordToFloat(pt.lat), parseCoordToFloat(pt.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
               const segColor = seg.color || '#3b82f6';
 
               if (coords.length > 0) {
@@ -1401,9 +1407,9 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
                   bindProjectPopup(actualShape, p, seg.name || 'Segmen Realisasi');
                 }
 
-                if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
+                if (seg.boundary_end && !isNaN(parseCoordToFloat(seg.boundary_end.lat))) {
                     const lastPt = coords[coords.length - 1];
-                    const boundaryPt = [parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)];
+                    const boundaryPt = [parseCoordToFloat(seg.boundary_end.lat), parseCoordToFloat(seg.boundary_end.lng)];
                     const boundShape = window.L.polyline([lastPt, boundaryPt], { color: segColor, weight: 3, opacity: 0.5, dashArray: '8, 8' }).addTo(surveyLayerRef.current);
                     bindProjectPopup(boundShape, p, 'Batas Target ' + (seg.name || 'Segmen'));
                 }
@@ -1416,17 +1422,17 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
                 }
                 
                 // HANYA GAMBAR PIN MAP/ICON JIKA DATA BERASAL DARI INPUT SURVEI (Memiliki boundary_end)
-                if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
+                if (seg.boundary_end && !isNaN(parseCoordToFloat(seg.boundary_end.lat))) {
                     const pinAwal = window.L.marker(coords[0], { icon: createSurveyPinMarker('Blue'), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
                     pinAwal.bindPopup(`<div class="text-[10px] font-black uppercase tracking-wide leading-tight text-slate-800 text-center px-2 py-1"><span class="text-blue-600">Awal Survei</span><br/>${seg.name}</div>`, {closeButton: false, offset: [0, -32], autoClose: false, closeOnClick: false});
 
-                    const pinAkhir = window.L.marker([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)], { icon: createSurveyPinMarker('Red'), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+                    const pinAkhir = window.L.marker([parseCoordToFloat(seg.boundary_end.lat), parseCoordToFloat(seg.boundary_end.lng)], { icon: createSurveyPinMarker('Red'), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
                     pinAkhir.bindPopup(`<div class="text-[10px] font-black uppercase tracking-wide leading-tight text-slate-800 text-center px-2 py-1"><span class="text-rose-600">Akhir Survei</span><br/>${seg.name}</div>`, {closeButton: false, offset: [0, -32], autoClose: false, closeOnClick: false});
                 }
                 
                 coords.forEach(c => bounds.extend(c));
-                if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
-                    bounds.extend([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)]);
+                if (seg.boundary_end && !isNaN(parseCoordToFloat(seg.boundary_end.lat))) {
+                    bounds.extend([parseCoordToFloat(seg.boundary_end.lat), parseCoordToFloat(seg.boundary_end.lng)]);
                 }
                 hasData = true;
 
@@ -1460,8 +1466,8 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
         // C. GAMBAR TITIK PUSAT (MARKER UTAMA PROYEK)
         // Hanya digambar jika rute belum diperpanjang (Hanya ada 1 titik dari Data Survei Awal)
         if (!hasActualLine) {
-            const lat = parseFloat(p.start_lat);
-            const lng = parseFloat(p.start_lng);
+            const lat = parseCoordToFloat(p.start_lat);
+            const lng = parseCoordToFloat(p.start_lng);
             if (!isNaN(lat) && !isNaN(lng)) {
               const actualProg = parseFloat(p.actual_progress || 0);
               const isRunning = p.status === 'Running' || actualProg > 0;
@@ -3204,7 +3210,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
     if (showPaths && plannedPath && plannedPath.length > 0) {
       plannedPath.forEach((pathObj) => {
         if (!pathObj || !pathObj.points || pathObj.points.length === 0) return;
-        const coords = pathObj.points.map(p => [parseFloat(p.lat), parseFloat(p.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
+        const coords = pathObj.points.map(p => [parseCoordToFloat(p.lat), parseCoordToFloat(p.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
         if (coords.length > 0) {
           const isPolygon = pathObj.type === 'polygon';
           let shape;
@@ -3293,7 +3299,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
 
     (actualSegments || []).forEach((seg, idx) => {
       if (seg.points && seg.points.length > 0) {
-        const coords = seg.points.map(p => [parseFloat(p.lat), parseFloat(p.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
+        const coords = seg.points.map(p => [parseCoordToFloat(p.lat), parseCoordToFloat(p.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
         const segColor = seg.color || '#3b82f6';
         
         // GABUNGKAN TITIK AKHIR (BOUNDARY) JIKA ADA AGAR GARIS TERBENTUK UNTUK 2 TITIK SAJA
@@ -3330,9 +3336,9 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
           }
 
           // Gambar garis putus-putus ke titik target akhir (Boundary End)
-          if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
+          if (seg.boundary_end && !isNaN(parseCoordToFloat(seg.boundary_end.lat))) {
              const lastPt = coords[coords.length - 1];
-             const boundaryPt = [parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)];
+             const boundaryPt = [parseCoordToFloat(seg.boundary_end.lat), parseCoordToFloat(seg.boundary_end.lng)];
              window.L.polyline([lastPt, boundaryPt], { 
                 color: segColor, 
                 weight: 3, 
@@ -3349,16 +3355,16 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
           }
 
           // HANYA GAMBAR PIN MAP/ICON JIKA DATA BERASAL DARI INPUT SURVEI (Memiliki boundary_end)
-          if (seg.boundary_end && !isNaN(parseFloat(seg.boundary_end.lat))) {
+          if (seg.boundary_end && !isNaN(parseCoordToFloat(seg.boundary_end.lat))) {
               // Pin Awal Survei (Biru)
               const pinAwal = window.L.marker(coords[0], { icon: createSurveyPinMarker('Blue'), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
               pinAwal.bindPopup(`<div class="text-[10px] font-black uppercase tracking-wide leading-tight text-slate-800 text-center px-2 py-1"><span class="text-blue-600">Awal Survei</span><br/>${seg.name}<br/><span class="text-[8px] font-bold text-slate-500 font-mono mt-1 block">${Number(coords[0][0]).toFixed(6)}, ${Number(coords[0][1]).toFixed(6)}</span></div>`, {closeButton: false, offset: [0, -38], autoClose: false, closeOnClick: false});
               
               // Pin Akhir Survei (Merah)
-              const pinAkhir = window.L.marker([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)], { icon: createSurveyPinMarker('Red'), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
+              const pinAkhir = window.L.marker([parseCoordToFloat(seg.boundary_end.lat), parseCoordToFloat(seg.boundary_end.lng)], { icon: createSurveyPinMarker('Red'), zIndexOffset: 5000 }).addTo(surveyLayerRef.current);
               pinAkhir.bindPopup(`<div class="text-[10px] font-black uppercase tracking-wide leading-tight text-slate-800 text-center px-2 py-1"><span class="text-rose-600">Akhir Survei</span><br/>${seg.name}<br/><span class="text-[8px] font-bold text-slate-500 font-mono mt-1 block">${Number(seg.boundary_end.lat).toFixed(6)}, ${Number(seg.boundary_end.lng).toFixed(6)}</span></div>`, {closeButton: false, offset: [0, -38], autoClose: false, closeOnClick: false});
               
-              actualBounds.extend([parseFloat(seg.boundary_end.lat), parseFloat(seg.boundary_end.lng)]);
+              actualBounds.extend([parseCoordToFloat(seg.boundary_end.lat), parseCoordToFloat(seg.boundary_end.lng)]);
           }
 
           actualBounds.extend(coords[0]);
@@ -4825,15 +4831,16 @@ export default function App() {
 
   // Navigasi Kembali ke Gerbang Pemilihan dari Peta Induk
   const handleBackToSelection = () => {
+    fetchAllProjects(); // Pastikan data paling fresh saat kembali
     setAppMode('selection');
     setProjectData(null);
   };
 
   // Navigasi Dinamis Keluar dari Kamar Proyek
   const handleBackFromProject = () => {
+    fetchAllProjects(); // Sinkronkan data terbaru jika ada update rute
     setAppMode(previousAppMode || 'selection');
     setProjectData(null);
-    if (previousAppMode === 'master') fetchAllProjects();
   };
 
   // Fungsi Baru: Menandai Log sudah dibaca saat diklik
@@ -5278,8 +5285,10 @@ export default function App() {
           is_problem: false
        }]);
 
-       // UPDATE STATE LOKAL
+       // UPDATE STATE LOKAL & SINKRON KE MASTER PROYEK AGAR DI PETA INDUK LANGSUNG MUNCUL
        setProjectData(prev => ({ ...prev, ...dbUpdatePayload }));
+       setMasterProjects(prev => prev.map(p => p.id === projectData.id ? { ...p, ...dbUpdatePayload } : p));
+       
        showMsg(`Titik ${reportTypeStr.toLowerCase()} berhasil ditambahkan!`, "success");
        setShowAppendRouteModal(false);
        setAppendRouteForm(p => ({ ...p, segmentName: segName, lat: '', lng: '', note: '' }));
@@ -5317,6 +5326,8 @@ export default function App() {
            if (error) throw error;
 
            setProjectData(prev => ({ ...prev, ...dbUpdatePayload }));
+           setMasterProjects(prev => prev.map(p => p.id === projectData.id ? { ...p, ...dbUpdatePayload } : p));
+           
            setAppendRouteForm(p => ({ ...p, segmentName: renameRouteConfig.newName }));
            setRenameRouteConfig({ isEditing: false, newName: '' });
            showMsg("Nama berhasil diubah", "success");
@@ -5351,6 +5362,8 @@ export default function App() {
            if (error) throw error;
 
            setProjectData(prev => ({ ...prev, ...dbUpdatePayload }));
+           setMasterProjects(prev => prev.map(p => p.id === projectData.id ? { ...p, ...dbUpdatePayload } : p));
+           
            setAppendRouteForm(p => ({ ...p, segmentName: nextName || (isActual ? 'Segmen 1' : 'Jalur 1') }));
            setDeleteRouteConfirm(false);
            showMsg("Jalur/Segmen berhasil dihapus", "success");
@@ -5504,6 +5517,7 @@ export default function App() {
       }]);
 
       setProjectData(prev => ({ ...prev, ...updatePayload }));
+      setMasterProjects(prev => prev.map(p => p.id === projectData.id ? { ...p, ...updatePayload } : p));
 
       showMsg("Data Survei Tersimpan!", "success"); setShowReportModal(false); setUMedia([]); setUDataUkur(null);
       setUForm({ tanggal: new Date().toISOString().split('T')[0], namaSegmen: '', points: [{lat: '', lng: ''}, {lat: '', lng: ''}], panjang: '', lebar: '', jenis_model_awal: '', noteDesc: '' });
@@ -5592,6 +5606,8 @@ export default function App() {
       
       // UPDATE LOKAL SECARA LANGSUNG
       setProjectData(prev => ({ ...prev, ...payload }));
+      setMasterProjects(prev => prev.map(p => p.id === projectData.id ? { ...p, ...payload } : p));
+      
       showMsg("Data Rute Disinkronkan!", "success"); 
       
     } catch (e) { showMsg("Gagal sinkronisasi rute: " + e.message, "error"); } finally { setIsProcessing(false); }
