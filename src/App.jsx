@@ -1352,13 +1352,10 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
               if (showSketchLabels) {
                 const middleIndex = Math.floor(coords.length / 2);
                 const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
-                const skMarker = window.L.marker(centerPoint, { interactive: true, zIndexOffset: 100, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `
-                  <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 1px solid #000000; cursor: pointer;" class="w-max px-3 py-1.5 rounded-xl text-[11px] font-normal shadow-lg uppercase tracking-wider backdrop-blur-md text-center hover:bg-slate-100 hover:scale-105 transition-all">
+                const skMarker = window.L.marker(centerPoint, { interactive: false, zIndexOffset: 100, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `
+                  <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 1px solid #000000;" class="w-max px-3 py-1.5 rounded-xl text-[11px] font-normal shadow-lg uppercase tracking-wider backdrop-blur-md text-center transition-all pointer-events-none">
                     ${pathObj.name || (isPolygon ? 'Poligon' : 'Garis Sketsa')}
                   </div>`, iconSize: [0, 0] }) }).addTo(routeLayerRef.current);
-                  
-                // Label sketsa tetap bisa diklik untuk shortcut masuk ke proyek
-                skMarker.on('click', () => onSelectProject(p));
               }
 
               let segmentTotalDist = 0;
@@ -1455,11 +1452,10 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
           if (showSketchLabels && allActualCoordsForLabel.length > 0) {
             const middleIndex = Math.floor(allActualCoordsForLabel.length / 2);
             const centerPoint = window.L.latLng(allActualCoordsForLabel[middleIndex][0], allActualCoordsForLabel[middleIndex][1]);
-            const yrMarker = window.L.marker(centerPoint, { interactive: true, zIndexOffset: 120, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `
-              <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 1px solid #000000; cursor: pointer;" class="w-max px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-lg uppercase tracking-wider backdrop-blur-md text-center hover:bg-slate-100 hover:scale-105 transition-all">
+            const yrMarker = window.L.marker(centerPoint, { interactive: false, zIndexOffset: 120, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `
+              <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.95); color: #000000; border: 1px solid #000000;" class="w-max px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-lg uppercase tracking-wider backdrop-blur-md text-center transition-all pointer-events-none">
                 ${p.tahun || 'Tanpa Tahun'}
               </div>`, iconSize: [0, 0] }) }).addTo(surveyLayerRef.current);
-            yrMarker.on('click', () => onSelectProject(p)); // Label tahun bisa diklik
           }
         }
 
