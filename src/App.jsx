@@ -1048,7 +1048,7 @@ const AbsensiView = ({ attendances, onBack, onDelete, isProcessing, onRefresh, e
   );
 };
 
-const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
+const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) => {
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [isMapReady, setIsMapReady] = useState(false);
   
@@ -1492,7 +1492,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
     <>
       <div ref={mapContainerRef} className="absolute inset-0 z-0 bg-slate-900" style={{ height: '100%', width: '100%' }} />
       
-      <div className="absolute bottom-[85px] md:bottom-6 right-4 md:right-6 z-[9999] flex flex-row md:flex-col flex-wrap items-end justify-end gap-2 pointer-events-auto max-w-[90vw] md:max-w-none">
+      <div className={`absolute bottom-[85px] md:bottom-6 right-4 md:right-6 z-[9999] flex flex-row md:flex-col flex-wrap items-end justify-end gap-2 pointer-events-auto max-w-[90vw] md:max-w-none transition-all duration-500 ease-in-out ${isUIHidden ? 'opacity-0 translate-y-12 pointer-events-none' : 'opacity-100 translate-y-0'}`}>
           <button onClick={() => setShowPaths(!showPaths)} className={`bg-black/60 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-white/10 hover:bg-black/80 transition-all ${!showPaths ? 'text-slate-400' : 'text-white border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]'}`} title="Tampilkan/Sembunyikan Jalur Rencana & Realisasi Seluruh Proyek">
             {showPaths ? <Eye size={20} className="text-blue-400 shrink-0" /> : <EyeOff size={20} className="shrink-0" />} 
           </button>
@@ -1519,7 +1519,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType }) => {
 const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBackToSelection, onViewRekap }) => {
   // State untuk kontrol peta induk
   const [mapType, setMapType] = useState(() => localStorage.getItem('master_mapType') || 'satellite');
-  const [isUIHidden, setIsUIHidden] = useState(true);
+  const [isUIHidden, setIsUIHidden] = useState(false);
   
   // STATE BARU: Filter Tahun untuk Peta Induk
   const [filterTahun, setFilterTahun] = useState('Semua');
@@ -1548,7 +1548,7 @@ const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBac
       
       {/* MAP BACKGROUND (100% SCREEN) */}
       <div className="absolute inset-0 z-0">
-        <MasterMapView allProjects={filteredProjectsForMap} onSelectProject={onSelectProject} mapType={mapType} />
+        <MasterMapView allProjects={filteredProjectsForMap} onSelectProject={onSelectProject} mapType={mapType} isUIHidden={isUIHidden} />
       </div>
 
       {/* LOGO & MENU TOGGLE (MENGAMBANG DI KIRI ATAS) */}
