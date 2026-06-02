@@ -1465,9 +1465,22 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
 
         // C. GAMBAR TITIK PUSAT (MARKER UTAMA PROYEK)
         // Hanya digambar jika rute belum diperpanjang (Hanya ada 1 titik dari Data Survei Awal)
-        if (!hasActualLine) {
-            const lat = parseCoordToFloat(p.start_lat);
-            const lng = parseCoordToFloat(p.start_lng);
+        // ATAU jika fitur tampilkan jalur dimatikan (!showPaths)
+        if (!hasActualLine || !showPaths) {
+            let lat = parseCoordToFloat(p.start_lat);
+            let lng = parseCoordToFloat(p.start_lng);
+            
+            // LOGIKA BARU (FALLBACK): Jika koordinat utama kosong, pinjam dari titik pertama rute/sketsa
+            if (isNaN(lat) || isNaN(lng)) {
+                if (actualSegsToRender.length > 0 && actualSegsToRender[0].points && actualSegsToRender[0].points.length > 0) {
+                    lat = parseCoordToFloat(actualSegsToRender[0].points[0].lat);
+                    lng = parseCoordToFloat(actualSegsToRender[0].points[0].lng);
+                } else if (plannedPath.length > 0 && plannedPath[0].points && plannedPath[0].points.length > 0) {
+                    lat = parseCoordToFloat(plannedPath[0].points[0].lat);
+                    lng = parseCoordToFloat(plannedPath[0].points[0].lng);
+                }
+            }
+
             if (!isNaN(lat) && !isNaN(lng)) {
               const actualProg = parseFloat(p.actual_progress || 0);
               const isRunning = p.status === 'Running' || actualProg > 0;
