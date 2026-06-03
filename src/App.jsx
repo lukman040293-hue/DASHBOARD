@@ -9,7 +9,7 @@ import {
   Briefcase, Image as ImageIcon, CalendarDays, MonitorPlay, FileSpreadsheet, FolderEdit,
   Save, MapIcon, ArrowLeft, Globe2, Fingerprint, RefreshCw, ArrowUp, ArrowDown,
   Users, UserPlus, Eye, EyeOff, Maximize, Minimize, ChevronLeft, ChevronRight, Download, Menu,
-  Lock, User, LogOut, Grid, ChevronDown, Bell, ChevronUp
+  Lock, User, LogOut, Grid, ChevronDown, Bell, ChevronUp, Share2, Link
 } from 'lucide-react';
 
 // --- KONSTANTA & KONFIGURASI ---
@@ -1532,7 +1532,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
 };
 
 // --- KOMPONEN BARU: PETA INDUK 360 3D (CESIUM) ---
-const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBackToSelection, onViewRekap }) => {
+const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBackToSelection, onViewRekap, onShareLink }) => {
   // State untuk kontrol peta induk
   const [mapType, setMapType] = useState(() => localStorage.getItem('master_mapType') || 'satellite');
   const [isUIHidden, setIsUIHidden] = useState(false);
@@ -1632,6 +1632,10 @@ const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBac
 
              <button onClick={onViewRekap} className="bg-amber-500 text-white px-3 py-3 md:px-4 md:py-3.5 rounded-2xl text-[10px] md:text-xs font-black uppercase flex items-center gap-2 shadow-lg hover:bg-amber-600 hover:scale-105 transition-all border border-amber-400" title="Rekap Semua Data Proyek">
                 <FileSpreadsheet size={16} /> <span className="hidden sm:inline">Rekap Data</span>
+             </button>
+
+             <button onClick={onShareLink} className="bg-slate-700 text-white px-3 py-3 md:px-4 md:py-3.5 rounded-2xl text-[10px] md:text-xs font-black uppercase flex items-center gap-2 shadow-lg hover:bg-slate-600 hover:scale-105 transition-all border border-slate-500" title="Bagikan Link Akses Aman (Read-Only)">
+                <Link size={16} /> <span className="hidden sm:inline">Bagikan Link</span>
              </button>
 
              <button onClick={onAddProject} className="bg-blue-600 text-white px-3 py-3 md:px-4 md:py-3.5 rounded-2xl text-[10px] md:text-xs font-black uppercase flex items-center gap-2 shadow-lg hover:bg-blue-700 hover:scale-105 transition-all border border-blue-500">
@@ -4862,6 +4866,44 @@ export default function App() {
     setProjectData(null);
   };
 
+  // FUNGSI BARU: Bagikan Link Aman ke Pejabat/Dinas
+  const handleShareLink = () => {
+    let shareUrl = '';
+    try {
+      // Menggunakan API URL bawaan browser agar format terjamin (tidak ada typo / tabrakan string)
+      const url = new URL(window.location.href);
+      url.searchParams.set('access', 'guest_dinas');
+      shareUrl = url.toString();
+    } catch (err) {
+      shareUrl = `${window.location.origin}${window.location.pathname}?access=guest_dinas`;
+    }
+
+    // Peringatan jika pengguna masih berada di mode Preview Sandbox (Bukan Publik)
+    if (shareUrl.includes('usercontent.goog')) {
+      showMsg("⚠️ Peringatan: Anda masih di mode Preview. Link ini belum bisa dibuka orang lain. Silahkan deploy aplikasi (misal ke Vercel) untuk mendapatkan link publik.", "warning");
+    }
+
+    // Fallback Clipboard API untuk memastikan kompatibilitas di dalam iframe/browser terbatas
+    const textArea = document.createElement("textarea");
+    textArea.value = shareUrl;
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.position = "fixed";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+      document.execCommand('copy');
+      if (!shareUrl.includes('usercontent.goog')) {
+        showMsg("Link akses aman (Pejabat/Dinas) berhasil disalin ke clipboard!", "success");
+      }
+    } catch (err) {
+      showMsg("Gagal menyalin link.", "error");
+    }
+    document.body.removeChild(textArea);
+  };
+
   // Fungsi Baru: Menandai Log sudah dibaca saat diklik
   const handleViewLog = (item) => {
     setSelectedLog(item);
@@ -6494,6 +6536,7 @@ export default function App() {
             onAddProject={() => setShowNewProjectModal(true)} 
             onBackToSelection={handleBackToSelection}
             onViewRekap={() => setShowGlobalRekap(true)}
+            onShareLink={handleShareLink}
         />
 
         {showNewProjectModal && (
@@ -6637,6 +6680,9 @@ export default function App() {
                   </button>
 
                   <button type="button" onClick={() => setShowEditProjectModal(true)} className="relative z-50 p-2 text-slate-400 hover:text-blue-600 transition-colors bg-white hover:bg-blue-50 rounded-xl shadow-sm border border-slate-200 cursor-pointer pointer-events-auto" title="Pengaturan Proyek"><Settings size={16} /></button>
+
+                  {/* TOMBOL BAGIKAN LINK PROYEK */}
+                  <button type="button" onClick={handleShareLink} className="relative z-50 p-2 text-slate-400 hover:text-emerald-600 transition-colors bg-white hover:bg-emerald-50 rounded-xl shadow-sm border border-slate-200 cursor-pointer pointer-events-auto" title="Bagikan Link Proyek (Aman untuk Dinas)"><Share2 size={16} /></button>
 
                   {/* TOMBOL UPDATE RUTE */}
                   <button type="button" onClick={() => setShowAppendRouteModal(true)} className="bg-emerald-600 text-white px-3 py-2 md:px-4 md:py-2.5 rounded-xl text-[10px] font-bold uppercase flex items-center justify-center gap-1.5 md:gap-2 hover:bg-emerald-700 transition-colors shadow-md cursor-pointer relative z-50 pointer-events-auto" title="Tambah Progress Rute Realisasi">
