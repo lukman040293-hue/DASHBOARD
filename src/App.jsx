@@ -1101,8 +1101,8 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
     if (isMapLoaded && mapContainerRef.current && !mapInstanceRef.current) {
       mapInstanceRef.current = window.L.map(mapContainerRef.current, { zoomControl: false, closePopupOnClick: false }).setView([-0.4948, 117.1492], 12);
       
-      // Memindahkan tombol zoom ke kiri bawah agar tidak tertutup menu opsi layer
-      window.L.control.zoom({ position: 'bottomleft' }).addTo(mapInstanceRef.current);
+      // Memindahkan tombol zoom ke kiri atas (offset diatur via CSS global agar tidak tertutup menu)
+      window.L.control.zoom({ position: 'topleft' }).addTo(mapInstanceRef.current);
       
       boundaryLayerRef.current = window.L.layerGroup().addTo(mapInstanceRef.current);
       markerLayerRef.current = window.L.featureGroup().addTo(mapInstanceRef.current);
@@ -1506,7 +1506,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
 
   return (
     <>
-      <div ref={mapContainerRef} className="absolute inset-0 z-0 bg-slate-900" style={{ height: '100%', width: '100%' }} />
+      <div id="master-map" ref={mapContainerRef} className="absolute inset-0 z-0 bg-slate-900" style={{ height: '100%', width: '100%' }} />
       
       <div className={`absolute bottom-[85px] md:bottom-6 right-4 md:right-6 z-[9999] flex flex-row md:flex-col flex-wrap items-end justify-end gap-2 pointer-events-auto max-w-[90vw] md:max-w-none transition-all duration-500 ease-in-out ${isUIHidden ? 'opacity-0 translate-y-12 pointer-events-none' : 'opacity-100 translate-y-0'}`}>
           <button onClick={() => setShowPaths(!showPaths)} className={`bg-black/60 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-white/10 hover:bg-black/80 transition-all ${!showPaths ? 'text-slate-400' : 'text-white border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]'}`} title="Tampilkan/Sembunyikan Jalur Rencana & Realisasi Seluruh Proyek">
@@ -4373,6 +4373,12 @@ export default function App() {
            top: 4px !important;
            right: 4px !important;
            z-index: 50 !important;
+        }
+
+        /* GESER TOMBOL ZOOM DI PETA INDUK AGAR TIDAK TERTUTUP MENU KIRI ATAS */
+        #master-map .leaflet-top.leaflet-left {
+           margin-top: 80px !important;
+           margin-left: 10px !important;
         }
       `;
       document.head.appendChild(fontEl);
