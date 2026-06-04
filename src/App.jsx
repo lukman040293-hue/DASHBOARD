@@ -9,7 +9,7 @@ import {
   Briefcase, Image as ImageIcon, CalendarDays, MonitorPlay, FileSpreadsheet, FolderEdit,
   Save, MapIcon, ArrowLeft, Globe2, Fingerprint, RefreshCw, ArrowUp, ArrowDown,
   Users, UserPlus, Eye, EyeOff, Maximize, Minimize, ChevronLeft, ChevronRight, Download, Menu,
-  Lock, User, LogOut, Grid, ChevronDown, Bell, ChevronUp
+  Lock, User, LogOut, Grid, ChevronDown, Bell, ChevronUp, Share2, Link
 } from 'lucide-react';
 
 // --- KONSTANTA & KONFIGURASI ---
@@ -3929,6 +3929,70 @@ const ContractTable = ({ title, icon, dataArray, colorClass, bgClass }) => {
   );
 };
 
+// --- KOMPONEN BARU: PUBLIC DASHBOARD VIEW ---
+const PublicDashboardView = ({ projectData, actualProg, terminPct, terminNum, sisaWaktuInfo, processedSCurveData, deviasi, isDeviasiPositive, lastUpdatedWeek, feeds, showMsg }) => {
+  if (!projectData) return <div className="flex h-screen items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-blue-500" size={48} /></div>;
+
+  return (
+    <div className="min-h-screen bg-[#f4f7fe] flex flex-col font-sans">
+      <header className="px-6 py-4 bg-white shadow-sm flex items-center justify-between z-50">
+        <div className="flex items-center gap-3">
+          <Activity size={28} className="text-blue-600" />
+          <div>
+            <h1 className="text-lg font-black text-slate-800 leading-tight truncate max-w-[250px] md:max-w-md lg:max-w-xl" title={projectData.pekerjaan}>{projectData.pekerjaan}</h1>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Live Dashboard • Akses Publik</p>
+          </div>
+        </div>
+        <div className="hidden sm:flex text-[10px] font-bold bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg border border-blue-100 items-center gap-1.5 shadow-sm uppercase tracking-widest">
+           <Globe2 size={14} /> Tampilan Publik
+        </div>
+      </header>
+
+      <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto custom-scrollbar flex flex-col gap-6">
+        {/* Row 1: Statistik Utama */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+            <CircularStatCard label="Progress Fisik" icon={Activity} percentage={actualProg !== null ? actualProg : (projectData?.actual_progress || 0)} trend={true} isPositive={isDeviasiPositive} dropShadowColor="emerald" subContent={<div className="flex flex-col items-center mt-1"><span className="text-[12px] md:text-sm font-bold uppercase tracking-wider text-slate-800">{String(lastUpdatedWeek).replace('M', 'Minggu Ke-').replace('W', 'Minggu Ke-')}</span><div className="text-[10px] font-medium flex items-center gap-1.5 mt-1 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100"><span className="text-slate-400 uppercase tracking-wider">Deviasi:</span><span className={isDeviasiPositive ? "text-emerald-500 font-bold" : "text-rose-500 font-bold"}>{isDeviasiPositive ? '+' : ''}{deviasi}%</span></div></div>} />
+            <CircularStatCard label="Posisi Tagihan" icon={Banknote} percentage={terminPct ? parseFloat(terminPct) : 0} dropShadowColor="blue" subContent={<div className="flex flex-col items-center mt-1"><span className="text-[12px] md:text-sm font-bold uppercase tracking-wider text-slate-800">Termin {toRoman(String(terminNum))}</span><span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mt-1 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100">{projectData?.updated_at ? `TGL: ${new Date(projectData.updated_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}` : (projectData?.created_at ? `TGL: ${new Date(projectData.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}` : 'Belum diupdate')}</span></div>} />
+            <StatCard icon={Clock} label="Sisa Waktu" value={sisaWaktuInfo.value} sub={sisaWaktuInfo.sub} status={sisaWaktuInfo.status} centered={true} />
+        </div>
+
+        {/* Row 2: Kurva S & Peta */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-[500px]">
+           {/* Kurva S (5 Kolom) */}
+           <div className="lg:col-span-5 bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex flex-col h-[400px] lg:h-full">
+              <div className="flex justify-between items-center mb-6 shrink-0"><h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest"><TrendingUp size={16} className="inline text-blue-500 mr-2"/>Kurva S Pekerjaan</h3></div>
+              <div className="flex-1 w-full -ml-4 min-h-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={processedSCurveData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                      <defs>
+                        <linearGradient id="colorRencanaPub" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#06b6d4" stopOpacity={0.2}/><stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/></linearGradient>
+                        <linearGradient id="colorRealisasiPub" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                      <XAxis dataKey="n" stroke="#475569" fontSize={10} axisLine={false} tickLine={false} />
+                      <YAxis domain={[0, 100]} stroke="#475569" fontSize={10} axisLine={false} tickLine={false} tickFormatter={(value) => `${value}%`} />
+                      <Tooltip content={(props) => <SChartTooltip {...props} />} />
+                      <Legend verticalAlign="bottom" align="center" wrapperStyle={{fontSize: '10px'}} />
+                      <Area type="monotone" dataKey="r" stroke="#06b6d4" strokeWidth={2} fill="url(#colorRencanaPub)" name="Rencana" dot={{ r: 2, fill: '#fff' }} />
+                      <Area type="monotone" dataKey="a" stroke="#3b82f6" strokeWidth={3} fill="url(#colorRealisasiPub)" name="Realisasi" dot={{ r: 2.5, fill: '#fff' }} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+              </div>
+           </div>
+
+           {/* Peta Lokasi (7 Kolom) */}
+           <div className="lg:col-span-7 bg-white p-4 rounded-[32px] border border-slate-100 shadow-sm flex flex-col h-[500px] lg:h-full relative overflow-hidden">
+             <h3 className="text-sm font-bold text-slate-800 mb-3 px-2 flex items-center gap-2 z-10 uppercase tracking-widest"><MapIcon size={16} className="text-blue-500"/> Peta Lokasi & Jalur Realisasi</h3>
+             <div className="flex-1 rounded-2xl overflow-hidden relative border border-slate-100 shadow-inner">
+                <SiteMapView projectData={projectData} userRole="guest" feeds={feeds} onUpdateRoutes={()=>{}} isUpdating={false} showMsg={showMsg} />
+             </div>
+           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- VIEW BARU: HALAMAN LOGIN ---
 const LoginView = ({ onLogin, error, isProcessing }) => {
   const [email, setEmail] = useState('');
@@ -4315,8 +4379,17 @@ const ProjectSelectionListView = ({ projects, onSelectProject, onBack, onAddProj
 
 // --- KOMPONEN APLIKASI UTAMA ---
 export default function App() {
+  const getInitialAppMode = () => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('public_id')) return 'public_dashboard';
+    }
+    return 'login';
+  };
+
   // STATE BARU UNTUK LOGIKA LOGIN & PEMILIHAN
-  const [appMode, setAppMode] = useState('login'); // 'login', 'selection', 'project_list', 'master', 'project', 'absensi'
+  const [appMode, setAppMode] = useState(getInitialAppMode()); // 'login', 'selection', 'project_list', 'master', 'project', 'absensi', 'public_dashboard'
+  const [isPublicMode, setIsPublicMode] = useState(getInitialAppMode() === 'public_dashboard');
   const [previousAppMode, setPreviousAppMode] = useState('selection'); // Menyimpan asal halaman sebelum masuk proyek
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authError, setAuthError] = useState('');
@@ -4545,6 +4618,8 @@ export default function App() {
   useEffect(() => {
     if (!supabaseClient) return;
 
+    if (isPublicMode) return; // ABAIKAN PENGECEKAN AUTH JIKA DI MODE PUBLIK
+
     // Cek sesi saat pertama kali dimuat
     supabaseClient.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -4566,7 +4641,36 @@ export default function App() {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabaseClient, appMode]);
+  }, [supabaseClient, appMode, isPublicMode]);
+
+  // EFEK BARU: MENGAMBIL DATA KHUSUS UNTUK DASHBOARD PUBLIK (GUEST)
+  useEffect(() => {
+    if (supabaseClient && isPublicMode) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const publicId = urlParams.get('public_id');
+      
+      const fetchPublicProjectDetails = async () => {
+        try {
+          const { data: proj, error } = await supabaseClient.from('projects').select('*').eq('id', publicId).single();
+          if (error) throw error;
+          if (proj) {
+            setProjectData(proj);
+            if (Array.isArray(proj.s_curve_data)) {
+               setSCurveData(proj.s_curve_data);
+            }
+            // Fetch feeds agar Peta dapat memunculkan foto (opsional)
+            const { data: reports } = await supabaseClient.from('field_reports').select('*').eq('project_id', publicId).order('created_at', { ascending: false });
+            if (reports) setFeeds(reports);
+          }
+        } catch (e) {
+          console.error("Link publik tidak valid:", e);
+          setAppMode('login'); // Fallback jika ID salah
+          setIsPublicMode(false);
+        }
+      };
+      fetchPublicProjectDetails();
+    }
+  }, [supabaseClient, isPublicMode]);
 
   const docInputRef = useRef(null);
   const reportFileInputRef = useRef(null);
@@ -4992,6 +5096,22 @@ export default function App() {
     fetchAllProjects(); // Sinkronkan data terbaru jika ada update rute
     setAppMode(previousAppMode || 'selection');
     setProjectData(null);
+  };
+
+  // FUNGSI BARU: MENYALIN LINK PUBLIK KE CLIPBOARD
+  const handleCopyPublicLink = () => {
+    const url = `${window.location.origin}${window.location.pathname}?public_id=${projectData.id}`;
+    const textArea = document.createElement("textarea");
+    textArea.value = url;
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      showMsg("Link Dashboard Publik berhasil disalin ke clipboard!", "success");
+    } catch (err) {
+      showMsg("Gagal menyalin link.", "error");
+    }
+    document.body.removeChild(textArea);
   };
 
   // Fungsi Baru: Menandai Log sudah dibaca saat diklik
@@ -6476,195 +6596,23 @@ export default function App() {
      );
   }
 
-  if (appMode === 'project_list') {
+  // JIKA MODE PUBLIK (GUEST)
+  if (appMode === 'public_dashboard') {
      return (
-       <>
-         {notification && (
-          <div className={`fixed top-10 left-1/2 -translate-x-1/2 z-[6000] px-6 py-4 rounded-2xl shadow-xl border backdrop-blur-xl animate-in slide-in-from-top-5 flex items-center gap-3 ${notification.type === 'error' ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
-            <span className="text-xs font-bold uppercase tracking-tight">{String(notification.msg || '')}</span>
-          </div>
-         )}
-         <ProjectSelectionListView 
-            projects={masterProjects || []} 
-            onSelectProject={handleSelectProject} 
-            onBack={() => setAppMode('selection')}
-            onAddProject={() => setShowNewProjectModal(true)}
-            onDeleteProject={(proj) => setDeleteConfig({ id: proj.id, type: 'project', name: proj.pekerjaan })}
-            onViewRekap={() => setShowGlobalRekap(true)}
-         />
-         {/* Modals for new/delete project (reused from master) */}
-         {showNewProjectModal && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[5000] p-4">
-            <div className="bg-white rounded-[32px] p-8 w-full max-w-md shadow-2xl relative">
-              <button onClick={() => setShowNewProjectModal(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-700 transition-colors"><X size={20} /></button>
-              <h3 className="text-lg font-black mb-6">Buat Kamar Proyek Baru</h3>
-              <form onSubmit={handleCreateProject} className="space-y-4">
-                <div>
-                  <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Nama Pekerjaan <span className="text-rose-500">*</span></label>
-                  <input type="text" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={newProjectForm.pekerjaan} onChange={e => setNewProjectForm({ ...newProjectForm, pekerjaan: e.target.value })} placeholder="Misal: Peningkatan Jalan Baru..." required />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Tahun <span className="text-rose-500">*</span></label>
-                  <input type="number" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={newProjectForm.tahun} onChange={e => setNewProjectForm({ ...newProjectForm, tahun: e.target.value })} placeholder="Misal: 2024" required />
-                </div>
-                <button type="submit" disabled={isProcessing} className="w-full bg-blue-600 text-white py-4 rounded-2xl text-xs font-bold uppercase mt-4 hover:bg-blue-700 transition-colors shadow-md">
-                  {isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Buat Proyek Sekarang'}
-                </button>
-              </form>
-            </div>
-          </div>
-         )}
-         {deleteConfig && deleteConfig.type === 'project' && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[6000] p-4">
-            <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-2xl relative text-center">
-              <div className="mx-auto w-14 h-14 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-5"><AlertCircle size={28} /></div>
-              <h3 className="text-xl font-black mb-2 text-slate-800">Hapus Proyek?</h3>
-              <p className="text-xs text-rose-600 mb-8 font-medium leading-relaxed bg-rose-50 p-3 rounded-xl border border-rose-100">Kamar proyek <b>{deleteConfig.name}</b> dan seluruh data didalamnya akan dihapus permanen!</p>
-              <div className="flex gap-3">
-                <button onClick={() => setDeleteConfig(null)} className="flex-1 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors">Batal</button>
-                <button onClick={confirmDeleteData} disabled={isProcessing} className="flex-1 py-3.5 bg-rose-500 text-white rounded-xl text-sm font-bold hover:bg-rose-600 transition-colors shadow-md">{isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Ya, Hapus'}</button>
-              </div>
-            </div>
-          </div>
-         )}
-         {renderGlobalRekapModal()}
-       </>
-     );
-  }
-
-  if (appMode === 'absensi') {
-     return (
-       <>
-         {notification && (
-            <div className={`fixed top-10 left-1/2 -translate-x-1/2 z-[8000] px-6 py-4 rounded-2xl shadow-xl border backdrop-blur-xl animate-in slide-in-from-top-5 pointer-events-none flex items-center gap-3 ${notification.type === 'error' ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
-              <span className="text-xs font-bold uppercase tracking-tight">{String(notification.msg || '')}</span>
-            </div>
-         )}
-         
-         <AbsensiView 
-            attendances={attendances} 
-            onBack={() => setAppMode('selection')} 
-            onDelete={handleDeleteAttendance} 
-            isProcessing={isProcessing} 
-            onRefresh={() => { fetchAttendances(); fetchEmployees(); }} 
-            employees={employees}
-            setEmployeeForm={setEmployeeForm}
-            setShowEmployeeModal={setShowEmployeeModal}
-            setDeleteConfig={setDeleteConfig}
-         />
-
-         {showEmployeeModal && (
-            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[9000] p-4">
-               <div className="bg-white rounded-[32px] p-8 w-full max-w-md shadow-2xl relative">
-                  <button onClick={() => setShowEmployeeModal(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-700 transition-colors"><X size={20} /></button>
-                  <h3 className="text-lg font-black mb-6 uppercase text-slate-800 tracking-tight">{employeeForm.id ? 'Edit Data Karyawan' : 'Tambah Karyawan Baru'}</h3>
-                  <form onSubmit={handleSaveEmployee} className="space-y-4">
-                     <div>
-                        <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">ID Karyawan (Unik) <span className="text-rose-500">*</span></label>
-                        <input type="text" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={employeeForm.employee_id} onChange={e => setEmployeeForm({ ...employeeForm, employee_id: e.target.value })} placeholder="Misal: KRY-001" required />
-                     </div>
-                     <div>
-                        <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Nama Lengkap <span className="text-rose-500">*</span></label>
-                        <input type="text" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={employeeForm.name} onChange={e => setEmployeeForm({ ...employeeForm, name: e.target.value })} placeholder="Nama Lengkap Karyawan" required />
-                     </div>
-                     <div>
-                        <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Jabatan / Role <span className="text-rose-500">*</span></label>
-                        <select className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={employeeForm.role} onChange={e => setEmployeeForm({ ...employeeForm, role: e.target.value })} required>
-                           <option value="Pelaksana">Pelaksana</option>
-                           <option value="Pengawas">Pengawas</option>
-                           <option value="Petugas K3">Petugas K3</option>
-                           <option value="Mandor">Mandor</option>
-                           <option value="Site Engineer">Site Engineer</option>
-                           <option value="Inspector">Inspector</option>
-                           <option value="Operator Alat">Operator Alat</option>
-                           <option value="Kantor">Kantor</option>
-                        </select>
-                     </div>
-                     <div>
-                        <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">PIN / Password (Angka) <span className="text-rose-500">*</span></label>
-                        <input type="text" inputMode="numeric" pattern="[0-9]*" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-mono font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={employeeForm.pin} onChange={e => setEmployeeForm({ ...employeeForm, pin: e.target.value.replace(/\D/g, '') })} placeholder="Misal: 123456" required title="Hanya gunakan karakter Angka" />
-                     </div>
-                     <button type="submit" disabled={isProcessing} className="w-full bg-blue-600 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest mt-4 hover:bg-blue-700 transition-colors shadow-md">
-                        {isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : (employeeForm.id ? 'Simpan Perubahan' : 'Tambah Karyawan')}
-                     </button>
-                  </form>
-               </div>
-            </div>
-         )}
-
-         {deleteConfig && deleteConfig.type === 'employee' && (
-            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[9000] p-4">
-              <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-2xl relative text-center">
-                <div className="mx-auto w-14 h-14 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-5"><AlertCircle size={28} /></div>
-                <h3 className="text-xl font-black mb-2 text-slate-800">Apakah Anda Yakin?</h3>
-                <p className="text-xs text-slate-500 mb-8 font-medium leading-relaxed">
-                   Data karyawan atas nama <b>{deleteConfig.name}</b> akan dihapus secara permanen.
-                </p>
-                <div className="flex gap-3">
-                  <button onClick={() => setDeleteConfig(null)} className="flex-1 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors">Batal</button>
-                  <button onClick={confirmDeleteData} disabled={isProcessing} className="flex-1 py-3.5 bg-rose-500 text-white rounded-xl text-sm font-bold hover:bg-rose-600 transition-colors shadow-md">{isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Ya, Hapus'}</button>
-                </div>
-              </div>
-            </div>
-         )}
-       </>
-     );
-  }
-
-  if (appMode === 'master') {
-    return (
-      <>
-        {notification && (
-          <div className={`fixed top-10 left-1/2 -translate-x-1/2 z-[6000] px-6 py-4 rounded-2xl shadow-xl border backdrop-blur-xl animate-in slide-in-from-top-5 flex items-center gap-3 ${notification.type === 'error' ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
-            <span className="text-xs font-bold uppercase tracking-tight">{String(notification.msg || '')}</span>
-          </div>
-        )}
-        
-        <MasterDashboardView 
-            allProjects={masterProjects || []} 
-            onSelectProject={handleSelectProject} 
-            onAddProject={() => setShowNewProjectModal(true)} 
-            onBackToSelection={handleBackToSelection}
-            onViewRekap={() => setShowGlobalRekap(true)}
+        <PublicDashboardView 
+           projectData={projectData} 
+           actualProg={actualProg} 
+           terminPct={terminPct} 
+           terminNum={terminNum} 
+           sisaWaktuInfo={sisaWaktuInfo} 
+           processedSCurveData={processedSCurveData} 
+           deviasi={deviasi} 
+           isDeviasiPositive={isDeviasiPositive} 
+           lastUpdatedWeek={lastUpdatedWeek} 
+           feeds={safeFeeds}
+           showMsg={showMsg}
         />
-
-        {showNewProjectModal && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[5000] p-4">
-            <div className="bg-white rounded-[32px] p-8 w-full max-w-md shadow-2xl relative">
-              <button onClick={() => setShowNewProjectModal(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-700 transition-colors"><X size={20} /></button>
-              <h3 className="text-lg font-black mb-6">Buat Kamar Proyek Baru</h3>
-              <form onSubmit={handleCreateProject} className="space-y-4">
-                <div>
-                  <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Nama Pekerjaan <span className="text-rose-500">*</span></label>
-                  <input type="text" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={newProjectForm.pekerjaan} onChange={e => setNewProjectForm({ ...newProjectForm, pekerjaan: e.target.value })} placeholder="Misal: Peningkatan Jalan Baru..." required />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Tahun <span className="text-rose-500">*</span></label>
-                  <input type="number" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={newProjectForm.tahun} onChange={e => setNewProjectForm({ ...newProjectForm, tahun: e.target.value })} placeholder="Misal: 2024" required />
-                </div>
-                <button type="submit" disabled={isProcessing} className="w-full bg-blue-600 text-white py-4 rounded-2xl text-xs font-bold uppercase mt-4 hover:bg-blue-700 transition-colors shadow-md">
-                  {isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Buat Proyek Sekarang'}
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
-        {deleteConfig && deleteConfig.type === 'project' && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[6000] p-4">
-            <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-2xl relative text-center">
-              <div className="mx-auto w-14 h-14 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-5"><AlertCircle size={28} /></div>
-              <h3 className="text-xl font-black mb-2 text-slate-800">Hapus Proyek?</h3>
-              <p className="text-xs text-rose-600 mb-8 font-medium leading-relaxed bg-rose-50 p-3 rounded-xl border border-rose-100">Kamar proyek <b>{deleteConfig.name}</b> dan seluruh data didalamnya akan dihapus permanen!</p>
-              <div className="flex gap-3">
-                <button onClick={() => setDeleteConfig(null)} className="flex-1 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors">Batal</button>
-                <button onClick={confirmDeleteData} disabled={isProcessing} className="flex-1 py-3.5 bg-rose-500 text-white rounded-xl text-sm font-bold hover:bg-rose-600 transition-colors shadow-md">{isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Ya, Hapus'}</button>
-              </div>
-            </div>
-          </div>
-        )}
-        {renderGlobalRekapModal()}
-      </>
-    );
+     );
   }
 
   if (activeMenu === 'presentation') {
@@ -6766,6 +6714,10 @@ export default function App() {
                         {safeFeeds.filter(f => !readFeeds.has(f.id)).length > 99 ? '99+' : safeFeeds.filter(f => !readFeeds.has(f.id)).length}
                       </span>
                     )}
+                  </button>
+
+                  <button type="button" onClick={handleCopyPublicLink} className="relative z-50 p-2 text-slate-400 hover:text-emerald-600 transition-colors bg-white hover:bg-emerald-50 rounded-xl shadow-sm border border-slate-200 cursor-pointer pointer-events-auto" title="Bagikan Link Akses Publik">
+                    <Share2 size={16} />
                   </button>
 
                   <button type="button" onClick={() => setShowEditProjectModal(true)} className="relative z-50 p-2 text-slate-400 hover:text-blue-600 transition-colors bg-white hover:bg-blue-50 rounded-xl shadow-sm border border-slate-200 cursor-pointer pointer-events-auto" title="Pengaturan Proyek"><Settings size={16} /></button>
