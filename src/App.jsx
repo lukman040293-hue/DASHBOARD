@@ -1134,6 +1134,10 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
       
       window.L.control.zoom({ position: 'topleft' }).addTo(mapInstanceRef.current);
       
+      // BUAT PANE KHUSUS UNTUK BATAS KECAMATAN AGAR SELALU DI BAWAH JALUR PROYEK
+      mapInstanceRef.current.createPane('boundaryPane');
+      mapInstanceRef.current.getPane('boundaryPane').style.zIndex = 390; // Default overlay (jalur) = 400
+      
       boundaryLayerRef.current = window.L.layerGroup().addTo(mapInstanceRef.current);
       markerLayerRef.current = window.L.featureGroup().addTo(mapInstanceRef.current);
       routeLayerRef.current = window.L.layerGroup().addTo(mapInstanceRef.current);
@@ -1169,6 +1173,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
           const dataKota = await resKota.json();
           if (dataKota && dataKota.features && dataKota.features.length > 0) {
             window.L.geoJSON(dataKota.features[0], {
+              pane: 'boundaryPane', // Masukkan ke pane dasar
               style: {
                 color: '#64748b', weight: 3, opacity: 0.8, fillColor: 'transparent', dashArray: '8, 8'
               },
@@ -1188,6 +1193,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
               
               if (dataKec && dataKec.features && dataKec.features.length > 0) {
                 const layer = window.L.geoJSON(dataKec.features[0], {
+                  pane: 'boundaryPane', // Masukkan ke pane dasar
                   style: {
                     color: colors[i], weight: 2, opacity: 0.9, fillColor: colors[i], fillOpacity: 0.15, dashArray: '4, 4'
                   },
@@ -1199,7 +1205,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
                     
                     l.on('mouseover', function(e) {
                       e.target.setStyle({ fillOpacity: 0.4, weight: 3 });
-                      e.target.bringToFront();
+                      e.target.bringToFront(); // Hanya memindahkannya paling atas di dalam pane 'boundaryPane'
                     });
                     l.on('mouseout', function(e) {
                       e.target.setStyle({ fillOpacity: 0.15, weight: 2 });
