@@ -4999,7 +4999,8 @@ export default function App() {
         setEditProjectForm({
           status: proj.status || 'Running', pekerjaan: proj.pekerjaan || '', tahun: proj.tahun || '',
           termin_ke: tKe, termin_persen: tPct, panjang_rencana: proj.panjang_rencana || '', lebar_rencana: proj.lebar_rencana || '', jenis_model: proj.jenis_model || '',
-          item_utama_data: proj.item_utama_data || [], waktu_pelaksanaan: proj.waktu_pelaksanaan || ''
+          item_utama_data: proj.item_utama_data || [], waktu_pelaksanaan: proj.waktu_pelaksanaan || '',
+          is_public: proj.is_public || false
         });
 
         let mergedDinas = Array.isArray(proj.dinas_data) ? proj.dinas_data : [];
@@ -5100,6 +5101,10 @@ export default function App() {
 
   // FUNGSI BARU: MENYALIN LINK PUBLIK KE CLIPBOARD
   const handleCopyPublicLink = () => {
+    if (!projectData.is_public) {
+      showMsg("Gagal: Akses publik belum diaktifkan. Silakan nyalakan di Pengaturan Proyek terlebih dahulu.", "warning");
+      return;
+    }
     const url = `${window.location.origin}${window.location.pathname}?public_id=${projectData.id}`;
     const textArea = document.createElement("textarea");
     textArea.value = url;
@@ -5155,6 +5160,7 @@ export default function App() {
         panjang_rencana: editProjectForm.panjang_rencana, lebar_rencana: editProjectForm.lebar_rencana, jenis_model: editProjectForm.jenis_model,
         item_utama_data: editProjectForm.item_utama_data, waktu_pelaksanaan: editProjectForm.waktu_pelaksanaan,
         s_curve_data: parsedData,
+        is_public: editProjectForm.is_public,
         updated_at: new Date().toISOString()
       }).eq('id', projectData.id);
       
@@ -6032,7 +6038,8 @@ export default function App() {
         setProjectData(prev => ({ 
             ...prev, 
             s_curve_data: parsedData, 
-            actual_progress: parseFloat(calculatedProgress.toFixed(2)) 
+            actual_progress: parseFloat(calculatedProgress.toFixed(2)),
+            is_public: editProjectForm.is_public 
         }));
       }
       showMsg("Grafik Berhasil Disinkronkan!", "success");
@@ -7309,6 +7316,18 @@ export default function App() {
             <button onClick={() => setShowEditProjectModal(false)} className="absolute top-6 right-6 p-2"><X size={20} /></button>
             <h3 className="text-lg font-black mb-6">Pengaturan Proyek</h3>
             <form onSubmit={handleUpdateProject} className="space-y-4">
+              
+              <div className="flex items-center justify-between p-4 mb-4 bg-slate-50 border border-slate-200 rounded-xl">
+                <div>
+                  <h4 className="text-sm font-black text-slate-800 flex items-center gap-2"><Globe2 size={16} className="text-blue-500" /> Akses Dashboard Publik</h4>
+                  <p className="text-[10px] font-bold text-slate-500 mt-0.5">Izinkan pengunjung luar melihat proyek ini via link</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" className="sr-only peer" checked={editProjectForm.is_public || false} onChange={e => setEditProjectForm({ ...editProjectForm, is_public: e.target.checked })} />
+                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                </label>
+              </div>
+
               <div><label className="text-[10px] font-bold block mb-1">Nama Pekerjaan</label><input type="text" className="w-full p-3 rounded-xl border bg-slate-50" value={editProjectForm.pekerjaan} onChange={e => setEditProjectForm({ ...editProjectForm, pekerjaan: e.target.value })} required /></div>
               
               <div><label className="text-[10px] font-bold block mb-1">Tahun Anggaran</label><input type="number" className="w-full p-3 rounded-xl border bg-slate-50 outline-none focus:border-blue-400" value={editProjectForm.tahun} onChange={e => setEditProjectForm({ ...editProjectForm, tahun: e.target.value })} required /></div>
