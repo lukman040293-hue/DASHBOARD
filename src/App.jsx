@@ -3940,11 +3940,8 @@ const PublicDashboardView = ({ projectData, actualProg, terminPct, terminNum, si
           <Activity size={28} className="text-blue-600" />
           <div>
             <h1 className="text-lg font-black text-slate-800 leading-tight truncate max-w-[250px] md:max-w-md lg:max-w-xl" title={projectData.pekerjaan}>{projectData.pekerjaan}</h1>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Live Dashboard • Akses Publik</p>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Live Dashboard</p>
           </div>
-        </div>
-        <div className="hidden sm:flex text-[10px] font-bold bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg border border-blue-100 items-center gap-1.5 shadow-sm uppercase tracking-widest">
-           <Globe2 size={14} /> Tampilan Publik
         </div>
       </header>
 
