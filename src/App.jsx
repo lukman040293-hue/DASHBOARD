@@ -9,7 +9,7 @@ import {
   Briefcase, Image as ImageIcon, CalendarDays, MonitorPlay, FileSpreadsheet, FolderEdit,
   Save, MapIcon, ArrowLeft, Globe2, Fingerprint, RefreshCw, ArrowUp, ArrowDown,
   Users, UserPlus, Eye, EyeOff, Maximize, Minimize, ChevronLeft, ChevronRight, Download, Menu,
-  Lock, User, LogOut, Grid, ChevronDown, Bell, ChevronUp, Share2, Link
+  Lock, User, LogOut, Grid, ChevronDown, Bell, ChevronUp
 } from 'lucide-react';
 
 // --- KONSTANTA & KONFIGURASI ---
@@ -113,6 +113,12 @@ const parseCoordToFloat = (val) => {
   if (val === null || val === undefined || val === '') return NaN;
   return parseFloat(String(val).replace(/\s+/g, '').replace(',', '.'));
 };
+
+const LIST_KECAMATAN = [
+  'Samarinda Kota', 'Samarinda Ulu', 'Samarinda Ilir', 'Samarinda Seberang',
+  'Sungai Kunjang', 'Sungai Pinang', 'Palaran', 'Loa Janan Ilir',
+  'Samarinda Utara', 'Sambutan'
+];
 
 const buildDynamicFields = (data, initial) => {
   if (data && Array.isArray(data.fields) && data.fields.length > 0) return data.fields;
@@ -1061,32 +1067,49 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
   // STATE BARU: Preferensi Tampilan Layer di Peta Induk (Disimpan ke Local Storage)
   const [showPaths, setShowPaths] = useState(() => {
     const saved = localStorage.getItem('master_showPaths');
-    return saved !== null ? JSON.parse(saved) : true; // Default Tampil Jalur
+    return saved !== null ? JSON.parse(saved) : true; 
   });
   const [showDistances, setShowDistances] = useState(() => {
     const saved = localStorage.getItem('master_showDistances');
-    return saved !== null ? JSON.parse(saved) : false; // Default Sembunyi Jarak agar Master Map tidak terlalu ramai
+    return saved !== null ? JSON.parse(saved) : false; 
   });
   const [showSketchLabels, setShowSketchLabels] = useState(() => {
     const saved = localStorage.getItem('master_showSketchLabels');
-    return saved !== null ? JSON.parse(saved) : false; // Default Sembunyi Label
+    return saved !== null ? JSON.parse(saved) : false; 
   });
   const [showSketchPoints, setShowSketchPoints] = useState(() => {
     const saved = localStorage.getItem('master_showSketchPoints');
-    return saved !== null ? JSON.parse(saved) : false; // Default Sembunyi Titik
+    return saved !== null ? JSON.parse(saved) : false; 
   });
+  
+  // STATE BARU KHUSUS FILTER KECAMATAN (Menyimpan visibilitas per kecamatan)
+  const [kecamatanVisibility, setKecamatanVisibility] = useState(() => {
+    const saved = localStorage.getItem('master_kec_vis_v2');
+    if (saved !== null) {
+      try { return JSON.parse(saved); } catch(e){}
+    }
+    // Default: Semua kecamatan disembunyikan (hide)
+    const initial = {};
+    LIST_KECAMATAN.forEach(k => initial[k] = false);
+    return initial;
+  });
+  
+  const [showKecMenu, setShowKecMenu] = useState(false); // Menu toggle popover
 
   useEffect(() => { localStorage.setItem('master_showPaths', JSON.stringify(showPaths)); }, [showPaths]);
   useEffect(() => { localStorage.setItem('master_showDistances', JSON.stringify(showDistances)); }, [showDistances]);
   useEffect(() => { localStorage.setItem('master_showSketchLabels', JSON.stringify(showSketchLabels)); }, [showSketchLabels]);
   useEffect(() => { localStorage.setItem('master_showSketchPoints', JSON.stringify(showSketchPoints)); }, [showSketchPoints]);
+  useEffect(() => { localStorage.setItem('master_kec_vis_v2', JSON.stringify(kecamatanVisibility)); }, [kecamatanVisibility]);
 
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
-  const boundaryLayerRef = useRef(null); // LAYER BARU UNTUK BATAS WILAYAH
+  const boundaryLayerRef = useRef(null); // Layer untuk Batas Luar Kota
+  const kecamatanLayersRef = useRef({}); // Obyek untuk menyimpan referensi tiap layer kecamatan
+  const isBoundaryFetched = useRef(false); // FLAG: Mencegah peta memuat ulang data kecamatan
   const markerLayerRef = useRef(null);
-  const routeLayerRef = useRef(null); // LAYER BARU UNTUK JALUR RENCANA
-  const surveyLayerRef = useRef(null); // LAYER BARU UNTUK JALUR REALISASI
+  const routeLayerRef = useRef(null); 
+  const surveyLayerRef = useRef(null); 
   const tileLayerRef = useRef(null); 
   const isInitialFitDone = useRef(false);
 
@@ -1101,7 +1124,6 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
     if (isMapLoaded && mapContainerRef.current && !mapInstanceRef.current) {
       mapInstanceRef.current = window.L.map(mapContainerRef.current, { zoomControl: false, closePopupOnClick: false }).setView([-0.4948, 117.1492], 12);
       
-      // Memindahkan tombol zoom ke kiri atas (offset diatur via CSS global agar tidak tertutup menu)
       window.L.control.zoom({ position: 'topleft' }).addTo(mapInstanceRef.current);
       
       boundaryLayerRef.current = window.L.layerGroup().addTo(mapInstanceRef.current);
@@ -1119,32 +1141,106 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
     }
   }, [isMapLoaded]);
 
-  // --- LOGIKA MENAMPILKAN BATAS WILAYAH SAMARINDA ---
+  // --- LOGIKA MENGAMBIL DATA BATAS WILAYAH (HANYA BERJALAN 1 KALI) ---
   useEffect(() => {
-    if (isMapReady && boundaryLayerRef.current) {
+    if (isMapReady && boundaryLayerRef.current && !isBoundaryFetched.current) {
+      isBoundaryFetched.current = true; // Tandai agar tidak diulang
       boundaryLayerRef.current.clearLayers();
+      // Bersihkan layer individual jika sudah ada isinya
+      Object.values(kecamatanLayersRef.current).forEach(layer => {
+         if (mapInstanceRef.current && mapInstanceRef.current.hasLayer(layer)) {
+             mapInstanceRef.current.removeLayer(layer);
+         }
+      });
+      kecamatanLayersRef.current = {};
       
-      // Mengambil GeoJSON batas wilayah Kota Samarinda dari OpenStreetMap (Nominatim API)
-      fetch('https://nominatim.openstreetmap.org/search?q=Kota+Samarinda,+Kalimantan+Timur&format=geojson&polygon_geojson=1&limit=1')
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.features && data.features.length > 0) {
-            window.L.geoJSON(data.features[0], {
+      const fetchBoundaries = async () => {
+        try {
+          // 1. Ambil Batas Utama Kota Samarinda
+          const resKota = await fetch('https://nominatim.openstreetmap.org/search?q=Kota+Samarinda,+Kalimantan+Timur&format=geojson&polygon_geojson=1&limit=1');
+          const dataKota = await resKota.json();
+          if (dataKota && dataKota.features && dataKota.features.length > 0) {
+            window.L.geoJSON(dataKota.features[0], {
               style: {
-                color: '#94a3b8',     // Abu-abu netral agar tidak terlalu mencolok
-                weight: 2.5,
-                opacity: 0.8,
-                fillColor: '#cbd5e1',
-                fillOpacity: 0.02,    // Sangat transparan
-                dashArray: '8, 8'     // Garis putus-putus
+                color: '#64748b', weight: 3, opacity: 0.8, fillColor: 'transparent', dashArray: '8, 8'
               },
-              interactive: false      // Tidak bisa diklik agar tidak menutupi marker
+              interactive: false
             }).addTo(boundaryLayerRef.current);
           }
-        })
-        .catch(err => console.log('Batas wilayah Samarinda gagal dimuat:', err));
+
+          const colors = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#6366f1', '#a855f7', '#ec4899'];
+
+          // 3. Looping Ambil Data Batas Per Kecamatan
+          for (let i = 0; i < LIST_KECAMATAN.length; i++) {
+            await new Promise(r => setTimeout(r, 1000)); // Delay 1 detik per kecamatan
+            
+            try {
+              const resKec = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(LIST_KECAMATAN[i])},+Samarinda&format=geojson&polygon_geojson=1&limit=1`);
+              const dataKec = await resKec.json();
+              
+              if (dataKec && dataKec.features && dataKec.features.length > 0) {
+                const layer = window.L.geoJSON(dataKec.features[0], {
+                  style: {
+                    color: colors[i], weight: 2, opacity: 0.9, fillColor: colors[i], fillOpacity: 0.15, dashArray: '4, 4'
+                  },
+                  onEachFeature: function (feature, l) {
+                    l.bindTooltip(`<div class="text-[10px] font-black uppercase tracking-wider text-black">Kec. ${LIST_KECAMATAN[i]}</div>`, {
+                      permanent: true, direction: 'center', className: 'bg-white/80 backdrop-blur-md border border-white/50 shadow-sm rounded-lg py-1 px-2'
+                    });
+                    
+                    l.on('mouseover', function(e) {
+                      e.target.setStyle({ fillOpacity: 0.4, weight: 3 });
+                      e.target.bringToFront();
+                    });
+                    l.on('mouseout', function(e) {
+                      e.target.setStyle({ fillOpacity: 0.15, weight: 2 });
+                      e.target.bringToBack();
+                    });
+                  }
+                });
+                
+                kecamatanLayersRef.current[LIST_KECAMATAN[i]] = layer;
+
+                // Tampilkan layer ke peta HANYA jika dicentang pada filter visibility-nya
+                setKecamatanVisibility(prevVis => {
+                   if (prevVis[LIST_KECAMATAN[i]]) {
+                       layer.addTo(mapInstanceRef.current);
+                   }
+                   return prevVis;
+                });
+              }
+            } catch (err) {
+              console.log(`Gagal memuat batas Kecamatan ${LIST_KECAMATAN[i]}:`, err);
+            }
+          }
+        } catch(err) {
+          console.log('Batas wilayah Samarinda gagal dimuat:', err);
+        }
+      };
+
+      fetchBoundaries();
     }
   }, [isMapReady]);
+
+  // --- LOGIKA MENGATUR VISIBILITAS KECAMATAN (SETELAH DICENTANG/DIHAPUS) ---
+  useEffect(() => {
+    if (isMapReady && mapInstanceRef.current) {
+      LIST_KECAMATAN.forEach(kecName => {
+        const layer = kecamatanLayersRef.current[kecName];
+        if (layer) {
+          if (kecamatanVisibility[kecName]) {
+            if (!mapInstanceRef.current.hasLayer(layer)) {
+              mapInstanceRef.current.addLayer(layer);
+            }
+          } else {
+            if (mapInstanceRef.current.hasLayer(layer)) {
+              mapInstanceRef.current.removeLayer(layer);
+            }
+          }
+        }
+      });
+    }
+  }, [kecamatanVisibility, isMapReady]);
 
   useEffect(() => {
     if (isMapReady && mapInstanceRef.current) {
@@ -1513,6 +1609,42 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
             {showPaths ? <Eye size={20} className="text-blue-400 shrink-0" /> : <EyeOff size={20} className="shrink-0" />} 
           </button>
           
+          <div className="relative">
+             <button onClick={() => setShowKecMenu(!showKecMenu)} className={`bg-black/60 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-white/10 hover:bg-black/80 transition-all ${!Object.values(kecamatanVisibility).some(v=>v) ? 'text-slate-400' : 'text-white border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.3)]'}`} title="Filter Batas Kecamatan">
+               <MapIcon size={20} className={`shrink-0 ${Object.values(kecamatanVisibility).some(v=>v) ? "text-purple-400" : ""}`} /> 
+             </button>
+             
+             {/* POPOVER MENU FILTER KECAMATAN */}
+             {showKecMenu && (
+                <div className="absolute bottom-full right-0 mb-2 w-56 bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-700 p-4 flex flex-col gap-2.5 animate-in slide-in-from-bottom-2">
+                   <div className="flex justify-between items-center border-b border-slate-700 pb-2.5 mb-1 shrink-0">
+                       <span className="text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-1.5"><MapIcon size={12} className="text-purple-400"/> Filter Wilayah</span>
+                       <button onClick={() => {
+                           const allVisible = Object.values(kecamatanVisibility).every(v => v);
+                           const newVal = {};
+                           LIST_KECAMATAN.forEach(k => newVal[k] = !allVisible);
+                           setKecamatanVisibility(newVal);
+                       }} className="text-[9px] text-blue-400 hover:text-blue-300 font-bold uppercase tracking-widest bg-blue-500/20 px-2 py-1 rounded">
+                           {Object.values(kecamatanVisibility).every(v => v) ? 'Sembunyikan' : 'Tampil Semua'}
+                       </button>
+                   </div>
+                   <div className="flex flex-col gap-2.5 max-h-60 overflow-y-auto custom-scrollbar pr-2">
+                       {LIST_KECAMATAN.map(kec => (
+                           <label key={kec} className="flex items-center gap-2.5 text-xs font-medium text-slate-300 cursor-pointer hover:text-white transition-colors group">
+                               <input
+                                  type="checkbox"
+                                  checked={!!kecamatanVisibility[kec]}
+                                  onChange={() => setKecamatanVisibility(prev => ({...prev, [kec]: !prev[kec]}))}
+                                  className="w-3.5 h-3.5 rounded bg-slate-900 border-slate-600 text-purple-500 focus:ring-purple-500 focus:ring-offset-slate-800 cursor-pointer"
+                               />
+                               <span className="group-hover:translate-x-1 transition-transform">{kec}</span>
+                           </label>
+                       ))}
+                   </div>
+                </div>
+             )}
+          </div>
+          
           {showPaths && (
              <>
               <button onClick={() => setShowSketchPoints(!showSketchPoints)} className={`bg-black/60 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-white/10 hover:bg-black/80 transition-all ${!showSketchPoints ? 'text-slate-400' : 'text-white border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]'}`} title="Tampilkan/Sembunyikan Titik Lokasi">
@@ -1532,7 +1664,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
 };
 
 // --- KOMPONEN BARU: PETA INDUK 360 3D (CESIUM) ---
-const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBackToSelection, onViewRekap, onShareLink }) => {
+const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBackToSelection, onViewRekap }) => {
   // State untuk kontrol peta induk
   const [mapType, setMapType] = useState(() => localStorage.getItem('master_mapType') || 'satellite');
   const [isUIHidden, setIsUIHidden] = useState(false);
@@ -1632,10 +1764,6 @@ const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBac
 
              <button onClick={onViewRekap} className="bg-amber-500 text-white px-3 py-3 md:px-4 md:py-3.5 rounded-2xl text-[10px] md:text-xs font-black uppercase flex items-center gap-2 shadow-lg hover:bg-amber-600 hover:scale-105 transition-all border border-amber-400" title="Rekap Semua Data Proyek">
                 <FileSpreadsheet size={16} /> <span className="hidden sm:inline">Rekap Data</span>
-             </button>
-
-             <button onClick={onShareLink} className="bg-slate-700 text-white px-3 py-3 md:px-4 md:py-3.5 rounded-2xl text-[10px] md:text-xs font-black uppercase flex items-center gap-2 shadow-lg hover:bg-slate-600 hover:scale-105 transition-all border border-slate-500" title="Bagikan Link Akses Aman (Read-Only)">
-                <Link size={16} /> <span className="hidden sm:inline">Bagikan Link</span>
              </button>
 
              <button onClick={onAddProject} className="bg-blue-600 text-white px-3 py-3 md:px-4 md:py-3.5 rounded-2xl text-[10px] md:text-xs font-black uppercase flex items-center gap-2 shadow-lg hover:bg-blue-700 hover:scale-105 transition-all border border-blue-500">
@@ -4866,44 +4994,6 @@ export default function App() {
     setProjectData(null);
   };
 
-  // FUNGSI BARU: Bagikan Link Aman ke Pejabat/Dinas
-  const handleShareLink = () => {
-    let shareUrl = '';
-    try {
-      // Menggunakan API URL bawaan browser agar format terjamin (tidak ada typo / tabrakan string)
-      const url = new URL(window.location.href);
-      url.searchParams.set('access', 'guest_dinas');
-      shareUrl = url.toString();
-    } catch (err) {
-      shareUrl = `${window.location.origin}${window.location.pathname}?access=guest_dinas`;
-    }
-
-    // Peringatan jika pengguna masih berada di mode Preview Sandbox (Bukan Publik)
-    if (shareUrl.includes('usercontent.goog')) {
-      showMsg("⚠️ Peringatan: Anda masih di mode Preview. Link ini belum bisa dibuka orang lain. Silahkan deploy aplikasi (misal ke Vercel) untuk mendapatkan link publik.", "warning");
-    }
-
-    // Fallback Clipboard API untuk memastikan kompatibilitas di dalam iframe/browser terbatas
-    const textArea = document.createElement("textarea");
-    textArea.value = shareUrl;
-    textArea.style.top = "0";
-    textArea.style.left = "0";
-    textArea.style.position = "fixed";
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    
-    try {
-      document.execCommand('copy');
-      if (!shareUrl.includes('usercontent.goog')) {
-        showMsg("Link akses aman (Pejabat/Dinas) berhasil disalin ke clipboard!", "success");
-      }
-    } catch (err) {
-      showMsg("Gagal menyalin link.", "error");
-    }
-    document.body.removeChild(textArea);
-  };
-
   // Fungsi Baru: Menandai Log sudah dibaca saat diklik
   const handleViewLog = (item) => {
     setSelectedLog(item);
@@ -6536,7 +6626,6 @@ export default function App() {
             onAddProject={() => setShowNewProjectModal(true)} 
             onBackToSelection={handleBackToSelection}
             onViewRekap={() => setShowGlobalRekap(true)}
-            onShareLink={handleShareLink}
         />
 
         {showNewProjectModal && (
@@ -6680,9 +6769,6 @@ export default function App() {
                   </button>
 
                   <button type="button" onClick={() => setShowEditProjectModal(true)} className="relative z-50 p-2 text-slate-400 hover:text-blue-600 transition-colors bg-white hover:bg-blue-50 rounded-xl shadow-sm border border-slate-200 cursor-pointer pointer-events-auto" title="Pengaturan Proyek"><Settings size={16} /></button>
-
-                  {/* TOMBOL BAGIKAN LINK PROYEK */}
-                  <button type="button" onClick={handleShareLink} className="relative z-50 p-2 text-slate-400 hover:text-emerald-600 transition-colors bg-white hover:bg-emerald-50 rounded-xl shadow-sm border border-slate-200 cursor-pointer pointer-events-auto" title="Bagikan Link Proyek (Aman untuk Dinas)"><Share2 size={16} /></button>
 
                   {/* TOMBOL UPDATE RUTE */}
                   <button type="button" onClick={() => setShowAppendRouteModal(true)} className="bg-emerald-600 text-white px-3 py-2 md:px-4 md:py-2.5 rounded-xl text-[10px] font-bold uppercase flex items-center justify-center gap-1.5 md:gap-2 hover:bg-emerald-700 transition-colors shadow-md cursor-pointer relative z-50 pointer-events-auto" title="Tambah Progress Rute Realisasi">
