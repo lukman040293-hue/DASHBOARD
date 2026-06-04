@@ -9,7 +9,7 @@ import {
   Briefcase, Image as ImageIcon, CalendarDays, MonitorPlay, FileSpreadsheet, FolderEdit,
   Save, MapIcon, ArrowLeft, Globe2, Fingerprint, RefreshCw, ArrowUp, ArrowDown,
   Users, UserPlus, Eye, EyeOff, Maximize, Minimize, ChevronLeft, ChevronRight, Download, Menu,
-  Lock, User, LogOut, Grid, ChevronDown, Bell, ChevronUp, Share2, Link
+  Lock, User, LogOut, Grid, ChevronDown, Bell, ChevronUp, Link, Share2
 } from 'lucide-react';
 
 // --- KONSTANTA & KONFIGURASI ---
@@ -2959,7 +2959,130 @@ const DokumentasiView = ({ feeds, onView, onDelete, userRole }) => {
   );
 };
 
-const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, userRole }) => {
+// --- KOMPONEN BARU: PUBLIC DASHBOARD VIEW (TANPA LOGIN) ---
+const PublicDashboardView = ({ projectData, actualProg, terminNum, terminPct, sisaWaktuInfo, processedSCurveData, deviasi, isDeviasiPositive }) => {
+  if (!projectData) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50 flex-col gap-4">
+        <Loader2 className="animate-spin text-blue-500" size={48} />
+        <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">Memuat Dashboard Publik...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-screen bg-[#f4f7fe] overflow-y-auto custom-scrollbar font-sans text-slate-800">
+      {/* Header Publik */}
+      <div className="bg-blue-600 text-white p-6 md:px-10 md:py-8 shadow-md flex justify-between items-center shrink-0">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight">{projectData.pekerjaan}</h1>
+          <p className="text-blue-200 text-xs uppercase tracking-widest font-bold mt-2">DASHBOARD INFORMASI PUBLIK (READ-ONLY)</p>
+        </div>
+        <Activity size={48} className="opacity-20 hidden md:block" />
+      </div>
+
+      {/* Konten Publik */}
+      <div className="p-4 md:p-8 flex flex-col gap-6 max-w-7xl mx-auto w-full">
+        
+        {/* ROW 1: 3 Kartu Info Utama */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+           <CircularStatCard 
+             label="Progress Fisik" icon={Activity} percentage={actualProg !== null ? actualProg : (projectData?.actual_progress || 0)} trend={true} isPositive={isDeviasiPositive} dropShadowColor="emerald" 
+             subContent={
+               <div className="flex flex-col items-center mt-1">
+                 <div className="text-[10px] font-medium flex items-center gap-1.5 mt-1 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100">
+                   <span className="text-slate-400 uppercase tracking-wider">Deviasi:</span>
+                   <span className={isDeviasiPositive ? "text-emerald-500 font-bold" : "text-rose-500 font-bold"}>{isDeviasiPositive ? '+' : ''}{deviasi}%</span>
+                 </div>
+               </div>
+             } 
+           />
+           <CircularStatCard 
+             label="TAGIHAN" icon={Banknote} percentage={terminPct ? parseFloat(terminPct) : 0} dropShadowColor="blue" 
+             subContent={
+               <div className="flex flex-col items-center mt-1">
+                 <span className="text-[12px] md:text-sm font-bold uppercase tracking-wider text-slate-800">Termin {toRoman(String(terminNum))}</span>
+               </div>
+             } 
+           />
+           <StatCard icon={Clock} label="Sisa Waktu" value={sisaWaktuInfo.value} sub={sisaWaktuInfo.sub} status={sisaWaktuInfo.status} />
+        </div>
+
+        {/* ROW 2: Kurva S & Item Pekerjaan */}
+        <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 lg:h-[400px]">
+          
+          {/* Kurva S */}
+          <div className="lg:col-span-7 bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 flex flex-col h-[350px] lg:h-full">
+            <h3 className="text-sm font-black text-slate-800 mb-4 tracking-tight uppercase flex items-center gap-2"><TrendingUp className="text-blue-500" size={18}/> Kurva S Pekerjaan</h3>
+            <div className="flex-1 w-full -ml-4 min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={processedSCurveData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                  <defs>
+                    <linearGradient id="colorRencanaDashPub" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#06b6d4" stopOpacity={0.2}/><stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/></linearGradient>
+                    <linearGradient id="colorRealisasiDashPub" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                  <XAxis dataKey="n" stroke="#475569" fontSize={12} fontWeight="normal" axisLine={false} tickLine={false} />
+                  <YAxis domain={[0, 100]} stroke="#475569" fontSize={12} fontWeight="normal" axisLine={false} tickLine={false} tickFormatter={(value) => `${value}%`} />
+                  <Tooltip content={(props) => <SChartTooltip {...props} />} />
+                  <Area type="monotone" dataKey="r" stroke="#06b6d4" strokeWidth={2} fill="url(#colorRencanaDashPub)" name="Rencana (M=Mingguan)" dot={{ r: 3, strokeWidth: 2, fill: '#ffffff' }} />
+                  <Area type="monotone" dataKey="a" stroke="#3b82f6" strokeWidth={3} fill="url(#colorRealisasiDashPub)" name="Progres Fisik (M=Mingguan)" dot={{ r: 3.5, strokeWidth: 2, fill: '#ffffff' }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Item Pekerjaan */}
+          <div className="lg:col-span-5 bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 flex flex-col h-[350px] lg:h-full overflow-hidden">
+            <h3 className="text-sm font-black text-slate-800 mb-4 tracking-tight uppercase flex items-center gap-2"><Ruler className="text-amber-500" size={18}/> Progress Item Pekerjaan</h3>
+            <div className="flex-1 overflow-y-auto custom-scrollbar w-full">
+              {(!projectData?.item_utama_data || projectData.item_utama_data.length === 0) ? (
+                <div className="text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                  <p className="text-xs font-bold text-slate-400">Belum ada rincian item utama.</p>
+                </div>
+              ) : (
+                <table className="w-full text-left border-collapse">
+                  <thead className="sticky top-0 bg-white z-20">
+                    <tr className="border-b border-slate-200">
+                      <th className="pb-3 text-xs font-black text-slate-500 uppercase">Item</th>
+                      <th className="pb-3 text-xs font-black text-slate-500 uppercase text-right">Progress</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {projectData.item_utama_data.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                        <td className="py-4 pr-2">
+                          <span className="text-xs font-bold text-slate-800 uppercase block" title={item.nama}>{item.nama}</span>
+                          <span className="text-[10px] text-slate-500">Vol: {item.nilai || 0} {item.satuan || ''}</span>
+                        </td>
+                        <td className="py-4 pl-2 text-right">
+                          <span className="text-base font-black text-blue-600">{item.persen}%</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+
+        </div>
+
+        {/* ROW 3: PETA LOKASI */}
+        <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 flex flex-col h-[500px]">
+          <h3 className="text-sm font-black text-slate-800 mb-4 tracking-tight uppercase flex items-center gap-2"><MapPin className="text-emerald-500" size={18}/> Peta & Rute Lokasi</h3>
+          <div className="flex-1 relative rounded-2xl overflow-hidden border border-slate-200">
+             {/* Menggunakan SiteMapView dengan mode isPublic agar tombol edit tersembunyi */}
+             <SiteMapView projectData={projectData} isPublic={true} feeds={[]} />
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, userRole, isPublic }) => {
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [showPlanEditor, setShowPlanEditor] = useState(false);
   const isInitialSiteFitDone = useRef(false); // State penanda untuk Peta Detail
@@ -3711,24 +3834,28 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
           <ImageIcon size={16} className="shrink-0" /> <span className="hidden sm:inline truncate">Foto Rute</span>
         </button>
 
-        <input type="file" accept=".kml" ref={kmlInputRef} onChange={handleImportKML} className="hidden" />
-        
-        <button onClick={() => kmlInputRef.current?.click()} className="bg-white text-slate-700 p-2.5 sm:px-3 sm:py-2 sm:w-[130px] rounded-xl shadow-md text-[10px] sm:text-[11px] font-bold flex items-center justify-center sm:justify-start gap-2 border border-slate-100 hover:bg-slate-50 transition-all">
-          <Upload size={16} className="text-emerald-600 shrink-0" /> <span className="hidden sm:inline truncate">Import KML</span>
-        </button>
-        
-        <button onClick={handleExportKML} className="bg-emerald-600 text-white p-2.5 sm:px-3 sm:py-2 sm:w-[130px] rounded-xl shadow-md text-[10px] sm:text-[11px] font-bold flex items-center justify-center sm:justify-start gap-2 border border-emerald-500 hover:bg-emerald-700 transition-all">
-          <Download size={16} className="shrink-0" /> <span className="hidden sm:inline truncate">Export KML</span>
-        </button>
+        {!isPublic && (
+          <>
+            <input type="file" accept=".kml" ref={kmlInputRef} onChange={handleImportKML} className="hidden" />
+            
+            <button onClick={() => kmlInputRef.current?.click()} className="bg-white text-slate-700 p-2.5 sm:px-3 sm:py-2 sm:w-[130px] rounded-xl shadow-md text-[10px] sm:text-[11px] font-bold flex items-center justify-center sm:justify-start gap-2 border border-slate-100 hover:bg-slate-50 transition-all">
+              <Upload size={16} className="text-emerald-600 shrink-0" /> <span className="hidden sm:inline truncate">Import KML</span>
+            </button>
+            
+            <button onClick={handleExportKML} className="bg-emerald-600 text-white p-2.5 sm:px-3 sm:py-2 sm:w-[130px] rounded-xl shadow-md text-[10px] sm:text-[11px] font-bold flex items-center justify-center sm:justify-start gap-2 border border-emerald-500 hover:bg-emerald-700 transition-all">
+              <Download size={16} className="shrink-0" /> <span className="hidden sm:inline truncate">Export KML</span>
+            </button>
 
-        {!showPlanEditor && userRole !== 'guest' && (
-          <button onClick={() => { setShowPlanEditor(true); setInputMode('plan'); }} className="bg-blue-600 text-white p-2.5 sm:px-3 sm:py-2 sm:w-[130px] rounded-xl shadow-md text-[10px] sm:text-[11px] font-bold flex items-center justify-center sm:justify-start gap-2 border border-blue-500 hover:bg-blue-700 transition-all">
-            <Ruler size={16} className="shrink-0" /> <span className="hidden sm:inline truncate">Editor Rute</span>
-          </button>
+            {!showPlanEditor && userRole !== 'guest' && (
+              <button onClick={() => { setShowPlanEditor(true); setInputMode('plan'); }} className="bg-blue-600 text-white p-2.5 sm:px-3 sm:py-2 sm:w-[130px] rounded-xl shadow-md text-[10px] sm:text-[11px] font-bold flex items-center justify-center sm:justify-start gap-2 border border-blue-500 hover:bg-blue-700 transition-all">
+                <Ruler size={16} className="shrink-0" /> <span className="hidden sm:inline truncate">Editor Rute</span>
+              </button>
+            )}
+          </>
         )}
       </div>
 
-      {showPlanEditor && userRole !== 'guest' && (
+      {showPlanEditor && userRole !== 'guest' && !isPublic && (
         <div className="absolute top-32 md:top-28 right-4 bottom-4 z-30 w-[300px] md:w-[360px] bg-white/95 backdrop-blur-xl border border-slate-200 rounded-3xl shadow-2xl flex flex-col pointer-events-auto">
           <button onClick={() => { setShowPlanEditor(false); setInputMode('view'); }} className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 rounded-full transition-colors z-40 shadow-sm" title="Tutup Editor">
             <X size={16} />
@@ -3924,124 +4051,6 @@ const ContractTable = ({ title, icon, dataArray, colorClass, bgClass }) => {
             </div>
           ))}
         </div>
-      </div>
-    </div>
-  );
-};
-
-// --- KOMPONEN BARU: PUBLIC DASHBOARD VIEW ---
-const PublicDashboardView = ({ projectData, actualProg, terminPct, terminNum, sisaWaktuInfo, processedSCurveData, deviasi, isDeviasiPositive, lastUpdatedWeek, feeds, showMsg }) => {
-  if (!projectData) return <div className="flex h-screen items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-blue-500" size={48} /></div>;
-
-  return (
-    <div className="min-h-screen bg-[#f4f7fe] flex flex-col font-sans">
-      <header className="px-6 py-4 bg-white shadow-sm flex items-center justify-between z-50">
-        <div className="flex items-center gap-3">
-          <Activity size={28} className="text-blue-600" />
-          <div>
-            <h1 className="text-lg font-black text-slate-800 leading-tight truncate max-w-[250px] md:max-w-md lg:max-w-xl" title={projectData.pekerjaan}>{projectData.pekerjaan}</h1>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Live Dashboard</p>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto custom-scrollbar flex flex-col gap-6">
-        {/* Row 1: Statistik Utama */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 shrink-0">
-            <CircularStatCard label="Progress Fisik" icon={Activity} percentage={actualProg !== null ? actualProg : (projectData?.actual_progress || 0)} trend={true} isPositive={isDeviasiPositive} dropShadowColor="emerald" subContent={<div className="flex flex-col items-center mt-1"><span className="text-[12px] md:text-sm font-bold uppercase tracking-wider text-slate-800">{String(lastUpdatedWeek).replace('M', 'Minggu Ke-').replace('W', 'Minggu Ke-')}</span><div className="text-[10px] font-medium flex items-center gap-1.5 mt-1 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100"><span className="text-slate-400 uppercase tracking-wider">Deviasi:</span><span className={isDeviasiPositive ? "text-emerald-500 font-bold" : "text-rose-500 font-bold"}>{isDeviasiPositive ? '+' : ''}{deviasi}%</span></div></div>} />
-            <CircularStatCard label="Posisi Tagihan" icon={Banknote} percentage={terminPct ? parseFloat(terminPct) : 0} dropShadowColor="blue" subContent={<div className="flex flex-col items-center mt-1"><span className="text-[12px] md:text-sm font-bold uppercase tracking-wider text-slate-800">Termin {toRoman(String(terminNum))}</span><span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mt-1 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100">{projectData?.updated_at ? `TGL: ${new Date(projectData.updated_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}` : (projectData?.created_at ? `TGL: ${new Date(projectData.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}` : 'Belum diupdate')}</span></div>} />
-            <StatCard icon={Clock} label="Sisa Waktu" value={sisaWaktuInfo.value} sub={sisaWaktuInfo.sub} status={sisaWaktuInfo.status} centered={true} />
-        </div>
-
-        {/* Row 2: Kurva S & Peta */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[500px] shrink-0">
-           {/* Kurva S (5 Kolom) */}
-           <div className="lg:col-span-5 bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex flex-col h-[400px] lg:h-full">
-              <div className="flex justify-between items-center mb-6 shrink-0"><h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest"><TrendingUp size={16} className="inline text-blue-500 mr-2"/>Kurva S Pekerjaan</h3></div>
-              <div className="flex-1 w-full -ml-4 min-h-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={processedSCurveData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                      <defs>
-                        <linearGradient id="colorRencanaPub" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#06b6d4" stopOpacity={0.2}/><stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/></linearGradient>
-                        <linearGradient id="colorRealisasiPub" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                      <XAxis dataKey="n" stroke="#475569" fontSize={10} axisLine={false} tickLine={false} />
-                      <YAxis domain={[0, 100]} stroke="#475569" fontSize={10} axisLine={false} tickLine={false} tickFormatter={(value) => `${value}%`} />
-                      <Tooltip content={(props) => <SChartTooltip {...props} />} />
-                      <Legend verticalAlign="bottom" align="center" wrapperStyle={{fontSize: '10px'}} />
-                      <Area type="monotone" dataKey="r" stroke="#06b6d4" strokeWidth={2} fill="url(#colorRencanaPub)" name="Rencana" dot={{ r: 2, fill: '#fff' }} />
-                      <Area type="monotone" dataKey="a" stroke="#3b82f6" strokeWidth={3} fill="url(#colorRealisasiPub)" name="Realisasi" dot={{ r: 2.5, fill: '#fff' }} />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-              </div>
-           </div>
-
-           {/* Peta Lokasi (7 Kolom) */}
-           <div className="lg:col-span-7 bg-white p-4 rounded-[32px] border border-slate-100 shadow-sm flex flex-col h-[500px] lg:h-full relative overflow-hidden">
-             <h3 className="text-sm font-bold text-slate-800 mb-3 px-2 flex items-center gap-2 z-10 uppercase tracking-widest"><MapIcon size={16} className="text-blue-500"/> Peta Lokasi & Jalur Realisasi</h3>
-             <div className="flex-1 rounded-2xl overflow-hidden relative border border-slate-100 shadow-inner">
-                <SiteMapView projectData={projectData} userRole="guest" feeds={feeds} onUpdateRoutes={()=>{}} isUpdating={false} showMsg={showMsg} />
-             </div>
-           </div>
-        </div>
-
-        {/* Row 3: Item Pekerjaan */}
-        <div className="bg-white p-6 md:p-8 rounded-[32px] border border-slate-100 shadow-sm flex flex-col min-h-[300px] shrink-0">
-           <div className="flex justify-between items-center mb-5 border-b border-slate-100 pb-4 shrink-0">
-             <div className="flex items-center gap-3">
-               <div className="p-2 bg-blue-50/80 text-blue-600 rounded-xl shadow-sm border border-blue-100/50"><Ruler size={16} strokeWidth={2.5} /></div>
-               <h3 className="text-sm font-black text-slate-800 tracking-tight uppercase">Progress Item Pekerjaan</h3>
-             </div>
-           </div>
-
-           <div className="relative z-10 flex-1 overflow-hidden flex flex-col">
-             {(!projectData?.item_utama_data || projectData.item_utama_data.length === 0) ? (
-               <div className="text-center py-10 bg-slate-50/30 rounded-2xl border border-dashed border-slate-200 m-auto w-full">
-                 <Ruler size={24} className="mx-auto text-slate-300 mb-2" />
-                 <p className="text-xs font-bold text-slate-400">Belum ada item utama yang diatur.</p>
-               </div>
-             ) : (
-               <div className="overflow-x-auto custom-scrollbar w-full flex-1 pr-1">
-                 <table className="w-full text-left border-collapse min-w-[600px]">
-                   <thead className="bg-slate-50/50 border-b border-slate-200">
-                     <tr>
-                       <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest w-full">Item Pekerjaan</th>
-                       <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest text-right whitespace-nowrap">Hari Ini</th>
-                       <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest text-right whitespace-nowrap">Total</th>
-                       <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest text-right whitespace-nowrap">Satuan</th>
-                       <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest text-right whitespace-nowrap">Progress</th>
-                     </tr>
-                   </thead>
-                   <tbody className="divide-y divide-slate-100">
-                     {projectData.item_utama_data.map((item, idx) => (
-                       <tr key={item.id || idx} className="hover:bg-blue-50/40 transition-colors group">
-                         <td className="p-4">
-                           <span className="text-sm font-normal text-slate-800 leading-tight block uppercase" title={item.nama}>
-                             {item.nama}
-                           </span>
-                         </td>
-                         <td className="p-4 text-right text-sm font-normal text-slate-600">
-                           {item.bobot || '-'}
-                         </td>
-                         <td className="p-4 text-right text-sm font-normal text-slate-600">
-                           {item.nilai || '-'}
-                         </td>
-                         <td className="p-4 text-right text-sm font-normal text-slate-600 uppercase">
-                           {item.satuan || '-'}
-                         </td>
-                         <td className="p-4 text-right">
-                           <span className="text-base font-black text-blue-600 drop-shadow-sm">{item.persen}%</span>
-                         </td>
-                       </tr>
-                     ))}
-                   </tbody>
-                 </table>
-               </div>
-             )}
-           </div>
-        </div>
-
       </div>
     </div>
   );
@@ -4433,17 +4442,8 @@ const ProjectSelectionListView = ({ projects, onSelectProject, onBack, onAddProj
 
 // --- KOMPONEN APLIKASI UTAMA ---
 export default function App() {
-  const getInitialAppMode = () => {
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('public_id')) return 'public_dashboard';
-    }
-    return 'login';
-  };
-
   // STATE BARU UNTUK LOGIKA LOGIN & PEMILIHAN
-  const [appMode, setAppMode] = useState(getInitialAppMode()); // 'login', 'selection', 'project_list', 'master', 'project', 'absensi', 'public_dashboard'
-  const [isPublicMode, setIsPublicMode] = useState(getInitialAppMode() === 'public_dashboard');
+  const [appMode, setAppMode] = useState('login'); // 'login', 'selection', 'project_list', 'master', 'project', 'absensi', 'public_dashboard'
   const [previousAppMode, setPreviousAppMode] = useState('selection'); // Menyimpan asal halaman sebelum masuk proyek
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authError, setAuthError] = useState('');
@@ -4490,6 +4490,10 @@ export default function App() {
   const [supabaseClient, setSupabaseClient] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [notification, setNotification] = useState(null);
+
+  // --- CEK URL PUBLIK ---
+  const isPublicRoute = useMemo(() => new URLSearchParams(window.location.search).get('public') === 'true', []);
+  const publicProjectId = useMemo(() => new URLSearchParams(window.location.search).get('projectId'), []);
 
   // --- Modal States ---
   const [showGlobalRekap, setShowGlobalRekap] = useState(false);
@@ -4672,8 +4676,6 @@ export default function App() {
   useEffect(() => {
     if (!supabaseClient) return;
 
-    if (isPublicMode) return; // ABAIKAN PENGECEKAN AUTH JIKA DI MODE PUBLIK
-
     // Cek sesi saat pertama kali dimuat
     supabaseClient.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -4695,36 +4697,7 @@ export default function App() {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabaseClient, appMode, isPublicMode]);
-
-  // EFEK BARU: MENGAMBIL DATA KHUSUS UNTUK DASHBOARD PUBLIK (GUEST)
-  useEffect(() => {
-    if (supabaseClient && isPublicMode) {
-      const urlParams = new URLSearchParams(window.location.search);
-      const publicId = urlParams.get('public_id');
-      
-      const fetchPublicProjectDetails = async () => {
-        try {
-          const { data: proj, error } = await supabaseClient.from('projects').select('*').eq('id', publicId).single();
-          if (error) throw error;
-          if (proj) {
-            setProjectData(proj);
-            if (Array.isArray(proj.s_curve_data)) {
-               setSCurveData(proj.s_curve_data);
-            }
-            // Fetch feeds agar Peta dapat memunculkan foto (opsional)
-            const { data: reports } = await supabaseClient.from('field_reports').select('*').eq('project_id', publicId).order('created_at', { ascending: false });
-            if (reports) setFeeds(reports);
-          }
-        } catch (e) {
-          console.error("Link publik tidak valid:", e);
-          setAppMode('login'); // Fallback jika ID salah
-          setIsPublicMode(false);
-        }
-      };
-      fetchPublicProjectDetails();
-    }
-  }, [supabaseClient, isPublicMode]);
+  }, [supabaseClient, appMode]);
 
   const docInputRef = useRef(null);
   const reportFileInputRef = useRef(null);
@@ -4859,15 +4832,53 @@ export default function App() {
     };
   }, []);
 
+  // --- EFEK ROUTING AWAL ---
+  useEffect(() => {
+    if (!supabaseClient) return;
+
+    // JIKA URL MENGANDUNG PARAMETER PUBLIC, BYPASS LOGIN
+    if (isPublicRoute && publicProjectId) {
+      setAppMode('public_dashboard');
+      fetchProjectDetails(publicProjectId);
+      return; 
+    }
+
+    // Cek sesi saat pertama kali dimuat (Normal Flow)
+    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setIsLoggedIn(true);
+        if (appMode === 'login') setAppMode('selection');
+      }
+    });
+
+    // Dengarkan perubahan login/logout
+    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+      // Abaikan auth event jika sedang di mode publik
+      if (isPublicRoute) return; 
+
+      setIsLoggedIn(!!session);
+      if (session) {
+         if (appMode === 'login') setAppMode('selection');
+      } else {
+         setAppMode('login');
+         setProjectData(null);
+         setReadFeeds(new Set());
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabaseClient, appMode, isPublicRoute, publicProjectId]);
+
   // Fetch data hanya jika sudah login atau minimal supabase siap
   useEffect(() => { 
-     if (supabaseClient && isLoggedIn) {
+     // Jika mode publik, hentikan fetch global karena hanya perlu fetch detail 1 proyek
+     if (supabaseClient && isLoggedIn && !isPublicRoute) {
         fetchAllProjects(); 
         fetchAttendances();
         fetchEmployees();
         fetchGlobalFeeds();
      }
-  }, [supabaseClient, isLoggedIn]);
+  }, [supabaseClient, isLoggedIn, isPublicRoute]);
 
   // EFEK BARU: Set Nama Segmen Default untuk Modal Append Rute
   useEffect(() => {
@@ -5053,8 +5064,7 @@ export default function App() {
         setEditProjectForm({
           status: proj.status || 'Running', pekerjaan: proj.pekerjaan || '', tahun: proj.tahun || '',
           termin_ke: tKe, termin_persen: tPct, panjang_rencana: proj.panjang_rencana || '', lebar_rencana: proj.lebar_rencana || '', jenis_model: proj.jenis_model || '',
-          item_utama_data: proj.item_utama_data || [], waktu_pelaksanaan: proj.waktu_pelaksanaan || '',
-          is_public: proj.is_public || false
+          item_utama_data: proj.item_utama_data || [], waktu_pelaksanaan: proj.waktu_pelaksanaan || ''
         });
 
         let mergedDinas = Array.isArray(proj.dinas_data) ? proj.dinas_data : [];
@@ -5153,26 +5163,6 @@ export default function App() {
     setProjectData(null);
   };
 
-  // FUNGSI BARU: MENYALIN LINK PUBLIK KE CLIPBOARD
-  const handleCopyPublicLink = () => {
-    if (!projectData.is_public) {
-      showMsg("Gagal: Akses publik belum diaktifkan. Silakan nyalakan di Pengaturan Proyek terlebih dahulu.", "warning");
-      return;
-    }
-    const url = `${window.location.origin}${window.location.pathname}?public_id=${projectData.id}`;
-    const textArea = document.createElement("textarea");
-    textArea.value = url;
-    document.body.appendChild(textArea);
-    textArea.select();
-    try {
-      document.execCommand('copy');
-      showMsg("Link Dashboard Publik berhasil disalin ke clipboard!", "success");
-    } catch (err) {
-      showMsg("Gagal menyalin link.", "error");
-    }
-    document.body.removeChild(textArea);
-  };
-
   // Fungsi Baru: Menandai Log sudah dibaca saat diklik
   const handleViewLog = (item) => {
     setSelectedLog(item);
@@ -5214,7 +5204,6 @@ export default function App() {
         panjang_rencana: editProjectForm.panjang_rencana, lebar_rencana: editProjectForm.lebar_rencana, jenis_model: editProjectForm.jenis_model,
         item_utama_data: editProjectForm.item_utama_data, waktu_pelaksanaan: editProjectForm.waktu_pelaksanaan,
         s_curve_data: parsedData,
-        is_public: editProjectForm.is_public,
         updated_at: new Date().toISOString()
       }).eq('id', projectData.id);
       
@@ -6092,8 +6081,7 @@ export default function App() {
         setProjectData(prev => ({ 
             ...prev, 
             s_curve_data: parsedData, 
-            actual_progress: parseFloat(calculatedProgress.toFixed(2)),
-            is_public: editProjectForm.is_public 
+            actual_progress: parseFloat(calculatedProgress.toFixed(2)) 
         }));
       }
       showMsg("Grafik Berhasil Disinkronkan!", "success");
@@ -6264,6 +6252,28 @@ export default function App() {
   const { dinasData, kontraktorData, konsultanData } = contractDataArrays;
 
   // --- ROUTING TINGKAT ATAS ---
+
+  if (appMode === 'public_dashboard') {
+    return (
+      <>
+        {notification && (
+          <div className={`fixed top-10 left-1/2 -translate-x-1/2 z-[6000] px-6 py-4 rounded-2xl shadow-xl border backdrop-blur-xl animate-in slide-in-from-top-5 flex items-center gap-3 ${notification.type === 'error' ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+            <span className="text-xs font-bold uppercase tracking-tight">{String(notification.msg || '')}</span>
+          </div>
+        )}
+        <PublicDashboardView 
+          projectData={projectData}
+          actualProg={actualProg}
+          terminNum={terminNum}
+          terminPct={terminPct}
+          sisaWaktuInfo={sisaWaktuInfo}
+          processedSCurveData={processedSCurveData}
+          deviasi={deviasi}
+          isDeviasiPositive={isDeviasiPositive}
+        />
+      </>
+    );
+  }
 
   const renderGlobalRekapModal = () => {
     if (!showGlobalRekap) return null;
@@ -6657,23 +6667,195 @@ export default function App() {
      );
   }
 
-  // JIKA MODE PUBLIK (GUEST)
-  if (appMode === 'public_dashboard') {
+  if (appMode === 'project_list') {
      return (
-        <PublicDashboardView 
-           projectData={projectData} 
-           actualProg={actualProg} 
-           terminPct={terminPct} 
-           terminNum={terminNum} 
-           sisaWaktuInfo={sisaWaktuInfo} 
-           processedSCurveData={processedSCurveData} 
-           deviasi={deviasi} 
-           isDeviasiPositive={isDeviasiPositive} 
-           lastUpdatedWeek={lastUpdatedWeek} 
-           feeds={safeFeeds}
-           showMsg={showMsg}
-        />
+       <>
+         {notification && (
+          <div className={`fixed top-10 left-1/2 -translate-x-1/2 z-[6000] px-6 py-4 rounded-2xl shadow-xl border backdrop-blur-xl animate-in slide-in-from-top-5 flex items-center gap-3 ${notification.type === 'error' ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+            <span className="text-xs font-bold uppercase tracking-tight">{String(notification.msg || '')}</span>
+          </div>
+         )}
+         <ProjectSelectionListView 
+            projects={masterProjects || []} 
+            onSelectProject={handleSelectProject} 
+            onBack={() => setAppMode('selection')}
+            onAddProject={() => setShowNewProjectModal(true)}
+            onDeleteProject={(proj) => setDeleteConfig({ id: proj.id, type: 'project', name: proj.pekerjaan })}
+            onViewRekap={() => setShowGlobalRekap(true)}
+         />
+         {/* Modals for new/delete project (reused from master) */}
+         {showNewProjectModal && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[5000] p-4">
+            <div className="bg-white rounded-[32px] p-8 w-full max-w-md shadow-2xl relative">
+              <button onClick={() => setShowNewProjectModal(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-700 transition-colors"><X size={20} /></button>
+              <h3 className="text-lg font-black mb-6">Buat Kamar Proyek Baru</h3>
+              <form onSubmit={handleCreateProject} className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Nama Pekerjaan <span className="text-rose-500">*</span></label>
+                  <input type="text" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={newProjectForm.pekerjaan} onChange={e => setNewProjectForm({ ...newProjectForm, pekerjaan: e.target.value })} placeholder="Misal: Peningkatan Jalan Baru..." required />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Tahun <span className="text-rose-500">*</span></label>
+                  <input type="number" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={newProjectForm.tahun} onChange={e => setNewProjectForm({ ...newProjectForm, tahun: e.target.value })} placeholder="Misal: 2024" required />
+                </div>
+                <button type="submit" disabled={isProcessing} className="w-full bg-blue-600 text-white py-4 rounded-2xl text-xs font-bold uppercase mt-4 hover:bg-blue-700 transition-colors shadow-md">
+                  {isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Buat Proyek Sekarang'}
+                </button>
+              </form>
+            </div>
+          </div>
+         )}
+         {deleteConfig && deleteConfig.type === 'project' && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[6000] p-4">
+            <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-2xl relative text-center">
+              <div className="mx-auto w-14 h-14 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-5"><AlertCircle size={28} /></div>
+              <h3 className="text-xl font-black mb-2 text-slate-800">Hapus Proyek?</h3>
+              <p className="text-xs text-rose-600 mb-8 font-medium leading-relaxed bg-rose-50 p-3 rounded-xl border border-rose-100">Kamar proyek <b>{deleteConfig.name}</b> dan seluruh data didalamnya akan dihapus permanen!</p>
+              <div className="flex gap-3">
+                <button onClick={() => setDeleteConfig(null)} className="flex-1 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors">Batal</button>
+                <button onClick={confirmDeleteData} disabled={isProcessing} className="flex-1 py-3.5 bg-rose-500 text-white rounded-xl text-sm font-bold hover:bg-rose-600 transition-colors shadow-md">{isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Ya, Hapus'}</button>
+              </div>
+            </div>
+          </div>
+         )}
+         {renderGlobalRekapModal()}
+       </>
      );
+  }
+
+  if (appMode === 'absensi') {
+     return (
+       <>
+         {notification && (
+            <div className={`fixed top-10 left-1/2 -translate-x-1/2 z-[8000] px-6 py-4 rounded-2xl shadow-xl border backdrop-blur-xl animate-in slide-in-from-top-5 pointer-events-none flex items-center gap-3 ${notification.type === 'error' ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+              <span className="text-xs font-bold uppercase tracking-tight">{String(notification.msg || '')}</span>
+            </div>
+         )}
+         
+         <AbsensiView 
+            attendances={attendances} 
+            onBack={() => setAppMode('selection')} 
+            onDelete={handleDeleteAttendance} 
+            isProcessing={isProcessing} 
+            onRefresh={() => { fetchAttendances(); fetchEmployees(); }} 
+            employees={employees}
+            setEmployeeForm={setEmployeeForm}
+            setShowEmployeeModal={setShowEmployeeModal}
+            setDeleteConfig={setDeleteConfig}
+         />
+
+         {showEmployeeModal && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[9000] p-4">
+               <div className="bg-white rounded-[32px] p-8 w-full max-w-md shadow-2xl relative">
+                  <button onClick={() => setShowEmployeeModal(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-700 transition-colors"><X size={20} /></button>
+                  <h3 className="text-lg font-black mb-6 uppercase text-slate-800 tracking-tight">{employeeForm.id ? 'Edit Data Karyawan' : 'Tambah Karyawan Baru'}</h3>
+                  <form onSubmit={handleSaveEmployee} className="space-y-4">
+                     <div>
+                        <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">ID Karyawan (Unik) <span className="text-rose-500">*</span></label>
+                        <input type="text" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={employeeForm.employee_id} onChange={e => setEmployeeForm({ ...employeeForm, employee_id: e.target.value })} placeholder="Misal: KRY-001" required />
+                     </div>
+                     <div>
+                        <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Nama Lengkap <span className="text-rose-500">*</span></label>
+                        <input type="text" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={employeeForm.name} onChange={e => setEmployeeForm({ ...employeeForm, name: e.target.value })} placeholder="Nama Lengkap Karyawan" required />
+                     </div>
+                     <div>
+                        <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Jabatan / Role <span className="text-rose-500">*</span></label>
+                        <select className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={employeeForm.role} onChange={e => setEmployeeForm({ ...employeeForm, role: e.target.value })} required>
+                           <option value="Pelaksana">Pelaksana</option>
+                           <option value="Pengawas">Pengawas</option>
+                           <option value="Petugas K3">Petugas K3</option>
+                           <option value="Mandor">Mandor</option>
+                           <option value="Site Engineer">Site Engineer</option>
+                           <option value="Inspector">Inspector</option>
+                           <option value="Operator Alat">Operator Alat</option>
+                           <option value="Kantor">Kantor</option>
+                        </select>
+                     </div>
+                     <div>
+                        <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">PIN / Password (Angka) <span className="text-rose-500">*</span></label>
+                        <input type="text" inputMode="numeric" pattern="[0-9]*" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-mono font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={employeeForm.pin} onChange={e => setEmployeeForm({ ...employeeForm, pin: e.target.value.replace(/\D/g, '') })} placeholder="Misal: 123456" required title="Hanya gunakan karakter Angka" />
+                     </div>
+                     <button type="submit" disabled={isProcessing} className="w-full bg-blue-600 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest mt-4 hover:bg-blue-700 transition-colors shadow-md">
+                        {isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : (employeeForm.id ? 'Simpan Perubahan' : 'Tambah Karyawan')}
+                     </button>
+                  </form>
+               </div>
+            </div>
+         )}
+
+         {deleteConfig && deleteConfig.type === 'employee' && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[9000] p-4">
+              <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-2xl relative text-center">
+                <div className="mx-auto w-14 h-14 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-5"><AlertCircle size={28} /></div>
+                <h3 className="text-xl font-black mb-2 text-slate-800">Apakah Anda Yakin?</h3>
+                <p className="text-xs text-slate-500 mb-8 font-medium leading-relaxed">
+                   Data karyawan atas nama <b>{deleteConfig.name}</b> akan dihapus secara permanen.
+                </p>
+                <div className="flex gap-3">
+                  <button onClick={() => setDeleteConfig(null)} className="flex-1 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors">Batal</button>
+                  <button onClick={confirmDeleteData} disabled={isProcessing} className="flex-1 py-3.5 bg-rose-500 text-white rounded-xl text-sm font-bold hover:bg-rose-600 transition-colors shadow-md">{isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Ya, Hapus'}</button>
+                </div>
+              </div>
+            </div>
+         )}
+       </>
+     );
+  }
+
+  if (appMode === 'master') {
+    return (
+      <>
+        {notification && (
+          <div className={`fixed top-10 left-1/2 -translate-x-1/2 z-[6000] px-6 py-4 rounded-2xl shadow-xl border backdrop-blur-xl animate-in slide-in-from-top-5 flex items-center gap-3 ${notification.type === 'error' ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+            <span className="text-xs font-bold uppercase tracking-tight">{String(notification.msg || '')}</span>
+          </div>
+        )}
+        
+        <MasterDashboardView 
+            allProjects={masterProjects || []} 
+            onSelectProject={handleSelectProject} 
+            onAddProject={() => setShowNewProjectModal(true)} 
+            onBackToSelection={handleBackToSelection}
+            onViewRekap={() => setShowGlobalRekap(true)}
+        />
+
+        {showNewProjectModal && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[5000] p-4">
+            <div className="bg-white rounded-[32px] p-8 w-full max-w-md shadow-2xl relative">
+              <button onClick={() => setShowNewProjectModal(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-700 transition-colors"><X size={20} /></button>
+              <h3 className="text-lg font-black mb-6">Buat Kamar Proyek Baru</h3>
+              <form onSubmit={handleCreateProject} className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Nama Pekerjaan <span className="text-rose-500">*</span></label>
+                  <input type="text" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={newProjectForm.pekerjaan} onChange={e => setNewProjectForm({ ...newProjectForm, pekerjaan: e.target.value })} placeholder="Misal: Peningkatan Jalan Baru..." required />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">Tahun <span className="text-rose-500">*</span></label>
+                  <input type="number" className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-slate-800 outline-none focus:border-blue-400 focus:bg-white transition-all" value={newProjectForm.tahun} onChange={e => setNewProjectForm({ ...newProjectForm, tahun: e.target.value })} placeholder="Misal: 2024" required />
+                </div>
+                <button type="submit" disabled={isProcessing} className="w-full bg-blue-600 text-white py-4 rounded-2xl text-xs font-bold uppercase mt-4 hover:bg-blue-700 transition-colors shadow-md">
+                  {isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Buat Proyek Sekarang'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+        {deleteConfig && deleteConfig.type === 'project' && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[6000] p-4">
+            <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-2xl relative text-center">
+              <div className="mx-auto w-14 h-14 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-5"><AlertCircle size={28} /></div>
+              <h3 className="text-xl font-black mb-2 text-slate-800">Hapus Proyek?</h3>
+              <p className="text-xs text-rose-600 mb-8 font-medium leading-relaxed bg-rose-50 p-3 rounded-xl border border-rose-100">Kamar proyek <b>{deleteConfig.name}</b> dan seluruh data didalamnya akan dihapus permanen!</p>
+              <div className="flex gap-3">
+                <button onClick={() => setDeleteConfig(null)} className="flex-1 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors">Batal</button>
+                <button onClick={confirmDeleteData} disabled={isProcessing} className="flex-1 py-3.5 bg-rose-500 text-white rounded-xl text-sm font-bold hover:bg-rose-600 transition-colors shadow-md">{isProcessing ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Ya, Hapus'}</button>
+              </div>
+            </div>
+          </div>
+        )}
+        {renderGlobalRekapModal()}
+      </>
+    );
   }
 
   if (activeMenu === 'presentation') {
@@ -6768,6 +6950,21 @@ export default function App() {
 
                 {/* AKSI KANAN: Bell, Settings, Main Action (Dipindah ke baris atas) */}
                 <div className="flex items-center gap-1.5 md:gap-2 shrink-0 relative z-[99999]">
+                  
+                  {/* TOMBOL BAGIKAN LINK PUBLIK */}
+                  <button type="button" onClick={() => {
+                     const url = `${window.location.origin}${window.location.pathname}?public=true&projectId=${projectData.id}`;
+                     const el = document.createElement('textarea');
+                     el.value = url;
+                     document.body.appendChild(el);
+                     el.select();
+                     document.execCommand('copy');
+                     document.body.removeChild(el);
+                     showMsg("Link Dashboard Publik berhasil disalin! Kirimkan link ini ke Dinas/Pejabat.", "success");
+                  }} className="relative z-50 p-2 text-slate-400 hover:text-emerald-600 transition-colors bg-white hover:bg-emerald-50 rounded-xl shadow-sm border border-slate-200 cursor-pointer pointer-events-auto" title="Salin Link Dashboard Publik">
+                    <Share2 size={16} />
+                  </button>
+
                   <button type="button" onClick={() => setReadFeeds(new Set(safeFeeds.map(f => f.id)))} className="relative z-50 p-2 text-slate-400 hover:text-blue-600 transition-colors bg-white hover:bg-blue-50 rounded-xl shadow-sm border border-slate-200 cursor-pointer pointer-events-auto" title="Tandai semua log sudah dibaca">
                     <Bell size={16} />
                     {safeFeeds.filter(f => !readFeeds.has(f.id)).length > 0 && (
@@ -6775,10 +6972,6 @@ export default function App() {
                         {safeFeeds.filter(f => !readFeeds.has(f.id)).length > 99 ? '99+' : safeFeeds.filter(f => !readFeeds.has(f.id)).length}
                       </span>
                     )}
-                  </button>
-
-                  <button type="button" onClick={handleCopyPublicLink} className="relative z-50 p-2 text-slate-400 hover:text-emerald-600 transition-colors bg-white hover:bg-emerald-50 rounded-xl shadow-sm border border-slate-200 cursor-pointer pointer-events-auto" title="Bagikan Link Akses Publik">
-                    <Share2 size={16} />
                   </button>
 
                   <button type="button" onClick={() => setShowEditProjectModal(true)} className="relative z-50 p-2 text-slate-400 hover:text-blue-600 transition-colors bg-white hover:bg-blue-50 rounded-xl shadow-sm border border-slate-200 cursor-pointer pointer-events-auto" title="Pengaturan Proyek"><Settings size={16} /></button>
@@ -7370,18 +7563,6 @@ export default function App() {
             <button onClick={() => setShowEditProjectModal(false)} className="absolute top-6 right-6 p-2"><X size={20} /></button>
             <h3 className="text-lg font-black mb-6">Pengaturan Proyek</h3>
             <form onSubmit={handleUpdateProject} className="space-y-4">
-              
-              <div className="flex items-center justify-between p-4 mb-4 bg-slate-50 border border-slate-200 rounded-xl">
-                <div>
-                  <h4 className="text-sm font-black text-slate-800 flex items-center gap-2"><Globe2 size={16} className="text-blue-500" /> Akses Dashboard Publik</h4>
-                  <p className="text-[10px] font-bold text-slate-500 mt-0.5">Izinkan pengunjung luar melihat proyek ini via link</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" checked={editProjectForm.is_public || false} onChange={e => setEditProjectForm({ ...editProjectForm, is_public: e.target.checked })} />
-                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-                </label>
-              </div>
-
               <div><label className="text-[10px] font-bold block mb-1">Nama Pekerjaan</label><input type="text" className="w-full p-3 rounded-xl border bg-slate-50" value={editProjectForm.pekerjaan} onChange={e => setEditProjectForm({ ...editProjectForm, pekerjaan: e.target.value })} required /></div>
               
               <div><label className="text-[10px] font-bold block mb-1">Tahun Anggaran</label><input type="number" className="w-full p-3 rounded-xl border bg-slate-50 outline-none focus:border-blue-400" value={editProjectForm.tahun} onChange={e => setEditProjectForm({ ...editProjectForm, tahun: e.target.value })} required /></div>
