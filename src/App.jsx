@@ -1192,8 +1192,9 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
                     color: colors[i], weight: 2, opacity: 0.9, fillColor: colors[i], fillOpacity: 0.15, dashArray: '4, 4'
                   },
                   onEachFeature: function (feature, l) {
-                    l.bindTooltip(`<div class="text-[10px] font-black uppercase tracking-wider text-black">Kec. ${LIST_KECAMATAN[i]}</div>`, {
-                      permanent: true, direction: 'center', className: 'bg-white/80 backdrop-blur-md border border-white/50 shadow-sm rounded-lg py-1 px-2'
+                    // Menerapkan class transparan, memaksa opacity penuh (1), dan menggunakan text-shadow untuk border tajam
+                    l.bindTooltip(`<div class="text-[11px] font-black uppercase tracking-wider text-white" style="text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0px 3px 5px rgba(0,0,0,0.8);">Kec. ${LIST_KECAMATAN[i]}</div>`, {
+                      permanent: true, direction: 'center', className: 'kecamatan-tooltip-transparent', opacity: 1
                     });
                     
                     l.on('mouseover', function(e) {
@@ -4681,6 +4682,18 @@ export default function App() {
            top: 4px !important;
            right: 4px !important;
            z-index: 50 !important;
+        }
+
+        /* HILANGKAN BACKGROUND PUTIH DEFAULT PADA LABEL KECAMATAN */
+        .kecamatan-tooltip-transparent {
+           background: transparent !important;
+           border: none !important;
+           box-shadow: none !important;
+           padding: 0 !important;
+           opacity: 1 !important;
+        }
+        .kecamatan-tooltip-transparent::before, .kecamatan-tooltip-transparent::after {
+           display: none !important; /* Menghilangkan panah segitiga bawaan */
         }
 
         /* GESER TOMBOL ZOOM DI PETA INDUK AGAR TIDAK TERTUTUP MENU KIRI ATAS */
