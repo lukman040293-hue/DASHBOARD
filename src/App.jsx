@@ -9,7 +9,7 @@ import {
   Briefcase, Image as ImageIcon, CalendarDays, MonitorPlay, FileSpreadsheet, FolderEdit,
   Save, MapIcon, ArrowLeft, Globe2, Fingerprint, RefreshCw, ArrowUp, ArrowDown,
   Users, UserPlus, Eye, EyeOff, Maximize, Minimize, ChevronLeft, ChevronRight, Download, Menu,
-  Lock, User, LogOut, Grid, ChevronDown, Bell, ChevronUp, Link, Share2
+  Lock, User, LogOut, Grid, ChevronDown, Bell, ChevronUp, Link, Share2, Layers
 } from 'lucide-react';
 
 // --- KONSTANTA & KONFIGURASI ---
@@ -1081,6 +1081,13 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
     const saved = localStorage.getItem('master_showSketchPoints');
     return saved !== null ? JSON.parse(saved) : false; 
   });
+
+  // STATE BARU: Filter Jenis Rute (Rencana, Realisasi, Poligon)
+  const [pathFilters, setPathFilters] = useState(() => {
+    const saved = localStorage.getItem('master_pathFilters');
+    return saved !== null ? JSON.parse(saved) : { rencana: true, poligon: true, realisasi: true };
+  });
+  const [showPathMenu, setShowPathMenu] = useState(false); // Menu toggle popover untuk filter rute
   
   // STATE BARU KHUSUS FILTER KECAMATAN (Menyimpan visibilitas per kecamatan)
   const [kecamatanVisibility, setKecamatanVisibility] = useState(() => {
@@ -1100,6 +1107,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
   useEffect(() => { localStorage.setItem('master_showDistances', JSON.stringify(showDistances)); }, [showDistances]);
   useEffect(() => { localStorage.setItem('master_showSketchLabels', JSON.stringify(showSketchLabels)); }, [showSketchLabels]);
   useEffect(() => { localStorage.setItem('master_showSketchPoints', JSON.stringify(showSketchPoints)); }, [showSketchPoints]);
+  useEffect(() => { localStorage.setItem('master_pathFilters', JSON.stringify(pathFilters)); }, [pathFilters]);
   useEffect(() => { localStorage.setItem('master_kec_vis_v2', JSON.stringify(kecamatanVisibility)); }, [kecamatanVisibility]);
 
   const mapContainerRef = useRef(null);
@@ -1429,6 +1437,12 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
         if (showPaths && plannedPath.length > 0) {
           plannedPath.forEach((pathObj) => {
             if (!pathObj || !pathObj.points || pathObj.points.length === 0) return;
+            
+            const isPolygon = pathObj.type === 'polygon';
+            // FILTER: Melewati sketsa jika status filter tidak dicentang
+            if (isPolygon && !pathFilters.poligon) return;
+            if (!isPolygon && !pathFilters.rencana) return;
+
             const coords = pathObj.points.map(pt => [parseCoordToFloat(pt.lat), parseCoordToFloat(pt.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
             
             if (coords.length > 0) {
@@ -1448,31 +1462,48 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
               if (showSketchLabels) {
                 const middleIndex = Math.floor(coords.length / 2);
                 const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
-                const skMarker = window.L.marker(centerPoint, { interactive: false, zIndexOffset: 100, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `
-                  <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.9); color: #1e293b;" class="w-max whitespace-nowrap px-2 py-0.5 rounded-full text-[8px] font-bold shadow-sm uppercase tracking-wider backdrop-blur-sm border border-white/60 text-center pointer-events-none">
-                    ${pathObj.name || (isPolygon ? 'Poligon' : 'Garis')}
-                  </div>`, iconSize: [0, 0] }) }).addTo(routeLayerRef.current);
+                window.L.marker(centerPoint, { 
+                  interactive: false, 
+                  zIndexOffset: 100, 
+                  icon: window.L.divIcon({ 
+                    className: 'bg-transparent border-0 overflow-visible', 
+                    html: `<div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.9); color: #1e293b;" class="w-max whitespace-nowrap px-2 py-0.5 rounded-full text-[8px] font-bold shadow-sm uppercase tracking-wider backdrop-blur-sm border border-white/60 text-center pointer-events-none">
+                      ${pathObj.name || (isPolygon ? 'Poligon' : 'Garis')}
+                    </div>`, 
+                    iconSize: [0, 0] 
+                  }) 
+                }).addTo(routeLayerRef.current);
               }
 
               let segmentTotalDist = 0;
               for (let i = 0; i < coords.length; i++) {
                 if (showSketchPoints) {
                   window.L.marker([coords[i][0], coords[i][1]], { interactive: false, zIndexOffset: 150, icon: window.L.divIcon({ className: 'bg-transparent border-0', html: `<div style="transform: translate(-50%, -50%); background-color: ${pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')};" class="w-2.5 h-2.5 border border-white rounded-full shadow-md"></div>`, iconSize: [0, 0] }) }).addTo(routeLayerRef.current);
-                 if (showSketchLabels) {
-                    const middleIndex = Math.floor(coords.length / 2);
-                    const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
-                    window.L.marker(centerPoint, {
-                      interactive: false,
-                      zIndexOffset: 7100,
-                      icon: window.L.divIcon({
-                        className: 'bg-transparent border-0 overflow-visible',
-                        html: `<div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.9); color: #1e293b;" class="w-max whitespace-nowrap px-2 py-0.5 rounded-full text-[8px] font-bold shadow-sm uppercase tracking-wider backdrop-blur-sm border border-white/60 text-center leading-tight pointer-events-none">
-                                ${seg.name || 'Segmen Realisasi'}
-                               </div>`,
-                        iconSize: [0, 0]
-                      })
-                    }).addTo(surveyLayerRef.current);
-                 }
+                }
+                
+                if (i < coords.length - 1) {
+                  const pt1 = window.L.latLng(coords[i][0], coords[i][1]); 
+                  const pt2 = window.L.latLng(coords[i + 1][0], coords[i + 1][1]);
+                  const dist = pt1.distanceTo(pt2); 
+                  segmentTotalDist += dist;
+                  if (showDistances) {
+                    window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')) }).addTo(routeLayerRef.current);
+                  }
+                }
+                
+                if (showDistances && i === coords.length - 1 && i > 0) {
+                  let closeDist = 0;
+                  if (isPolygon && coords.length > 2) {
+                      const ptStart = window.L.latLng(coords[0][0], coords[0][1]);
+                      const ptEnd = window.L.latLng(coords[i][0], coords[i][1]);
+                      closeDist = ptStart.distanceTo(ptEnd);
+                      
+                      window.L.marker([(ptStart.lat + ptEnd.lat) / 2, (ptStart.lng + ptEnd.lng) / 2], {
+                          interactive: false,
+                          zIndexOffset: 7200,
+                          icon: createDistLabel(closeDist > 1000 ? `${(closeDist / 1000).toFixed(2)} km` : `${Math.round(closeDist)} m`, false, pathObj.color || '#10b981')
+                      }).addTo(routeLayerRef.current);
+                  }
                   const finalDist = segmentTotalDist + closeDist;
                   window.L.marker([coords[i][0], coords[i][1]], { interactive: false, zIndexOffset: 200, icon: createDistLabel(finalDist > 1000 ? `${(finalDist / 1000).toFixed(2)} km` : `${Math.round(finalDist)} m${isPolygon?' (Keliling)':''}`, true, pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')) }).addTo(routeLayerRef.current);
                 }
@@ -1484,7 +1515,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
         // B. GAMBAR JALUR REALISASI (AKTUAL LAPANGAN)
         let hasActualLine = false; // FLAG: Cek apakah sudah ada garis rute
 
-        if (showPaths && actualSegsToRender.length > 0) {
+        if (showPaths && pathFilters.realisasi && actualSegsToRender.length > 0) {
           let allActualCoordsForLabel = []; // Kumpulkan semua kordinat realisasi untuk titik tengah label tahun
 
           actualSegsToRender.forEach(seg => {
@@ -1559,7 +1590,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
         // C. GAMBAR TITIK PUSAT (MARKER UTAMA PROYEK)
         // Hanya digambar jika rute belum diperpanjang (Hanya ada 1 titik dari Data Survei Awal)
         // ATAU jika fitur tampilkan jalur dimatikan (!showPaths)
-        if (!hasActualLine || !showPaths) {
+        if (!hasActualLine || !showPaths || !pathFilters.realisasi) {
             let lat = parseCoordToFloat(p.start_lat);
             let lng = parseCoordToFloat(p.start_lng);
             
@@ -1598,7 +1629,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
         isInitialFitDone.current = true;
       }
     }
-  }, [isMapReady, allProjects, onSelectProject, showPaths, showDistances, showSketchLabels, showSketchPoints]);
+  }, [isMapReady, allProjects, onSelectProject, showPaths, showDistances, showSketchLabels, showSketchPoints, pathFilters]);
 
   return (
     <>
@@ -1609,6 +1640,37 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
             {showPaths ? <Eye size={20} className="text-blue-400 shrink-0" /> : <EyeOff size={20} className="shrink-0" />} 
           </button>
           
+          {/* MENU FILTER LAYER RUTE KHUSUS */}
+          {showPaths && (
+            <div className="relative">
+               <button onClick={() => setShowPathMenu(!showPathMenu)} className={`bg-black/60 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-white/10 hover:bg-black/80 transition-all ${Object.values(pathFilters).some(v=>v) ? 'text-white border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'text-slate-400'}`} title="Pilih Layer Rute Tertentu">
+                 <Layers size={20} className={`shrink-0 ${Object.values(pathFilters).some(v=>v) ? "text-blue-400" : ""}`} /> 
+               </button>
+               
+               {showPathMenu && (
+                  <div className="absolute bottom-full right-0 mb-2 w-52 bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-700 p-4 flex flex-col gap-3 animate-in slide-in-from-bottom-2">
+                     <div className="flex justify-between items-center border-b border-slate-700 pb-2.5 shrink-0">
+                         <span className="text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-1.5"><Layers size={12} className="text-blue-400"/> Filter Layer</span>
+                     </div>
+                     <div className="flex flex-col gap-3">
+                         <label className="flex items-center gap-3 text-xs font-medium text-slate-300 cursor-pointer hover:text-white transition-colors group">
+                             <input type="checkbox" checked={pathFilters.rencana} onChange={() => setPathFilters(p => ({...p, rencana: !p.rencana}))} className="w-3.5 h-3.5 rounded bg-slate-900 border-slate-600 text-blue-500 focus:ring-blue-500 cursor-pointer" />
+                             <span className="group-hover:translate-x-1 transition-transform flex items-center gap-2"><div className="w-3 h-1 bg-amber-500"></div> Sketsa Garis</span>
+                         </label>
+                         <label className="flex items-center gap-3 text-xs font-medium text-slate-300 cursor-pointer hover:text-white transition-colors group">
+                             <input type="checkbox" checked={pathFilters.poligon} onChange={() => setPathFilters(p => ({...p, poligon: !p.poligon}))} className="w-3.5 h-3.5 rounded bg-slate-900 border-slate-600 text-emerald-500 focus:ring-emerald-500 cursor-pointer" />
+                             <span className="group-hover:translate-x-1 transition-transform flex items-center gap-2"><div className="w-3 h-3 bg-emerald-500/50 border border-emerald-500 rounded-[2px]"></div> Sketsa Poligon</span>
+                         </label>
+                         <label className="flex items-center gap-3 text-xs font-medium text-slate-300 cursor-pointer hover:text-white transition-colors group">
+                             <input type="checkbox" checked={pathFilters.realisasi} onChange={() => setPathFilters(p => ({...p, realisasi: !p.realisasi}))} className="w-3.5 h-3.5 rounded bg-slate-900 border-slate-600 text-blue-500 focus:ring-blue-500 cursor-pointer" />
+                             <span className="group-hover:translate-x-1 transition-transform flex items-center gap-2"><div className="w-3 h-1.5 bg-blue-500"></div> Rute Realisasi</span>
+                         </label>
+                     </div>
+                  </div>
+               )}
+            </div>
+          )}
+
           <div className="relative">
              <button onClick={() => setShowKecMenu(!showKecMenu)} className={`bg-black/60 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-white/10 hover:bg-black/80 transition-all ${!Object.values(kecamatanVisibility).some(v=>v) ? 'text-slate-400' : 'text-white border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.3)]'}`} title="Filter Batas Kecamatan">
                <MapIcon size={20} className={`shrink-0 ${Object.values(kecamatanVisibility).some(v=>v) ? "text-purple-400" : ""}`} /> 
@@ -1685,11 +1747,6 @@ const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBac
      if (filterTahun === 'Semua') return allProjects;
      return allProjects.filter(p => String(p.tahun) === String(filterTahun));
   }, [allProjects, filterTahun]);
-
-  // --- KALKULASI RINGKASAN PORTOFOLIO KESELURUHAN (Berdasarkan Filter) ---
-  const totalProjects = filteredProjectsForMap.length;
-  const runningProjects = filteredProjectsForMap.filter(p => p.status === 'Running' || parseFloat(p.actual_progress || 0) > 0).length;
-  const avgProgress = totalProjects > 0 ? filteredProjectsForMap.reduce((sum, p) => sum + parseFloat(p.actual_progress || 0), 0) / totalProjects : 0;
 
   return (
     <div className="relative w-full h-screen overflow-hidden font-sans bg-slate-900">
@@ -1771,18 +1828,6 @@ const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBac
              </button>
          </div>
       </header>
-
-      {/* WIDGET RINGKASAN PROGRESS KESELURUHAN (SIMPLIFIED & DARK) */}
-      <div className={`absolute bottom-6 left-4 md:left-6 z-20 pointer-events-none transition-all duration-500 ease-in-out ${isUIHidden ? 'translate-y-48 opacity-0' : 'translate-y-0 opacity-100'}`}>
-         <div className="bg-black/70 backdrop-blur-md p-5 rounded-[20px] shadow-[0_8px_30px_rgba(0,0,0,0.3)] border border-white/10 pointer-events-auto flex flex-col gap-3 min-w-[260px] text-slate-200">
-            <div className="text-[11px] md:text-xs font-bold tracking-wide">
-               Total Pek/Total Kamar : <span className="text-blue-400 font-black text-base ml-1">{totalProjects}</span>
-            </div>
-            <div className="text-[11px] md:text-xs font-bold tracking-wide">
-               Total Progress Keseluruhan : <span className="text-emerald-400 font-black text-base ml-1">{avgProgress.toFixed(1)}%</span>
-            </div>
-         </div>
-      </div>
       
     </div>
   );
