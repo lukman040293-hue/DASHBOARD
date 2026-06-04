@@ -3950,14 +3950,14 @@ const PublicDashboardView = ({ projectData, actualProg, terminPct, terminNum, si
 
       <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto custom-scrollbar flex flex-col gap-6">
         {/* Row 1: Statistik Utama */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 shrink-0">
             <CircularStatCard label="Progress Fisik" icon={Activity} percentage={actualProg !== null ? actualProg : (projectData?.actual_progress || 0)} trend={true} isPositive={isDeviasiPositive} dropShadowColor="emerald" subContent={<div className="flex flex-col items-center mt-1"><span className="text-[12px] md:text-sm font-bold uppercase tracking-wider text-slate-800">{String(lastUpdatedWeek).replace('M', 'Minggu Ke-').replace('W', 'Minggu Ke-')}</span><div className="text-[10px] font-medium flex items-center gap-1.5 mt-1 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100"><span className="text-slate-400 uppercase tracking-wider">Deviasi:</span><span className={isDeviasiPositive ? "text-emerald-500 font-bold" : "text-rose-500 font-bold"}>{isDeviasiPositive ? '+' : ''}{deviasi}%</span></div></div>} />
             <CircularStatCard label="Posisi Tagihan" icon={Banknote} percentage={terminPct ? parseFloat(terminPct) : 0} dropShadowColor="blue" subContent={<div className="flex flex-col items-center mt-1"><span className="text-[12px] md:text-sm font-bold uppercase tracking-wider text-slate-800">Termin {toRoman(String(terminNum))}</span><span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mt-1 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100">{projectData?.updated_at ? `TGL: ${new Date(projectData.updated_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}` : (projectData?.created_at ? `TGL: ${new Date(projectData.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}` : 'Belum diupdate')}</span></div>} />
             <StatCard icon={Clock} label="Sisa Waktu" value={sisaWaktuInfo.value} sub={sisaWaktuInfo.sub} status={sisaWaktuInfo.status} centered={true} />
         </div>
 
         {/* Row 2: Kurva S & Peta */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-[500px]">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[500px] shrink-0">
            {/* Kurva S (5 Kolom) */}
            <div className="lg:col-span-5 bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex flex-col h-[400px] lg:h-full">
               <div className="flex justify-between items-center mb-6 shrink-0"><h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest"><TrendingUp size={16} className="inline text-blue-500 mr-2"/>Kurva S Pekerjaan</h3></div>
@@ -3988,6 +3988,63 @@ const PublicDashboardView = ({ projectData, actualProg, terminPct, terminNum, si
              </div>
            </div>
         </div>
+
+        {/* Row 3: Item Pekerjaan */}
+        <div className="bg-white p-6 md:p-8 rounded-[32px] border border-slate-100 shadow-sm flex flex-col min-h-[300px] shrink-0">
+           <div className="flex justify-between items-center mb-5 border-b border-slate-100 pb-4 shrink-0">
+             <div className="flex items-center gap-3">
+               <div className="p-2 bg-blue-50/80 text-blue-600 rounded-xl shadow-sm border border-blue-100/50"><Ruler size={16} strokeWidth={2.5} /></div>
+               <h3 className="text-sm font-black text-slate-800 tracking-tight uppercase">Progress Item Pekerjaan</h3>
+             </div>
+           </div>
+
+           <div className="relative z-10 flex-1 overflow-hidden flex flex-col">
+             {(!projectData?.item_utama_data || projectData.item_utama_data.length === 0) ? (
+               <div className="text-center py-10 bg-slate-50/30 rounded-2xl border border-dashed border-slate-200 m-auto w-full">
+                 <Ruler size={24} className="mx-auto text-slate-300 mb-2" />
+                 <p className="text-xs font-bold text-slate-400">Belum ada item utama yang diatur.</p>
+               </div>
+             ) : (
+               <div className="overflow-x-auto custom-scrollbar w-full flex-1 pr-1">
+                 <table className="w-full text-left border-collapse min-w-[600px]">
+                   <thead className="bg-slate-50/50 border-b border-slate-200">
+                     <tr>
+                       <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest w-full">Item Pekerjaan</th>
+                       <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest text-right whitespace-nowrap">Hari Ini</th>
+                       <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest text-right whitespace-nowrap">Total</th>
+                       <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest text-right whitespace-nowrap">Satuan</th>
+                       <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest text-right whitespace-nowrap">Progress</th>
+                     </tr>
+                   </thead>
+                   <tbody className="divide-y divide-slate-100">
+                     {projectData.item_utama_data.map((item, idx) => (
+                       <tr key={item.id || idx} className="hover:bg-blue-50/40 transition-colors group">
+                         <td className="p-4">
+                           <span className="text-sm font-normal text-slate-800 leading-tight block uppercase" title={item.nama}>
+                             {item.nama}
+                           </span>
+                         </td>
+                         <td className="p-4 text-right text-sm font-normal text-slate-600">
+                           {item.bobot || '-'}
+                         </td>
+                         <td className="p-4 text-right text-sm font-normal text-slate-600">
+                           {item.nilai || '-'}
+                         </td>
+                         <td className="p-4 text-right text-sm font-normal text-slate-600 uppercase">
+                           {item.satuan || '-'}
+                         </td>
+                         <td className="p-4 text-right">
+                           <span className="text-base font-black text-blue-600 drop-shadow-sm">{item.persen}%</span>
+                         </td>
+                       </tr>
+                     ))}
+                   </tbody>
+                 </table>
+               </div>
+             )}
+           </div>
+        </div>
+
       </div>
     </div>
   );
