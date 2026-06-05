@@ -9,7 +9,7 @@ import {
   Briefcase, Image as ImageIcon, CalendarDays, MonitorPlay, FileSpreadsheet, FolderEdit,
   Save, MapIcon, ArrowLeft, Globe2, Fingerprint, RefreshCw, ArrowUp, ArrowDown,
   Users, UserPlus, Eye, EyeOff, Maximize, Minimize, ChevronLeft, ChevronRight, Download, Menu,
-  Lock, User, LogOut, Grid, ChevronDown, Bell, ChevronUp, Link, Share2, Layers
+  Lock, User, LogOut, Grid, ChevronDown, Bell, Share2, Layers
 } from 'lucide-react';
 
 // --- KONSTANTA & KONFIGURASI ---
@@ -140,11 +140,6 @@ const findDynamicValue = (data, labels, keys = []) => {
     return labels.some(kw => l.includes(kw)) || keys.some(kw => String(f.id).toLowerCase().includes(kw));
   });
   return field ? field.value : null;
-};
-
-const getSegNameFromLog = (desc) => {
-  const match = String(desc || '').match(/data hasil survei untuk (.*?)\.\n/);
-  return match && match[1] ? match[1].trim() : 'Segmen';
 };
 
 const getFileIconInfo = (filename) => {
@@ -381,17 +376,6 @@ const generateDailyReportReceipt = async (reportData, projectData, reporterName 
 };
 
 // --- KOMPONEN WIDGET KECIL ---
-const SurveyDetailRow = ({ label, value, isEven }) => (
-  <div className={`flex flex-col sm:flex-row py-3 px-6 border-b border-slate-100 last:border-0 ${isEven ? 'bg-slate-50/50' : 'bg-white'}`}>
-    <div className="w-full sm:w-1/3 mb-1 sm:mb-0 pr-4">
-      <span className="text-[11px] font-bold text-slate-500 uppercase">{label}</span>
-    </div>
-    <div className="w-full sm:w-2/3 flex flex-col sm:pl-4 sm:border-l sm:border-slate-200/60">
-      <span className="text-sm font-bold text-slate-800">{value}</span>
-    </div>
-  </div>
-);
-
 const SurveyInputRow = ({ label, children }) => (
   <div>
     <label className="text-[10px] font-bold block mb-1.5 uppercase text-slate-500">{label}</label>
@@ -1060,7 +1044,7 @@ const AbsensiView = ({ attendances, onBack, onDelete, isProcessing, onRefresh, e
   );
 };
 
-const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) => {
+const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, globalFeeds }) => {
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [isMapReady, setIsMapReady] = useState(false);
   
@@ -1079,6 +1063,10 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
   });
   const [showSketchPoints, setShowSketchPoints] = useState(() => {
     const saved = localStorage.getItem('master_showSketchPoints');
+    return saved !== null ? JSON.parse(saved) : false; 
+  });
+  const [showPhotos, setShowPhotos] = useState(() => {
+    const saved = localStorage.getItem('master_showPhotos');
     return saved !== null ? JSON.parse(saved) : false; 
   });
 
@@ -1107,6 +1095,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
   useEffect(() => { localStorage.setItem('master_showDistances', JSON.stringify(showDistances)); }, [showDistances]);
   useEffect(() => { localStorage.setItem('master_showSketchLabels', JSON.stringify(showSketchLabels)); }, [showSketchLabels]);
   useEffect(() => { localStorage.setItem('master_showSketchPoints', JSON.stringify(showSketchPoints)); }, [showSketchPoints]);
+  useEffect(() => { localStorage.setItem('master_showPhotos', JSON.stringify(showPhotos)); }, [showPhotos]);
   useEffect(() => { localStorage.setItem('master_pathFilters', JSON.stringify(pathFilters)); }, [pathFilters]);
   useEffect(() => { localStorage.setItem('master_kec_vis_v2', JSON.stringify(kecamatanVisibility)); }, [kecamatanVisibility]);
 
@@ -1118,6 +1107,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
   const markerLayerRef = useRef(null);
   const routeLayerRef = useRef(null); 
   const surveyLayerRef = useRef(null); 
+  const photoLayerRef = useRef(null);
   const tileLayerRef = useRef(null); 
   const isInitialFitDone = useRef(false);
 
@@ -1142,6 +1132,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
       markerLayerRef.current = window.L.featureGroup().addTo(mapInstanceRef.current);
       routeLayerRef.current = window.L.layerGroup().addTo(mapInstanceRef.current);
       surveyLayerRef.current = window.L.layerGroup().addTo(mapInstanceRef.current);
+      photoLayerRef.current = window.L.layerGroup().addTo(mapInstanceRef.current);
       
       setIsMapReady(true);
 
@@ -1638,6 +1629,81 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
     }
   }, [isMapReady, allProjects, onSelectProject, showPaths, showDistances, showSketchLabels, showSketchPoints, pathFilters]);
 
+  // --- LOGIKA MENAMPILKAN FOTO DOKUMENTASI DI PETA INDUK ---
+  useEffect(() => {
+    if (!isMapReady || !mapInstanceRef.current || !photoLayerRef.current) return;
+    photoLayerRef.current.clearLayers();
+
+    if (showPhotos && globalFeeds && globalFeeds.length > 0) {
+        const photoFeeds = globalFeeds.filter(f => f.media_url);
+        
+        photoFeeds.forEach(feed => {
+            const desc = feed.description || '';
+            const latMatch = desc.match(/Lat\s*([-0-9.]+)/) || desc.match(/Awal\s*\(([-0-9.]+)/);
+            const lngMatch = desc.match(/Lng\s*([-0-9.]+)/) || desc.match(/Awal\s*\([^,]+,\s*([-0-9.]+)/);
+
+            if (latMatch && lngMatch) {
+                const lat = parseFloat(latMatch[1]);
+                const lng = parseFloat(lngMatch[1]);
+                const firstImage = feed.media_url.split(',')[0];
+                const isVid = /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(firstImage || '');
+
+                if (!isNaN(lat) && !isNaN(lng)) {
+                     let cleanDesc = '';
+                     if (desc.includes('Catatan:')) {
+                         cleanDesc = desc.substring(desc.indexOf('Catatan:') + 8).trim();
+                     } else if (desc.includes('📝 CATATAN / KENDALA / SARAN:')) {
+                         cleanDesc = desc.substring(desc.indexOf('📝 CATATAN / KENDALA / SARAN:') + 29).trim();
+                     } else {
+                         cleanDesc = desc.replace(/^Penambahan titik.*$/gm, '')
+                                         .replace(/^Tim lapangan telah mengirimkan.*$/gm, '')
+                                         .replace(/^(Panjang|Lebar|Model) Eks\..*$/gm, '')
+                                         .replace(/^Koordinat:.*$/gm, '')
+                                         .replace(/^Awal\(.*$/gm, '')
+                                         .replace(/^Lat\s*[-0-9.]+.*$/gm, '')
+                                         .trim();
+                     }
+                     
+                     if (cleanDesc === '-' || cleanDesc === '') cleanDesc = 'Tidak ada catatan';
+
+                     const iconHtml = `
+                        <div style="transform: translate(-50%, -50%);" class="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.2)] border-2 border-rose-500 text-rose-500 hover:scale-110 hover:bg-rose-50 transition-transform cursor-pointer relative group">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                            ${isVid ? `<div class="absolute -top-1 -right-1 bg-rose-500 text-white p-0.5 rounded-full shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></div>` : ''}
+                        </div>
+                     `;
+
+                     const popupHtml = `
+                        <div class="flex flex-col min-w-[200px] max-w-[240px] drop-shadow-xl relative mt-1 group/popup">
+                            <div class="w-full h-[140px] rounded-t-xl overflow-hidden relative shrink-0">
+                                ${isVid ? 
+                                    `<video src="${firstImage}" class="w-full h-full object-cover bg-black" controls></video>` : 
+                                    `<a href="${firstImage}" target="_blank" title="Klik untuk memperbesar foto"><img src="${firstImage}" loading="lazy" class="w-full h-full object-cover hover:scale-105 transition-transform" /></a>`
+                                }
+                            </div>
+                            <div class="flex flex-col text-left w-full bg-white p-3.5 rounded-b-xl relative">
+                                <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white rotate-45 shadow-[2px_2px_4px_rgba(0,0,0,0.1)] -z-10"></div>
+                                <span class="text-[11px] font-medium text-slate-700 leading-snug w-full whitespace-normal relative z-10">${cleanDesc}</span>
+                                <span class="text-[9px] font-bold text-slate-400 mt-2 border-t border-slate-100 pt-1.5 relative z-10">
+                                    ${new Date(feed.created_at).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'})}
+                                </span>
+                            </div>
+                        </div>
+                     `;
+
+                     const marker = window.L.marker([lat, lng], {
+                        icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: iconHtml, iconSize: [0,0] }),
+                        zIndexOffset: 6500
+                     });
+
+                     marker.bindPopup(popupHtml, { closeButton: true, minWidth: 180, maxWidth: 240, autoPanPadding: [50, 50], className: 'custom-photo-popup', autoClose: false, closeOnClick: false });
+                     marker.addTo(photoLayerRef.current);
+                }
+            }
+        });
+    }
+  }, [isMapReady, globalFeeds, showPhotos]);
+
   return (
     <>
       <div id="master-map" ref={mapContainerRef} className="absolute inset-0 z-0 bg-slate-900" style={{ height: '100%', width: '100%' }} />
@@ -1725,6 +1791,9 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
               <button onClick={() => setShowDistances(!showDistances)} className={`bg-black/60 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-white/10 hover:bg-black/80 transition-all ${!showDistances ? 'text-slate-400' : 'text-white border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.3)]'}`} title="Tampilkan/Sembunyikan Jarak (m/km)">
                 <Ruler size={20} className={`shrink-0 ${showDistances ? "text-cyan-400" : ""}`} />
               </button>
+              <button onClick={() => setShowPhotos(!showPhotos)} className={`bg-black/60 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-white/10 hover:bg-black/80 transition-all ${!showPhotos ? 'text-slate-400' : 'text-white border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.3)]'}`} title="Tampilkan/Sembunyikan Foto Titik Lokasi">
+                <ImageIcon size={20} className={`shrink-0 ${showPhotos ? "text-rose-400" : ""}`} />
+              </button>
              </>
           )}
       </div>
@@ -1733,7 +1802,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden }) =>
 };
 
 // --- KOMPONEN BARU: PETA INDUK 360 3D (CESIUM) ---
-const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBackToSelection, onViewRekap }) => {
+const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBackToSelection, onViewRekap, globalFeeds }) => {
   // State untuk kontrol peta induk
   const [mapType, setMapType] = useState(() => localStorage.getItem('master_mapType') || 'satellite');
   const [isUIHidden, setIsUIHidden] = useState(false);
@@ -1760,7 +1829,7 @@ const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBac
       
       {/* MAP BACKGROUND (100% SCREEN) */}
       <div className="absolute inset-0 z-0">
-        <MasterMapView allProjects={filteredProjectsForMap} onSelectProject={onSelectProject} mapType={mapType} isUIHidden={isUIHidden} />
+        <MasterMapView allProjects={filteredProjectsForMap} onSelectProject={onSelectProject} mapType={mapType} isUIHidden={isUIHidden} globalFeeds={globalFeeds} />
       </div>
 
       {/* LOGO & MENU TOGGLE (MENGAMBANG DI KIRI ATAS) */}
@@ -4527,9 +4596,9 @@ export default function App() {
      try {
         const { data, error } = await supabaseClient
            .from('field_reports')
-           .select('id, title, created_at, project_id, is_problem')
+           .select('id, title, created_at, project_id, is_problem, description, media_url')
            .order('created_at', { ascending: false })
-           .limit(30);
+           .limit(100);
         if (!error && data) {
            setGlobalFeeds(data);
            if (data.length > 0 && !globalLatestFeedIdRef.current) {
@@ -4633,7 +4702,6 @@ export default function App() {
 
   // --- UI/Interaction States ---
   const [selectedLog, setSelectedLog] = useState(null);
-  const [activeSurveyLogId, setActiveSurveyLogId] = useState('');
   const [isDraggingDoc, setIsDraggingDoc] = useState(false);
   const [isDraggingReport, setIsDraggingReport] = useState(false);
   const [deleteConfig, setDeleteConfig] = useState(null);
@@ -6183,13 +6251,6 @@ export default function App() {
   const safeFeeds = useMemo(() => Array.isArray(feeds) ? feeds : [], [feeds]);
   const safeDocuments = useMemo(() => Array.isArray(documents) ? documents : [], [documents]);
 
-  const surveyLogs = useMemo(() => safeFeeds.filter(f => f.title === 'Pengiriman Data Survei').sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()), [safeFeeds]);
-
-  useEffect(() => {
-    if (surveyLogs.length > 0) { if (!activeSurveyLogId || !surveyLogs.find(l => l.id === activeSurveyLogId)) { setActiveSurveyLogId(surveyLogs[0].id); } }
-    else { setActiveSurveyLogId(''); }
-  }, [surveyLogs, activeSurveyLogId, projectData?.id]);
-
   const { actualProg, lastUpdatedWeek, deviasi, isDeviasiPositive, processedSCurveData } = useMemo(() => {
     let act = null, tgt = 0, pA = 0, week = '-';
     const proc = (sCurveData || []).map((d) => { let a = parseFloat(d.a); if (isNaN(a) || (a === 0 && pA > 0)) a = null; if (a !== null) pA = a; return { ...d, a }; });
@@ -6249,55 +6310,6 @@ export default function App() {
   }, [safeFeeds]);
   const weeklyReports = useMemo(() => safeDocuments.filter(d => d.category === 'Laporan' && String(d.name || '').toLowerCase().endsWith('.pdf')), [safeDocuments]);
   const persiapanSidebarFeeds = useMemo(() => safeFeeds.filter(f => !String(f.title || '').includes('Dokumentasi Survei 0%') && f.title !== 'Catatan Survei'), [safeFeeds]);
-
-  const dashboardData = useMemo(() => {
-    let displayPanjang = '-', displayLebar = '-', displayModel = '-', displaySegName = '-', tglStr = '-', sLat = '-', sLng = '-', eLat = '-', eLng = '-';
-    let displayNote = null, displayCsv = null; let displayPhotos = [];
-
-    const activeLog = surveyLogs.find(l => l.id === activeSurveyLogId);
-
-    if (activeLog) {
-      tglStr = new Date(activeLog.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) + ' ' + new Date(activeLog.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
-
-      const matchSeg = String(activeLog.description || '').match(/data hasil survei untuk (.*?)\.\n/);
-      const matchPanjang = String(activeLog.description || '').match(/(?:Panjang|Panjang Eks\.)\s*:\s*(.*?)m\s*\|/);
-      const matchLebar = String(activeLog.description || '').match(/(?:Lebar|Lebar Eks\.)\s*:\s*(.*?)m\s*\|/);
-      const matchModel = String(activeLog.description || '').match(/(?:Model|Model Eks\.)\s*:\s*(.*?)(?:\n|$)/);
-
-      if (matchSeg && matchSeg[1]) displaySegName = matchSeg[1].trim();
-      if (matchPanjang && matchPanjang[1]) displayPanjang = matchPanjang[1].trim();
-      if (matchLebar && matchLebar[1]) displayLebar = matchLebar[1].trim();
-      if (matchModel && matchModel[1]) displayModel = matchModel[1].trim();
-
-      const matchCoordLog = String(activeLog.description || '').match(/Koordinat:\s*Awal\(([^,]+),\s*([^)]+)\)(?:.*Akhir\(([^,]+),\s*([^)]+)\))?/);
-      if (matchCoordLog) {
-        sLat = matchCoordLog[1].trim(); sLng = matchCoordLog[2].trim();
-        if(matchCoordLog[3] && matchCoordLog[4]) {
-           eLat = matchCoordLog[3].trim(); eLng = matchCoordLog[4].trim();
-        }
-      }
-
-      const T = new Date(activeLog.created_at).getTime(); const timeWindow = 15000;
-
-      let rawPhotos = safeFeeds.filter(f => String(f.title || '').includes('Dokumentasi Survei') && Math.abs(new Date(f.created_at).getTime() - T) <= timeWindow);
-      let flatDisplayPhotos = [];
-      rawPhotos.forEach(f => {
-        String(f.media_url).split(',').forEach((u, idx) => {
-          flatDisplayPhotos.push({ ...f, media_url: u, original_id: f.id, display_id: `${f.id}-${idx}` });
-        });
-      });
-      displayPhotos = flatDisplayPhotos;
-      displayNote = safeFeeds.find(n => String(n.title || '').includes('Catatan Survei') && Math.abs(new Date(n.created_at).getTime() - T) <= timeWindow);
-      displayCsv = safeDocuments.find(d => String(d.name || '').toLowerCase().endsWith('.csv') && Math.abs(new Date(d.created_at).getTime() - T) <= timeWindow);
-    }
-
-    let noteText = displayNote ? String(displayNote.description || '') : '-';
-    noteText = noteText.replace(/^Tanggal Survei:.*?\n\n/, '');
-
-    return { displayPanjang, displayLebar, displayModel, displaySegName, displayPhotos, displayCsv, tglStr, noteText, sLat, sLng, eLat, eLng };
-  }, [safeFeeds, safeDocuments, surveyLogs, activeSurveyLogId]);
-
-  const { displayPanjang, displayLebar, displayModel, displaySegName, displayPhotos, displayCsv, tglStr, noteText, sLat, sLng, eLat, eLng } = dashboardData;
 
   const contractDataArrays = useMemo(() => {
     let dData = Array.isArray(projectData?.dinas_data) && projectData.dinas_data.length > 0
@@ -6881,6 +6893,7 @@ export default function App() {
             onAddProject={() => setShowNewProjectModal(true)} 
             onBackToSelection={handleBackToSelection}
             onViewRekap={() => setShowGlobalRekap(true)}
+            globalFeeds={globalFeeds}
         />
 
         {showNewProjectModal && (
@@ -7322,7 +7335,7 @@ export default function App() {
           </div>
         )}
 
-        {activeMenu === 'dokumentasi' && (<DokumentasiView feeds={safeFeeds} onView={setSelectedLog} onDelete={setDeleteConfig} />)}
+        {activeMenu === 'dokumentasi' && (<DokumentasiView projectData={projectData} feeds={safeFeeds} onView={setSelectedLog} onDelete={setDeleteConfig} />)}
         {activeMenu === 'map' && (<div className="h-full p-4 md:p-8"><SiteMapView projectData={projectData} feeds={safeFeeds} onUpdateRoutes={handleRoutesUpdate} isUpdating={isProcessing} showMsg={showMsg} /></div>)}
         {activeMenu === '3d-twin' && (<TwinViewer />)}
         {activeMenu === 'schedule' && (<GanttChartView projectData={projectData} onSaveSchedule={handleSaveSchedule} isProcessing={isProcessing} />)}
