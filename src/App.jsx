@@ -1462,7 +1462,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
                 const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
                 window.L.marker(centerPoint, { 
                   interactive: false, 
-                  zIndexOffset: 100, 
+                  zIndexOffset: 8000, 
                   icon: window.L.divIcon({ 
                     className: 'bg-transparent border-0 overflow-visible', 
                     html: `<div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.9); color: #1e293b;" class="w-max whitespace-nowrap px-2 py-0.5 rounded-full text-[8px] font-bold shadow-sm uppercase tracking-wider backdrop-blur-sm border border-white/60 text-center pointer-events-none">
@@ -1485,7 +1485,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
                   const dist = pt1.distanceTo(pt2); 
                   segmentTotalDist += dist;
                   if (showDistances) {
-                    window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')) }).addTo(routeLayerRef.current);
+                    window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 8200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')) }).addTo(routeLayerRef.current);
                   }
                 }
                 
@@ -1498,12 +1498,12 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
                       
                       window.L.marker([(ptStart.lat + ptEnd.lat) / 2, (ptStart.lng + ptEnd.lng) / 2], {
                           interactive: false,
-                          zIndexOffset: 7200,
+                          zIndexOffset: 8200,
                           icon: createDistLabel(closeDist > 1000 ? `${(closeDist / 1000).toFixed(2)} km` : `${Math.round(closeDist)} m`, false, pathObj.color || '#10b981')
                       }).addTo(routeLayerRef.current);
                   }
                   const finalDist = segmentTotalDist + closeDist;
-                  window.L.marker([coords[i][0], coords[i][1]], { interactive: false, zIndexOffset: 200, icon: createDistLabel(finalDist > 1000 ? `${(finalDist / 1000).toFixed(2)} km` : `${Math.round(finalDist)} m${isPolygon?' (Keliling)':''}`, true, pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')) }).addTo(routeLayerRef.current);
+                  window.L.marker([coords[i][0], coords[i][1]], { interactive: false, zIndexOffset: 8200, icon: createDistLabel(finalDist > 1000 ? `${(finalDist / 1000).toFixed(2)} km` : `${Math.round(finalDist)} m${isPolygon?' (Keliling)':''}`, true, pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')) }).addTo(routeLayerRef.current);
                 }
               }
             }
@@ -1565,10 +1565,10 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
                      const pt1 = window.L.latLng(coords[i][0], coords[i][1]); 
                      const pt2 = window.L.latLng(coords[i + 1][0], coords[i + 1][1]);
                      const dist = pt1.distanceTo(pt2); segmentTotalDist += dist;
-                     window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, segColor) }).addTo(surveyLayerRef.current);
+                     window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 8200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, segColor) }).addTo(surveyLayerRef.current);
                   }
                   const lastPt = coords[coords.length - 1];
-                  window.L.marker([lastPt[0], lastPt[1]], { interactive: false, zIndexOffset: 200, icon: createDistLabel(segmentTotalDist > 1000 ? `${(segmentTotalDist / 1000).toFixed(2)} km` : `${Math.round(segmentTotalDist)} m`, true, segColor) }).addTo(surveyLayerRef.current);
+                  window.L.marker([lastPt[0], lastPt[1]], { interactive: false, zIndexOffset: 8200, icon: createDistLabel(segmentTotalDist > 1000 ? `${(segmentTotalDist / 1000).toFixed(2)} km` : `${Math.round(segmentTotalDist)} m`, true, segColor) }).addTo(surveyLayerRef.current);
                 }
               }
             }
@@ -1578,7 +1578,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
           if (showSketchLabels && allActualCoordsForLabel.length > 0) {
             const middleIndex = Math.floor(allActualCoordsForLabel.length / 2);
             const centerPoint = window.L.latLng(allActualCoordsForLabel[middleIndex][0], allActualCoordsForLabel[middleIndex][1]);
-            const yrMarker = window.L.marker(centerPoint, { interactive: false, zIndexOffset: 120, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `
+            const yrMarker = window.L.marker(centerPoint, { interactive: false, zIndexOffset: 8100, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `
               <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.85); color: #334155;" class="w-max px-2 py-0.5 rounded-full text-[9px] font-black shadow-sm uppercase tracking-wider backdrop-blur-sm border border-white/60 text-center pointer-events-none">
                 ${p.tahun || 'Tanpa Tahun'}
               </div>`, iconSize: [0, 0] }) }).addTo(surveyLayerRef.current);
@@ -1635,7 +1635,11 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
     photoLayerRef.current.clearLayers();
 
     if (showPhotos && globalFeeds && globalFeeds.length > 0) {
-        const photoFeeds = globalFeeds.filter(f => f.media_url);
+        // Ambil daftar ID proyek yang sedang tampil di peta berdasarkan filter tahun
+        const visibleProjectIds = new Set(allProjects.map(p => p.id));
+        
+        // Filter foto agar HANYA menampilkan foto dari proyek yang lolos filter tahun
+        const photoFeeds = globalFeeds.filter(f => f.media_url && visibleProjectIds.has(f.project_id));
         
         photoFeeds.forEach(feed => {
             const desc = feed.description || '';
@@ -1702,7 +1706,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
             }
         });
     }
-  }, [isMapReady, globalFeeds, showPhotos]);
+  }, [isMapReady, globalFeeds, showPhotos, allProjects]);
 
   return (
     <>
@@ -3624,7 +3628,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
             const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
             window.L.marker(centerPoint, {
               interactive: false,
-              zIndexOffset: 7000,
+              zIndexOffset: 8000,
               icon: window.L.divIcon({
                 className: 'bg-transparent border-0 overflow-visible',
                 html: `<div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.9); color: #1e293b;" class="w-max whitespace-nowrap px-2 py-0.5 rounded-full text-[8px] font-bold shadow-sm uppercase tracking-wider backdrop-blur-sm border border-white/60 text-center leading-tight pointer-events-none">
@@ -3654,7 +3658,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
             if (i < coords.length - 1) {
               const pt1 = window.L.latLng(coords[i][0], coords[i][1]); const pt2 = window.L.latLng(coords[i + 1][0], coords[i + 1][1]);
               const dist = pt1.distanceTo(pt2); segmentTotalDist += dist;
-              if (showDistances) window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 7200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')) }).addTo(routeLayerRef.current);
+              if (showDistances) window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 8200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')) }).addTo(routeLayerRef.current);
             }
             
             // Draw total distance label at the last point
@@ -3668,12 +3672,12 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
                   // Menambahkan label jarak untuk garis penutup (closing segment) pada Poligon
                   window.L.marker([(ptStart.lat + ptEnd.lat) / 2, (ptStart.lng + ptEnd.lng) / 2], {
                       interactive: false,
-                      zIndexOffset: 7200,
+                      zIndexOffset: 8200,
                       icon: createDistLabel(closeDist > 1000 ? `${(closeDist / 1000).toFixed(2)} km` : `${Math.round(closeDist)} m`, false, pathObj.color || '#10b981')
                   }).addTo(routeLayerRef.current);
               }
               const finalDist = segmentTotalDist + closeDist;
-              window.L.marker([coords[i][0], coords[i][1]], { interactive: false, zIndexOffset: 7200, icon: createDistLabel(finalDist > 1000 ? `${(finalDist / 1000).toFixed(2)} km` : `${Math.round(finalDist)} m${isPolygon?' (Keliling)':''}`, true, pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')) }).addTo(routeLayerRef.current);
+              window.L.marker([coords[i][0], coords[i][1]], { interactive: false, zIndexOffset: 8200, icon: createDistLabel(finalDist > 1000 ? `${(finalDist / 1000).toFixed(2)} km` : `${Math.round(finalDist)} m${isPolygon?' (Keliling)':''}`, true, pathObj.color || (isPolygon ? '#10b981' : '#f59e0b')) }).addTo(routeLayerRef.current);
             }
           }
         }
@@ -3709,7 +3713,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
                 const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
                 window.L.marker(centerPoint, {
                   interactive: false,
-                  zIndexOffset: 7100,
+                  zIndexOffset: 8100,
                   icon: window.L.divIcon({
                     className: 'bg-transparent border-0 overflow-visible',
                     html: `<div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.9); color: #1e293b;" class="w-max whitespace-nowrap px-2 py-0.5 rounded-full text-[8px] font-bold shadow-sm uppercase tracking-wider backdrop-blur-sm border border-white/60 text-center leading-tight pointer-events-none">
@@ -3766,10 +3770,10 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
                 const pt2 = window.L.latLng(coords[i + 1][0], coords[i + 1][1]);
                 const dist = pt1.distanceTo(pt2); 
                 segmentTotalDist += dist;
-                window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 7200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, segColor) }).addTo(surveyLayerRef.current);
+                window.L.marker([(pt1.lat + pt2.lat) / 2, (pt1.lng + pt2.lng) / 2], { interactive: false, zIndexOffset: 8200, icon: createDistLabel(dist > 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`, false, segColor) }).addTo(surveyLayerRef.current);
              }
              const lastPt = coords[coords.length - 1];
-             window.L.marker([lastPt[0], lastPt[1]], { interactive: false, zIndexOffset: 7200, icon: createDistLabel(segmentTotalDist > 1000 ? `${(segmentTotalDist / 1000).toFixed(2)} km` : `${Math.round(segmentTotalDist)} m`, true, segColor) }).addTo(surveyLayerRef.current);
+             window.L.marker([lastPt[0], lastPt[1]], { interactive: false, zIndexOffset: 8200, icon: createDistLabel(segmentTotalDist > 1000 ? `${(segmentTotalDist / 1000).toFixed(2)} km` : `${Math.round(segmentTotalDist)} m`, true, segColor) }).addTo(surveyLayerRef.current);
           }
 
           hasActualData = true;
