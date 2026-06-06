@@ -1070,6 +1070,18 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
     return saved !== null ? JSON.parse(saved) : false; 
   });
 
+  // STATE BARU: Layer Global (Untuk Sungai, Jalan Utama, dll yang sifatnya permanen)
+  const [showGlobalLayers, setShowGlobalLayers] = useState(() => {
+    const saved = localStorage.getItem('master_showGlobalLayers');
+    return saved !== null ? JSON.parse(saved) : true; 
+  });
+  const [globalLayers, setGlobalLayers] = useState(() => {
+    const saved = localStorage.getItem('master_globalLayersData');
+    return saved !== null ? JSON.parse(saved) : [];
+  });
+  const [showGlobalEditor, setShowGlobalEditor] = useState(false);
+  const [globalInputMode, setGlobalInputMode] = useState('view'); // 'view', 'line', 'polygon'
+
   // STATE BARU: Filter Jenis Rute (Rencana, Realisasi, Poligon)
   const [pathFilters, setPathFilters] = useState(() => {
     const saved = localStorage.getItem('master_pathFilters');
@@ -1098,6 +1110,8 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
   useEffect(() => { localStorage.setItem('master_showPhotos', JSON.stringify(showPhotos)); }, [showPhotos]);
   useEffect(() => { localStorage.setItem('master_pathFilters', JSON.stringify(pathFilters)); }, [pathFilters]);
   useEffect(() => { localStorage.setItem('master_kec_vis_v2', JSON.stringify(kecamatanVisibility)); }, [kecamatanVisibility]);
+  useEffect(() => { localStorage.setItem('master_showGlobalLayers', JSON.stringify(showGlobalLayers)); }, [showGlobalLayers]);
+  useEffect(() => { localStorage.setItem('master_globalLayersData', JSON.stringify(globalLayers)); }, [globalLayers]);
 
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -1109,6 +1123,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
   const surveyLayerRef = useRef(null); 
   const photoLayerRef = useRef(null);
   const tileLayerRef = useRef(null); 
+  const globalFeatureLayerRef = useRef(null); // LAYER KHUSUS GLOBAL FEATURE
   const isInitialFitDone = useRef(false);
 
   useEffect(() => {
@@ -1133,6 +1148,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
       routeLayerRef.current = window.L.layerGroup().addTo(mapInstanceRef.current);
       surveyLayerRef.current = window.L.layerGroup().addTo(mapInstanceRef.current);
       photoLayerRef.current = window.L.layerGroup().addTo(mapInstanceRef.current);
+      globalFeatureLayerRef.current = window.L.layerGroup().addTo(mapInstanceRef.current); // Init Layer Global
       
       setIsMapReady(true);
 
@@ -1271,6 +1287,101 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
       tileLayerRef.current = window.L.tileLayer(url, { maxNativeZoom: 19, maxZoom: 22, attribution }).addTo(mapInstanceRef.current);
     }
   }, [isMapReady, mapType]);
+
+  // --- LOGIKA KLIK PETA UNTUK EDITOR GLOBAL ---
+  useEffect(() => {
+    if (isMapReady && mapInstanceRef.current) {
+      const handleGlobalMapClick = (e) => {
+        if (showGlobalEditor && (globalInputMode === 'line' || globalInputMode === 'polygon')) {
+          setGlobalLayers(prev => {
+            const newLayers = [...prev];
+            let lastItem = newLayers[newLayers.length - 1];
+            let lastType = lastItem ? lastItem.type : null;
+
+            // Buat layer baru jika belum ada atau ganti mode gambar
+            if (newLayers.length === 0 || lastType !== globalInputMode) {
+              newLayers.push({
+                id: `global-${Date.now()}`,
+                name: globalInputMode === 'line' ? `Sungai/Jalan ${newLayers.length + 1}` : `Area Utama ${newLayers.length + 1}`,
+                type: globalInputMode,
+                color: globalInputMode === 'line' ? '#0ea5e9' : '#14b8a6', // Cyan atau Teal default
+                isDashed: false,
+                points: []
+              });
+            }
+            const idx = newLayers.length - 1;
+            newLayers[idx] = {
+              ...newLayers[idx],
+              points: [...(newLayers[idx].points || []), { lat: e.latlng.lat, lng: e.latlng.lng }]
+            };
+            return newLayers;
+          });
+        }
+      };
+      
+      mapInstanceRef.current.on('click', handleGlobalMapClick);
+      return () => { if (mapInstanceRef.current) mapInstanceRef.current.off('click', handleGlobalMapClick); };
+    }
+  }, [isMapReady, showGlobalEditor, globalInputMode]);
+
+  // --- LOGIKA RENDER LAYER GLOBAL ---
+  useEffect(() => {
+    if (!isMapReady || !mapInstanceRef.current || !globalFeatureLayerRef.current) return;
+    globalFeatureLayerRef.current.clearLayers();
+
+    if (showGlobalLayers) {
+      globalLayers.forEach(layer => {
+        if (!layer.points || layer.points.length === 0) return;
+        const coords = layer.points.map(p => [p.lat, p.lng]);
+        
+        if (coords.length > 0) {
+          let shape;
+          if (layer.type === 'polygon') {
+            shape = window.L.polygon(coords, { 
+              color: layer.color || '#14b8a6', 
+              weight: 3, 
+              fillColor: layer.color || '#14b8a6', 
+              fillOpacity: 0.25 
+            }).addTo(globalFeatureLayerRef.current);
+          } else {
+            shape = window.L.polyline(coords, { 
+              color: layer.color || '#0ea5e9', 
+              weight: 5, 
+              opacity: 0.9, 
+              dashArray: layer.isDashed ? '10, 10' : null 
+            }).addTo(globalFeatureLayerRef.current);
+          }
+
+          // Tambahkan Label Nama (Muncul di tengah garis/poligon)
+          if (coords.length > 1 || layer.type === 'polygon') {
+             const middleIndex = Math.floor(coords.length / 2);
+             const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
+             window.L.marker(centerPoint, { 
+                interactive: false, 
+                zIndexOffset: 7000, 
+                icon: window.L.divIcon({ 
+                  className: 'bg-transparent border-0 overflow-visible', 
+                  html: `<div style="transform: translate(-50%, -50%); background-color: transparent; color: ${layer.color}; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;" class="w-max whitespace-nowrap px-1 py-0 text-[10px] font-black uppercase tracking-wider text-center pointer-events-none drop-shadow-md">
+                    ${layer.name || 'Jalur Pendukung'}
+                  </div>`, 
+                  iconSize: [0, 0] 
+                }) 
+             }).addTo(globalFeatureLayerRef.current);
+          }
+
+          // Munculkan titik vertex HANYA saat editor global terbuka
+          if (showGlobalEditor) {
+             coords.forEach(c => {
+                 window.L.marker(c, { 
+                     interactive: false, zIndexOffset: 8500, 
+                     icon: window.L.divIcon({ className: 'bg-transparent border-0', html: `<div style="transform: translate(-50%, -50%); background-color: ${layer.color};" class="w-3 h-3 border-2 border-white rounded-full shadow-md"></div>`, iconSize: [0, 0] }) 
+                 }).addTo(globalFeatureLayerRef.current);
+             });
+          }
+        }
+      });
+    }
+  }, [isMapReady, globalLayers, showGlobalLayers, showGlobalEditor]);
 
   // --- LOGIKA UTAMA RENDER PETA INDUK (MARKER + JALUR) ---
   useEffect(() => {
@@ -1436,7 +1547,9 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
           plannedPath.forEach((pathObj) => {
             if (!pathObj || !pathObj.points || pathObj.points.length === 0) return;
             
-            const isPolygon = pathObj.type === 'polygon';
+            const isPolygon = pathObj.type === 'polygon' || pathObj.type === 'support_polygon';
+            const isSupporting = pathObj.type === 'support_line' || pathObj.type === 'support_polygon';
+
             // FILTER: Melewati sketsa jika status filter tidak dicentang
             if (isPolygon && !pathFilters.poligon) return;
             if (!isPolygon && !pathFilters.rencana) return;
@@ -1444,7 +1557,6 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
             const coords = pathObj.points.map(pt => [parseCoordToFloat(pt.lat), parseCoordToFloat(pt.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
             
             if (coords.length > 0) {
-              const isPolygon = pathObj.type === 'polygon';
               let shape;
               if (isPolygon) {
                 shape = window.L.polygon(coords, { color: pathObj.color || '#10b981', weight: 3, fillColor: pathObj.color || '#10b981', fillOpacity: 0.3, dashArray: pathObj.isDashed ? '10, 10' : null }).addTo(routeLayerRef.current);
@@ -1455,8 +1567,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
               // Pop-up Detail dinonaktifkan di sini agar HANYA muncul di Jalur Realisasi saja
 
               coords.forEach(c => bounds.extend(c));
-              hasData = true;
-
+              // TAMPILKAN NAMA/KETERANGAN JALUR DI TENGAH GARIS
               if (showSketchLabels) {
                 const middleIndex = Math.floor(coords.length / 2);
                 const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
@@ -1466,7 +1577,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
                   icon: window.L.divIcon({ 
                     className: 'bg-transparent border-0 overflow-visible', 
                     html: `<div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.9); color: #1e293b;" class="w-max whitespace-nowrap px-2 py-0.5 rounded-full text-[8px] font-bold shadow-sm uppercase tracking-wider backdrop-blur-sm border border-white/60 text-center pointer-events-none">
-                      ${pathObj.name || (isPolygon ? 'Poligon' : 'Garis')}
+                      <span class="text-slate-700">${p.tahun || 'Tanpa Tahun'}</span>
                     </div>`, 
                     iconSize: [0, 0] 
                   }) 
@@ -1514,16 +1625,12 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
         let hasActualLine = false; // FLAG: Cek apakah sudah ada garis rute
 
         if (showPaths && pathFilters.realisasi && actualSegsToRender.length > 0) {
-          let allActualCoordsForLabel = []; // Kumpulkan semua kordinat realisasi untuk titik tengah label tahun
-
           actualSegsToRender.forEach(seg => {
             if (seg.points && seg.points.length > 0) {
               const coords = seg.points.map(pt => [parseCoordToFloat(pt.lat), parseCoordToFloat(pt.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
               const segColor = seg.color || '#3b82f6';
 
               if (coords.length > 0) {
-                allActualCoordsForLabel = allActualCoordsForLabel.concat(coords); // Gabungkan semua kordinat
-
                 if (coords.length > 1) {
                   hasActualLine = true; // Tandai bahwa rute sudah digambar
                   const actualShape = window.L.polyline(coords, { color: segColor, weight: 5, opacity: 0.9 }).addTo(surveyLayerRef.current);
@@ -1542,6 +1649,23 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
                   coords.forEach(coord => {
                      window.L.marker(coord, { icon: createSimplePointMarker(segColor), zIndexOffset: 4500 }).addTo(surveyLayerRef.current);
                   });
+                }
+
+                // TAMPILKAN NAMA/KETERANGAN JALUR REALISASI DI TENGAH GARIS
+                if (showSketchLabels && coords.length > 1) {
+                   const middleIndex = Math.floor(coords.length / 2);
+                   const centerPoint = window.L.latLng(coords[middleIndex][0], coords[middleIndex][1]);
+                   window.L.marker(centerPoint, {
+                     interactive: false,
+                     zIndexOffset: 8100,
+                     icon: window.L.divIcon({
+                       className: 'bg-transparent border-0 overflow-visible',
+                       html: `<div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.9); color: #1e293b;" class="w-max whitespace-nowrap px-2 py-0.5 rounded-full text-[8px] font-bold shadow-sm uppercase tracking-wider backdrop-blur-sm border border-white/60 text-center leading-tight pointer-events-none">
+                               <span class="text-blue-600">${p.tahun || 'Tanpa Tahun'}</span>
+                              </div>`,
+                       iconSize: [0, 0]
+                     })
+                   }).addTo(surveyLayerRef.current);
                 }
                 
                 // HANYA GAMBAR PIN MAP/ICON JIKA DATA BERASAL DARI INPUT SURVEI (Memiliki boundary_end)
@@ -1573,16 +1697,6 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
               }
             }
           });
-
-          // TAMPILKAN SATU LABEL TAHUN PERWAKILAN PER PROYEK
-          if (showSketchLabels && allActualCoordsForLabel.length > 0) {
-            const middleIndex = Math.floor(allActualCoordsForLabel.length / 2);
-            const centerPoint = window.L.latLng(allActualCoordsForLabel[middleIndex][0], allActualCoordsForLabel[middleIndex][1]);
-            const yrMarker = window.L.marker(centerPoint, { interactive: false, zIndexOffset: 8100, icon: window.L.divIcon({ className: 'bg-transparent border-0 overflow-visible', html: `
-              <div style="transform: translate(-50%, -50%); background-color: rgba(255,255,255,0.85); color: #334155;" class="w-max px-2 py-0.5 rounded-full text-[9px] font-black shadow-sm uppercase tracking-wider backdrop-blur-sm border border-white/60 text-center pointer-events-none">
-                ${p.tahun || 'Tanpa Tahun'}
-              </div>`, iconSize: [0, 0] }) }).addTo(surveyLayerRef.current);
-          }
         }
 
         // C. GAMBAR TITIK PUSAT (MARKER UTAMA PROYEK)
@@ -1784,6 +1898,10 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
              )}
           </div>
           
+          <button onClick={() => setShowGlobalLayers(!showGlobalLayers)} className={`bg-black/60 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-white/10 hover:bg-black/80 transition-all ${!showGlobalLayers ? 'text-slate-400' : 'text-white border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.3)]'}`} title="Tampilkan/Sembunyikan Layer Global (Sungai/Jalan Utama)">
+            <Globe2 size={20} className={`shrink-0 ${showGlobalLayers ? "text-cyan-400" : ""}`} />
+          </button>
+          
           {showPaths && (
              <>
               <button onClick={() => setShowSketchPoints(!showSketchPoints)} className={`bg-black/60 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-white/10 hover:bg-black/80 transition-all ${!showSketchPoints ? 'text-slate-400' : 'text-white border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]'}`} title="Tampilkan/Sembunyikan Titik Lokasi">
@@ -1792,15 +1910,130 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
               <button onClick={() => setShowSketchLabels(!showSketchLabels)} className={`bg-black/60 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-white/10 hover:bg-black/80 transition-all ${!showSketchLabels ? 'text-slate-400' : 'text-white border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]'}`} title="Tampilkan/Sembunyikan Label Nama">
                 <FileText size={20} className={`shrink-0 ${showSketchLabels ? "text-amber-400" : ""}`} />
               </button>
-              <button onClick={() => setShowDistances(!showDistances)} className={`bg-black/60 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-white/10 hover:bg-black/80 transition-all ${!showDistances ? 'text-slate-400' : 'text-white border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.3)]'}`} title="Tampilkan/Sembunyikan Jarak (m/km)">
-                <Ruler size={20} className={`shrink-0 ${showDistances ? "text-cyan-400" : ""}`} />
+              <button onClick={() => setShowDistances(!showDistances)} className={`bg-black/60 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-white/10 hover:bg-black/80 transition-all ${!showDistances ? 'text-slate-400' : 'text-white border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.3)]'}`} title="Tampilkan/Sembunyikan Jarak (m/km)">
+                <Ruler size={20} className={`shrink-0 ${showDistances ? "text-indigo-400" : ""}`} />
               </button>
               <button onClick={() => setShowPhotos(!showPhotos)} className={`bg-black/60 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-white/10 hover:bg-black/80 transition-all ${!showPhotos ? 'text-slate-400' : 'text-white border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.3)]'}`} title="Tampilkan/Sembunyikan Foto Titik Lokasi">
                 <ImageIcon size={20} className={`shrink-0 ${showPhotos ? "text-rose-400" : ""}`} />
               </button>
              </>
           )}
+
+          {!showGlobalEditor && (
+             <button onClick={() => { setShowGlobalEditor(true); setGlobalInputMode('line'); }} className="bg-cyan-600/80 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-cyan-400/50 hover:bg-cyan-600 transition-all text-white ml-2" title="Editor Layer Global (Sungai/Pipa)">
+                <Edit3 size={20} className="shrink-0" />
+             </button>
+          )}
       </div>
+
+      {/* PANEL EDITOR LAYER GLOBAL */}
+      {showGlobalEditor && (
+        <div className="absolute top-24 right-4 md:top-20 md:right-6 bottom-4 z-[9999] w-[300px] md:w-[340px] bg-slate-800/95 backdrop-blur-xl border border-slate-600/50 rounded-3xl shadow-2xl flex flex-col pointer-events-auto overflow-hidden animate-in slide-in-from-right-4">
+          <button onClick={() => { setShowGlobalEditor(false); setGlobalInputMode('view'); }} className="absolute top-4 right-4 p-2 bg-slate-700/50 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-full transition-colors z-40" title="Tutup Editor">
+            <X size={16} />
+          </button>
+          
+          <div className="p-5 border-b border-slate-700/50 shrink-0 bg-slate-800/80">
+            <h4 className="text-sm font-black text-white mb-1 pr-8">Editor Layer Global</h4>
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Gambar Sungai, Jalan, atau Pipa Permanen</p>
+            
+            <div className="flex gap-2 mt-4 text-center">
+              <button onClick={() => setGlobalInputMode('line')} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black transition-all ${globalInputMode === 'line' ? 'bg-cyan-500 text-white shadow-md' : 'bg-slate-700/50 text-slate-400 hover:text-slate-200 hover:bg-slate-700'}`}>Garis</button>
+              <button onClick={() => setGlobalInputMode('polygon')} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black transition-all ${globalInputMode === 'polygon' ? 'bg-teal-500 text-white shadow-md' : 'bg-slate-700/50 text-slate-400 hover:text-slate-200 hover:bg-slate-700'}`}>Poligon</button>
+            </div>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+             {(globalInputMode === 'line' || globalInputMode === 'polygon') && (
+                <p className="text-[10px] font-bold text-cyan-200 bg-cyan-900/30 p-3 rounded-xl border border-cyan-800/50 mb-4 leading-relaxed">
+                   Mode Menggambar Aktif: Klik di peta untuk menambah titik <b>{globalInputMode === 'polygon' ? 'poligon' : 'garis'}</b>.
+                </p>
+             )}
+
+             <div className="space-y-3">
+               {globalLayers.length === 0 ? (
+                  <div className="p-6 text-center text-slate-500 text-xs font-medium border border-dashed border-slate-600 rounded-2xl">Belum ada layer global yang digambar.</div>
+               ) : globalLayers.map(layer => (
+                  <div key={layer.id} className="bg-slate-700/40 p-3 rounded-xl border border-slate-600/50 shadow-inner group">
+                     <div className="flex justify-between items-center mb-2.5 gap-2">
+                        <input 
+                           type="text" 
+                           value={layer.name} 
+                           onChange={(e) => setGlobalLayers(prev => prev.map(l => l.id === layer.id ? { ...l, name: e.target.value } : l))}
+                           className="font-bold text-white text-xs outline-none bg-transparent w-full focus:border-b border-cyan-400"
+                           placeholder="Nama Landmark"
+                        />
+                        <button onClick={() => setGlobalLayers(prev => prev.filter(l => l.id !== layer.id))} className="text-rose-400 bg-rose-500/10 p-1.5 rounded hover:bg-rose-500/20 shrink-0"><Trash size={12} /></button>
+                     </div>
+                     <div className="flex items-center gap-2 mb-2 bg-slate-800/60 p-1.5 rounded-lg border border-slate-700/50">
+                        <input 
+                           type="color" 
+                           value={layer.color || (layer.type === 'polygon' ? '#14b8a6' : '#0ea5e9')} 
+                           onChange={(e) => setGlobalLayers(prev => prev.map(l => l.id === layer.id ? { ...l, color: e.target.value } : l))}
+                           className="w-6 h-6 p-0 border-0 rounded cursor-pointer shrink-0"
+                           title="Warna Layer"
+                        />
+                        <select 
+                           value={layer.type || 'line'}
+                           onChange={(e) => setGlobalLayers(prev => prev.map(l => l.id === layer.id ? { ...l, type: e.target.value } : l))}
+                           className="text-[9px] font-bold outline-none bg-transparent text-slate-300 w-full cursor-pointer"
+                        >
+                           <option value="line" className="bg-slate-800">Garis</option>
+                           <option value="polygon" className="bg-slate-800">Poligon</option>
+                        </select>
+                        <select 
+                           value={layer.isDashed ? 'dashed' : 'solid'}
+                           onChange={(e) => setGlobalLayers(prev => prev.map(l => l.id === layer.id ? { ...l, isDashed: e.target.value === 'dashed' } : l))}
+                           className="text-[9px] font-bold outline-none bg-transparent text-slate-300 w-full cursor-pointer"
+                        >
+                           <option value="solid" className="bg-slate-800">Lurus</option>
+                           <option value="dashed" className="bg-slate-800">Putus-putus</option>
+                        </select>
+                     </div>
+                     
+                     {/* List Titik Vertex */}
+                     <div className="pl-1 max-h-32 overflow-y-auto custom-scrollbar pr-1">
+                       {(!layer.points || layer.points.length === 0) ? <div className="text-[9px] text-slate-500 italic pb-1">0 Titik</div> : layer.points.map((p, i) => (
+                         <div key={i} className="flex justify-between items-center mb-1 pl-2 border-l-2 text-slate-400 group/pt hover:bg-slate-600/30 rounded py-0.5" style={{ borderColor: layer.color || (layer.type === 'polygon' ? '#14b8a6' : '#0ea5e9') }}>
+                            <div className="flex items-center gap-1 w-full mr-2">
+                               <span className="text-[8px] font-bold w-4">T{i+1}</span>
+                               <input type="number" step="any" value={p.lat} onChange={e => {
+                                  setGlobalLayers(prev => prev.map(l => {
+                                     if (l.id === layer.id) { const nPts = [...l.points]; nPts[i].lat = e.target.value; return { ...l, points: nPts }; }
+                                     return l;
+                                  }));
+                               }} className="w-full p-1 text-[9px] border border-slate-600 rounded outline-none focus:border-cyan-400 bg-slate-800 font-mono text-slate-200" />
+                               <input type="number" step="any" value={p.lng} onChange={e => {
+                                  setGlobalLayers(prev => prev.map(l => {
+                                     if (l.id === layer.id) { const nPts = [...l.points]; nPts[i].lng = e.target.value; return { ...l, points: nPts }; }
+                                     return l;
+                                  }));
+                               }} className="w-full p-1 text-[9px] border border-slate-600 rounded outline-none focus:border-cyan-400 bg-slate-800 font-mono text-slate-200" />
+                            </div>
+                            <button onClick={() => {
+                               setGlobalLayers(prev => prev.map(l => {
+                                  if (l.id === layer.id) { const nPts = [...l.points]; nPts.splice(i, 1); return { ...l, points: nPts }; }
+                                  return l;
+                               }));
+                            }} className="text-rose-400 opacity-0 group-hover/pt:opacity-100 p-1 shrink-0"><X size={10} /></button>
+                         </div>
+                       ))}
+                     </div>
+                  </div>
+               ))}
+             </div>
+             
+             <div className="flex gap-2 mt-4">
+               <button onClick={() => setGlobalLayers(prev => [...prev, { id: `global-${Date.now()}`, name: `Sungai ${prev.length + 1}`, type: 'line', color: '#0ea5e9', isDashed: false, points: [] }])} className="flex-1 text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 py-2.5 text-[10px] font-bold rounded-xl border border-cyan-500/30 transition-colors">+ Tambah Garis</button>
+               <button onClick={() => setGlobalLayers(prev => [...prev, { id: `gpoly-${Date.now()}`, name: `Area ${prev.length + 1}`, type: 'polygon', color: '#14b8a6', isDashed: false, points: [] }])} className="flex-1 text-teal-400 bg-teal-500/10 hover:bg-teal-500/20 py-2.5 text-[10px] font-bold rounded-xl border border-teal-500/30 transition-colors">+ Area</button>
+             </div>
+          </div>
+          
+          <div className="p-4 border-t border-slate-700/50 bg-slate-800/80">
+            <p className="text-[8px] text-slate-500 text-center font-medium leading-relaxed">Data Layer Global tersimpan secara lokal di peramban ini dan akan selalu tampil menimpa peta proyek mana pun.</p>
+          </div>
+        </div>
+      )}
     </>
   );
 };
@@ -3348,7 +3581,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
       plannedPath.forEach(path => {
         if (path.points && path.points.length > 0) {
           // Konversi warna HEX ke format KML (AABBGGRR)
-          const customColor = path.color ? path.color.replace('#', '') : (path.type === 'polygon' ? '10b981' : 'f59e0b');
+          const customColor = path.color ? path.color.replace('#', '') : (path.type === 'polygon' || path.type === 'support_polygon' ? '10b981' : 'f59e0b');
           const r = customColor.substring(0, 2); 
           const g = customColor.substring(2, 4); 
           const b = customColor.substring(4, 6);
@@ -3356,7 +3589,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
 
           kml += `      <Placemark>\n        <name>${path.name}</name>\n`;
           
-          if (path.type === 'polygon') {
+          if (path.type === 'polygon' || path.type === 'support_polygon') {
             let coords = path.points.map(p => `${p.lng},${p.lat},0`);
             // Pastikan titik awal dan akhir sama agar poligon menutup di KML
             if (coords.length > 0 && coords[0] !== coords[coords.length - 1]) { coords.push(coords[0]); }
@@ -3602,7 +3835,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
         if (!pathObj || !pathObj.points || pathObj.points.length === 0) return;
         const coords = pathObj.points.map(p => [parseCoordToFloat(p.lat), parseCoordToFloat(p.lng)]).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
         if (coords.length > 0) {
-          const isPolygon = pathObj.type === 'polygon';
+          const isPolygon = pathObj.type === 'polygon' || pathObj.type === 'support_polygon';
           let shape;
 
           if (isPolygon) {
@@ -4019,7 +4252,7 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
                       <div className="flex items-center gap-2 mb-2 bg-slate-50 p-1.5 rounded-md">
                          <input 
                             type="color" 
-                            value={pathObj.color || (pathObj.type === 'polygon' ? '#10b981' : '#f59e0b')} 
+                            value={pathObj.color || (pathObj.type === 'polygon' || pathObj.type === 'support_polygon' ? '#10b981' : '#f59e0b')} 
                             onChange={(e) => handleUpdatePath(pathObj.id, 'color', e.target.value)}
                             className="w-6 h-6 p-0 border-0 rounded cursor-pointer shrink-0"
                             title="Warna"
@@ -4029,8 +4262,10 @@ const SiteMapView = ({ projectData, onUpdateRoutes, isUpdating, showMsg, feeds, 
                             onChange={(e) => handleUpdatePath(pathObj.id, 'type', e.target.value)}
                             className="text-[9px] font-bold outline-none bg-transparent text-slate-700 w-full"
                          >
-                            <option value="line">Garis</option>
-                            <option value="polygon">Poligon</option>
+                            <option value="line">Garis Utama</option>
+                            <option value="polygon">Poligon Utama</option>
+                            <option value="support_line">Garis Pendukung</option>
+                            <option value="support_polygon">Poligon Pendukung</option>
                          </select>
                          <select 
                             value={pathObj.isDashed ? 'dashed' : 'solid'}
