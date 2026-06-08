@@ -1834,7 +1834,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
       <div id="master-map" ref={mapContainerRef} className="absolute inset-0 z-0 bg-slate-900" style={{ height: '100%', width: '100%' }} />
       
       {/* --- LEGENDA PETA INDUK --- */}
-      <div className={`absolute top-[180px] md:top-[180px] left-4 md:left-6 z-[20] flex flex-col items-start pointer-events-none transition-all duration-500 ease-in-out ${isUIHidden ? 'opacity-0 -translate-x-12' : 'opacity-100 translate-x-0'}`}>
+      <div className={`absolute top-[140px] md:top-[160px] left-4 md:left-6 z-[20] flex flex-col items-start pointer-events-none transition-all duration-500 ease-in-out ${isUIHidden ? 'opacity-0 -translate-x-12' : 'opacity-100 translate-x-0'}`}>
         {showLegend ? (
           <div className="bg-slate-800/95 backdrop-blur-xl border border-slate-600/50 rounded-2xl shadow-xl p-4 sm:p-5 pointer-events-auto w-[220px] sm:w-[260px] animate-in slide-in-from-left-4">
              <div className="flex justify-between items-center border-b border-slate-700 pb-2 mb-3.5">
@@ -1845,22 +1845,22 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
              <div className="flex flex-col gap-3.5">
                <div className="flex items-center gap-3">
                  <div className="w-5 h-1.5 border-t-[4px] border-solid border-blue-500 shrink-0 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
-                 <span className="text-[10px] font-medium text-slate-300 leading-tight">Jalur Realisasi (Selesai)</span>
+                 <span className="text-[10px] font-medium text-slate-300 leading-tight">Jalur Realisasi Selesai (100%)</span>
                </div>
                
                <div className="flex items-center gap-3">
                  <div className="w-5 h-1.5 border-t-[4px] border-dashed border-amber-500 shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.6)]"></div>
-                 <span className="text-[10px] font-medium text-slate-300 leading-tight">Jalur Rencana (Akan Datang)</span>
+                 <span className="text-[10px] font-medium text-slate-300 leading-tight">Jalur Rencana Tahun Ini (0%)</span>
                </div>
 
                <div className="flex items-center gap-3">
                  <div className="w-5 h-1.5 border-t-[4px] border-solid border-cyan-400 shrink-0 shadow-[0_0_8px_rgba(34,211,238,0.6)]"></div>
-                 <span className="text-[10px] font-medium text-slate-300 leading-tight">Layer Global (Jalur Pendukung)</span>
+                 <span className="text-[10px] font-medium text-slate-300 leading-tight">Keterangan Jalur Air</span>
                </div>
 
                <div className="flex items-center gap-3">
                  <div className="w-5 h-3 border-2 border-teal-500 bg-teal-500/30 shrink-0"></div>
-                 <span className="text-[10px] font-medium text-slate-300 leading-tight">Layer Global (Area Pendukung)</span>
+                 <span className="text-[10px] font-medium text-slate-300 leading-tight">Kolam Penampungan Air (Kolam Retensi)</span>
                </div>
              </div>
           </div>
@@ -1966,7 +1966,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
           )}
 
           {!showGlobalEditor && (
-             <button onClick={() => { setShowGlobalEditor(true); setGlobalInputMode('line'); }} className="bg-cyan-600/80 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-cyan-400/50 hover:bg-cyan-600 transition-all text-white ml-2" title="Editor Layer Global (Sungai/Pipa)">
+             <button onClick={() => { setShowGlobalEditor(true); setGlobalInputMode('line'); }} className="bg-cyan-600/80 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-cyan-400/50 hover:bg-cyan-600 transition-all text-white ml-2" title="Editor Layer Global (Jalur Air & Kolam)">
                 <Edit3 size={20} className="shrink-0" />
              </button>
           )}
@@ -1981,7 +1981,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
           
           <div className="p-5 border-b border-slate-700/50 shrink-0 bg-slate-800/80">
             <h4 className="text-sm font-black text-white mb-1 pr-8">Editor Layer Global</h4>
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Gambar Sungai, Jalan, atau Pipa Permanen</p>
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Gambar Jalur Air atau Kolam Retensi</p>
             
             <div className="flex gap-2 mt-4 text-center">
               <button onClick={() => setGlobalInputMode('line')} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black transition-all ${globalInputMode === 'line' ? 'bg-cyan-500 text-white shadow-md' : 'bg-slate-700/50 text-slate-400 hover:text-slate-200 hover:bg-slate-700'}`}>Garis</button>
@@ -2007,7 +2007,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
                            value={layer.name} 
                            onChange={(e) => setGlobalLayers(prev => prev.map(l => l.id === layer.id ? { ...l, name: e.target.value } : l))}
                            className="font-bold text-white text-xs outline-none bg-transparent w-full focus:border-b border-cyan-400"
-                           placeholder="Nama Landmark"
+                           placeholder="Nama Area / Jalur"
                         />
                         <button onClick={() => setGlobalLayers(prev => prev.filter(l => l.id !== layer.id))} className="text-rose-400 bg-rose-500/10 p-1.5 rounded hover:bg-rose-500/20 shrink-0"><Trash size={12} /></button>
                      </div>
@@ -2070,8 +2070,8 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
              </div>
              
              <div className="flex gap-2 mt-4">
-               <button onClick={() => setGlobalLayers(prev => [...prev, { id: `global-${Date.now()}`, name: `Sungai ${prev.length + 1}`, type: 'line', color: '#0ea5e9', isDashed: false, points: [] }])} className="flex-1 text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 py-2.5 text-[10px] font-bold rounded-xl border border-cyan-500/30 transition-colors">+ Tambah Garis</button>
-               <button onClick={() => setGlobalLayers(prev => [...prev, { id: `gpoly-${Date.now()}`, name: `Area ${prev.length + 1}`, type: 'polygon', color: '#14b8a6', isDashed: false, points: [] }])} className="flex-1 text-teal-400 bg-teal-500/10 hover:bg-teal-500/20 py-2.5 text-[10px] font-bold rounded-xl border border-teal-500/30 transition-colors">+ Area</button>
+               <button onClick={() => setGlobalLayers(prev => [...prev, { id: `global-${Date.now()}`, name: `Jalur Air ${prev.length + 1}`, type: 'line', color: '#0ea5e9', isDashed: false, points: [] }])} className="flex-1 text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 py-2.5 text-[10px] font-bold rounded-xl border border-cyan-500/30 transition-colors">+ Tambah Garis</button>
+               <button onClick={() => setGlobalLayers(prev => [...prev, { id: `gpoly-${Date.now()}`, name: `Kolam Retensi ${prev.length + 1}`, type: 'polygon', color: '#14b8a6', isDashed: false, points: [] }])} className="flex-1 text-teal-400 bg-teal-500/10 hover:bg-teal-500/20 py-2.5 text-[10px] font-bold rounded-xl border border-teal-500/30 transition-colors">+ Area</button>
              </div>
           </div>
           
