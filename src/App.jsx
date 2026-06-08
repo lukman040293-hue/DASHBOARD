@@ -1048,6 +1048,12 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [isMapReady, setIsMapReady] = useState(false);
   
+  // STATE BARU: Legenda Peta Induk
+  const [showLegend, setShowLegend] = useState(() => {
+    const saved = localStorage.getItem('master_showLegend');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
   // STATE BARU: Preferensi Tampilan Layer di Peta Induk (Disimpan ke Local Storage)
   const [showPaths, setShowPaths] = useState(() => {
     const saved = localStorage.getItem('master_showPaths');
@@ -1112,6 +1118,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
   useEffect(() => { localStorage.setItem('master_kec_vis_v2', JSON.stringify(kecamatanVisibility)); }, [kecamatanVisibility]);
   useEffect(() => { localStorage.setItem('master_showGlobalLayers', JSON.stringify(showGlobalLayers)); }, [showGlobalLayers]);
   useEffect(() => { localStorage.setItem('master_globalLayersData', JSON.stringify(globalLayers)); }, [globalLayers]);
+  useEffect(() => { localStorage.setItem('master_showLegend', JSON.stringify(showLegend)); }, [showLegend]);
 
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -1826,6 +1833,45 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
     <>
       <div id="master-map" ref={mapContainerRef} className="absolute inset-0 z-0 bg-slate-900" style={{ height: '100%', width: '100%' }} />
       
+      {/* --- LEGENDA PETA INDUK --- */}
+      <div className={`absolute top-[180px] md:top-[180px] left-4 md:left-6 z-[20] flex flex-col items-start pointer-events-none transition-all duration-500 ease-in-out ${isUIHidden ? 'opacity-0 -translate-x-12' : 'opacity-100 translate-x-0'}`}>
+        {showLegend ? (
+          <div className="bg-slate-800/95 backdrop-blur-xl border border-slate-600/50 rounded-2xl shadow-xl p-4 sm:p-5 pointer-events-auto w-[220px] sm:w-[260px] animate-in slide-in-from-left-4">
+             <div className="flex justify-between items-center border-b border-slate-700 pb-2 mb-3.5">
+               <h4 className="text-[10px] sm:text-xs font-black uppercase text-white tracking-widest flex items-center gap-2"><MapIcon size={14} className="text-blue-400"/> Legenda</h4>
+               <button onClick={() => setShowLegend(false)} className="text-slate-400 hover:text-rose-400 transition-colors p-1 bg-slate-700/50 rounded-full hover:bg-slate-700" title="Sembunyikan Legenda"><X size={12} /></button>
+             </div>
+             
+             <div className="flex flex-col gap-3.5">
+               <div className="flex items-center gap-3">
+                 <div className="w-5 h-1.5 border-t-[4px] border-solid border-blue-500 shrink-0 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
+                 <span className="text-[10px] font-medium text-slate-300 leading-tight">Jalur Realisasi (Selesai)</span>
+               </div>
+               
+               <div className="flex items-center gap-3">
+                 <div className="w-5 h-1.5 border-t-[4px] border-dashed border-amber-500 shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.6)]"></div>
+                 <span className="text-[10px] font-medium text-slate-300 leading-tight">Jalur Rencana (Akan Datang)</span>
+               </div>
+
+               <div className="flex items-center gap-3">
+                 <div className="w-5 h-1.5 border-t-[4px] border-solid border-cyan-400 shrink-0 shadow-[0_0_8px_rgba(34,211,238,0.6)]"></div>
+                 <span className="text-[10px] font-medium text-slate-300 leading-tight">Layer Global (Jalur Pendukung)</span>
+               </div>
+
+               <div className="flex items-center gap-3">
+                 <div className="w-5 h-3 border-2 border-teal-500 bg-teal-500/30 shrink-0"></div>
+                 <span className="text-[10px] font-medium text-slate-300 leading-tight">Layer Global (Area Pendukung)</span>
+               </div>
+             </div>
+          </div>
+        ) : (
+          <button onClick={() => setShowLegend(true)} className="bg-slate-800/90 backdrop-blur-md p-3 sm:px-4 sm:py-3 rounded-2xl shadow-lg border border-slate-600/50 hover:bg-slate-700 transition-all text-white pointer-events-auto group flex items-center gap-2" title="Tampilkan Legenda">
+             <MapIcon size={18} className="text-blue-400 group-hover:scale-110 transition-transform shrink-0" />
+             <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Legenda Peta</span>
+          </button>
+        )}
+      </div>
+
       <div className={`absolute bottom-[85px] md:bottom-6 right-4 md:right-6 z-[9999] flex flex-row md:flex-col flex-wrap items-end justify-end gap-2 pointer-events-auto max-w-[90vw] md:max-w-none transition-all duration-500 ease-in-out ${isUIHidden ? 'opacity-0 translate-y-12 pointer-events-none' : 'opacity-100 translate-y-0'}`}>
           <button onClick={() => setShowPaths(!showPaths)} className={`bg-black/60 backdrop-blur-md p-3 rounded-xl shadow-lg flex items-center justify-center border border-white/10 hover:bg-black/80 transition-all ${!showPaths ? 'text-slate-400' : 'text-white border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]'}`} title="Tampilkan/Sembunyikan Jalur Rencana & Realisasi Seluruh Proyek">
             {showPaths ? <Eye size={20} className="text-blue-400 shrink-0" /> : <EyeOff size={20} className="shrink-0" />} 
@@ -2134,10 +2180,6 @@ const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBac
 
              <button onClick={onViewRekap} className="bg-amber-500 text-white px-3 py-3 md:px-4 md:py-3.5 rounded-2xl text-[10px] md:text-xs font-black uppercase flex items-center gap-2 shadow-lg hover:bg-amber-600 hover:scale-105 transition-all border border-amber-400" title="Rekap Semua Data Proyek">
                 <FileSpreadsheet size={16} /> <span className="hidden sm:inline">Rekap Data</span>
-             </button>
-
-             <button onClick={onAddProject} className="bg-blue-600 text-white px-3 py-3 md:px-4 md:py-3.5 rounded-2xl text-[10px] md:text-xs font-black uppercase flex items-center gap-2 shadow-lg hover:bg-blue-700 hover:scale-105 transition-all border border-blue-500">
-                <Plus size={16} /> <span className="hidden sm:inline">Kamar Baru</span>
              </button>
          </div>
       </header>
