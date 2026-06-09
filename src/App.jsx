@@ -1863,7 +1863,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
                <button onClick={() => setShowLegend(false)} className="text-slate-500 hover:text-rose-500 transition-colors p-1 bg-slate-100 rounded-none hover:bg-slate-200" title="Sembunyikan Legenda"><X size={12} /></button>
              </div>
              
-             <div className="flex flex-col gap-3.5">
+             <div className="flex flex-col gap-3.5 max-h-[50vh] overflow-y-auto custom-scrollbar pr-2">
                <div className="flex items-center gap-3">
                  <div className="w-5 h-1.5 border-t-[4px] border-solid border-blue-500 shrink-0 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
                  <span className="text-[10px] font-bold text-slate-700 leading-tight">Jalur Realisasi (Total: {mapCounts.realisasi})</span>
@@ -1874,15 +1874,32 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
                  <span className="text-[10px] font-bold text-slate-700 leading-tight">Jalur Rencana (Total: {mapCounts.rencana})</span>
                </div>
 
-               <div className="flex items-center gap-3">
-                 <div className="w-5 h-1.5 border-t-[4px] border-solid border-cyan-400 shrink-0 shadow-[0_0_8px_rgba(34,211,238,0.6)]"></div>
-                 <span className="text-[10px] font-bold text-slate-700 leading-tight">Keterangan Jalur Air (Total: {mapCounts.jalurAir})</span>
-               </div>
-
-               <div className="flex items-center gap-3">
-                 <div className="w-5 h-3 border-2 border-teal-500 bg-teal-500/30 shrink-0"></div>
-                 <span className="text-[10px] font-bold text-slate-700 leading-tight">Kolam Retensi (Total: {mapCounts.kolam})</span>
-               </div>
+               {/* TAMPILAN DINAMIS LAYER GLOBAL DI LEGENDA */}
+               {globalLayers && globalLayers.length > 0 ? (
+                 globalLayers.map(layer => (
+                   <div key={layer.id} className="flex items-center gap-3">
+                     {layer.type === 'polygon' ? (
+                       <div className="w-5 h-3 border-2 shrink-0 bg-opacity-30" style={{ borderColor: layer.color || '#14b8a6', backgroundColor: layer.color || '#14b8a6' }}></div>
+                     ) : (
+                       <div className="w-5 h-1.5 border-t-[4px] shrink-0" style={{ borderColor: layer.color || '#0ea5e9', borderStyle: layer.isDashed ? 'dashed' : 'solid' }}></div>
+                     )}
+                     <span className="text-[10px] font-bold text-slate-700 leading-tight truncate max-w-[180px]" title={layer.name}>
+                       {layer.name}
+                     </span>
+                   </div>
+                 ))
+               ) : (
+                 <>
+                   <div className="flex items-center gap-3">
+                     <div className="w-5 h-1.5 border-t-[4px] border-solid border-cyan-400 shrink-0 shadow-[0_0_8px_rgba(34,211,238,0.6)]"></div>
+                     <span className="text-[10px] font-bold text-slate-700 leading-tight">Keterangan Jalur Air (Total: 0)</span>
+                   </div>
+                   <div className="flex items-center gap-3">
+                     <div className="w-5 h-3 border-2 border-teal-500 bg-teal-500/30 shrink-0"></div>
+                     <span className="text-[10px] font-bold text-slate-700 leading-tight">Kolam Retensi (Total: 0)</span>
+                   </div>
+                 </>
+               )}
              </div>
           </div>
         ) : (
