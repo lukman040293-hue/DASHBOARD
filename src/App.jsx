@@ -1109,6 +1109,27 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
   
   const [showKecMenu, setShowKecMenu] = useState(false); // Menu toggle popover
 
+  // --- MENGHITUNG TOTAL ITEM UNTUK LEGENDA (Otomatis Terfilter) ---
+  const mapCounts = useMemo(() => {
+    let realisasi = 0;
+    let rencana = 0;
+    allProjects.forEach(p => {
+      const aSegs = p.actual_segments_data || [];
+      let rCount = aSegs.length;
+      // Hitung fallback data lama jika rute realisasi array kosong tapi ada titik pusat
+      if (rCount === 0 && p.start_lat && p.start_lng && p.start_lat !== '-') rCount = 1;
+      realisasi += rCount;
+
+      const pSegs = p.planned_path || [];
+      rencana += pSegs.length;
+    });
+
+    const jalurAir = globalLayers.filter(l => l.type === 'line').length;
+    const kolam = globalLayers.filter(l => l.type === 'polygon').length;
+
+    return { realisasi, rencana, jalurAir, kolam };
+  }, [allProjects, globalLayers]);
+
   useEffect(() => { localStorage.setItem('master_showPaths', JSON.stringify(showPaths)); }, [showPaths]);
   useEffect(() => { localStorage.setItem('master_showDistances', JSON.stringify(showDistances)); }, [showDistances]);
   useEffect(() => { localStorage.setItem('master_showSketchLabels', JSON.stringify(showSketchLabels)); }, [showSketchLabels]);
@@ -1834,39 +1855,39 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
       <div id="master-map" ref={mapContainerRef} className="absolute inset-0 z-0 bg-slate-900" style={{ height: '100%', width: '100%' }} />
       
       {/* --- LEGENDA PETA INDUK --- */}
-      <div className={`absolute top-[140px] md:top-[160px] left-4 md:left-6 z-[20] flex flex-col items-start pointer-events-none transition-all duration-500 ease-in-out ${isUIHidden ? 'opacity-0 -translate-x-12' : 'opacity-100 translate-x-0'}`}>
+      <div className={`absolute top-[85px] md:top-[90px] right-4 md:right-6 z-[20] flex flex-col items-end pointer-events-none transition-all duration-500 ease-in-out ${isUIHidden ? 'opacity-0 translate-x-12' : 'opacity-100 translate-x-0'}`}>
         {showLegend ? (
-          <div className="bg-slate-800/95 backdrop-blur-xl border border-slate-600/50 rounded-2xl shadow-xl p-4 sm:p-5 pointer-events-auto w-[220px] sm:w-[260px] animate-in slide-in-from-left-4">
-             <div className="flex justify-between items-center border-b border-slate-700 pb-2 mb-3.5">
-               <h4 className="text-[10px] sm:text-xs font-black uppercase text-white tracking-widest flex items-center gap-2"><MapIcon size={14} className="text-blue-400"/> Legenda</h4>
-               <button onClick={() => setShowLegend(false)} className="text-slate-400 hover:text-rose-400 transition-colors p-1 bg-slate-700/50 rounded-full hover:bg-slate-700" title="Sembunyikan Legenda"><X size={12} /></button>
+          <div className="bg-white/95 backdrop-blur-md border border-slate-300 rounded-none shadow-xl p-4 sm:p-5 pointer-events-auto w-[240px] sm:w-[280px] animate-in slide-in-from-right-4">
+             <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-3.5">
+               <h4 className="text-[10px] sm:text-xs font-black uppercase text-slate-800 tracking-widest flex items-center gap-2"><MapIcon size={14} className="text-blue-600"/> Legenda</h4>
+               <button onClick={() => setShowLegend(false)} className="text-slate-500 hover:text-rose-500 transition-colors p-1 bg-slate-100 rounded-none hover:bg-slate-200" title="Sembunyikan Legenda"><X size={12} /></button>
              </div>
              
              <div className="flex flex-col gap-3.5">
                <div className="flex items-center gap-3">
                  <div className="w-5 h-1.5 border-t-[4px] border-solid border-blue-500 shrink-0 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
-                 <span className="text-[10px] font-medium text-slate-300 leading-tight">Jalur Realisasi Selesai (100%)</span>
+                 <span className="text-[10px] font-bold text-slate-700 leading-tight">Jalur Realisasi (Total: {mapCounts.realisasi})</span>
                </div>
                
                <div className="flex items-center gap-3">
                  <div className="w-5 h-1.5 border-t-[4px] border-dashed border-amber-500 shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.6)]"></div>
-                 <span className="text-[10px] font-medium text-slate-300 leading-tight">Jalur Rencana Tahun Ini (0%)</span>
+                 <span className="text-[10px] font-bold text-slate-700 leading-tight">Jalur Rencana (Total: {mapCounts.rencana})</span>
                </div>
 
                <div className="flex items-center gap-3">
                  <div className="w-5 h-1.5 border-t-[4px] border-solid border-cyan-400 shrink-0 shadow-[0_0_8px_rgba(34,211,238,0.6)]"></div>
-                 <span className="text-[10px] font-medium text-slate-300 leading-tight">Keterangan Jalur Air</span>
+                 <span className="text-[10px] font-bold text-slate-700 leading-tight">Keterangan Jalur Air (Total: {mapCounts.jalurAir})</span>
                </div>
 
                <div className="flex items-center gap-3">
                  <div className="w-5 h-3 border-2 border-teal-500 bg-teal-500/30 shrink-0"></div>
-                 <span className="text-[10px] font-medium text-slate-300 leading-tight">Kolam Penampungan Air (Kolam Retensi)</span>
+                 <span className="text-[10px] font-bold text-slate-700 leading-tight">Kolam Retensi (Total: {mapCounts.kolam})</span>
                </div>
              </div>
           </div>
         ) : (
-          <button onClick={() => setShowLegend(true)} className="bg-slate-800/90 backdrop-blur-md p-3 sm:px-4 sm:py-3 rounded-2xl shadow-lg border border-slate-600/50 hover:bg-slate-700 transition-all text-white pointer-events-auto group flex items-center gap-2" title="Tampilkan Legenda">
-             <MapIcon size={18} className="text-blue-400 group-hover:scale-110 transition-transform shrink-0" />
+          <button onClick={() => setShowLegend(true)} className="bg-white/95 backdrop-blur-md p-3 sm:px-4 sm:py-3 rounded-none shadow-md border border-slate-300 hover:bg-slate-50 transition-all text-slate-800 pointer-events-auto group flex items-center gap-2" title="Tampilkan Legenda">
+             <MapIcon size={18} className="text-blue-600 group-hover:scale-110 transition-transform shrink-0" />
              <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Legenda Peta</span>
           </button>
         )}
