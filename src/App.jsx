@@ -4627,7 +4627,7 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
                     </div>
                     <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-700/30 min-h-0">
                         {globalFeeds && globalFeeds.length > 0 ? (
-                            globalFeeds.map(feed => {
+                            globalFeeds.slice(0, 50).map(feed => {
                                 const isUnread = !globalReadFeeds.has(feed.id);
                                 const proj = projects.find(p => p.id === feed.project_id);
                                 const projName = proj ? proj.pekerjaan : 'Proyek tidak ditemukan';
@@ -4653,7 +4653,15 @@ const ModeSelectionView = ({ projects, onSelectMaster, onSelectProject, onAddPro
                                     </div>
                                 );
                             })
-                        ) : (
+                        ) : null}
+                        
+                        {globalFeeds && globalFeeds.length > 50 && (
+                            <div className="p-3 text-center text-[10px] text-slate-500 font-bold bg-slate-800/50">
+                                Menampilkan 50 notifikasi terbaru
+                            </div>
+                        )}
+                        
+                        {(!globalFeeds || globalFeeds.length === 0) && (
                             <div className="p-8 text-center text-slate-500 text-xs font-medium flex flex-col items-center">
                                 <Bell size={32} className="opacity-20 mb-3" />
                                 Belum ada aktivitas proyek
@@ -4917,7 +4925,7 @@ export default function App() {
            .from('field_reports')
            .select('id, title, created_at, project_id, is_problem, description, media_url')
            .order('created_at', { ascending: false })
-           .limit(100);
+           .limit(2000); // <- DITINGKATKAN DARI 100 MENJADI 2000 AGAR FOTO LAMA TETAP TAMPIL DI PETA INDUK
         if (!error && data) {
            setGlobalFeeds(data);
            if (data.length > 0 && !globalLatestFeedIdRef.current) {
