@@ -1051,7 +1051,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
   // STATE BARU: Legenda Peta Induk
   const [showLegend, setShowLegend] = useState(() => {
     const saved = localStorage.getItem('master_showLegend');
-    return saved !== null ? JSON.parse(saved) : true;
+    return saved !== null ? JSON.parse(saved) : false;
   });
 
   // STATE BARU: Preferensi Tampilan Layer di Peta Induk (Disimpan ke Local Storage)
@@ -1165,7 +1165,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
     if (isMapLoaded && mapContainerRef.current && !mapInstanceRef.current) {
       mapInstanceRef.current = window.L.map(mapContainerRef.current, { zoomControl: false, closePopupOnClick: false }).setView([-0.4948, 117.1492], 12);
       
-      window.L.control.zoom({ position: 'topleft' }).addTo(mapInstanceRef.current);
+      window.L.control.zoom({ position: 'bottomleft' }).addTo(mapInstanceRef.current);
       
       // BUAT PANE KHUSUS UNTUK BATAS KECAMATAN AGAR SELALU DI BAWAH JALUR PROYEK
       mapInstanceRef.current.createPane('boundaryPane');
@@ -1855,55 +1855,58 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
       <div id="master-map" ref={mapContainerRef} className="absolute inset-0 z-0 bg-slate-900" style={{ height: '100%', width: '100%' }} />
       
       {/* --- LEGENDA PETA INDUK --- */}
-      <div className={`absolute top-[85px] md:top-[90px] right-4 md:right-6 z-[20] flex flex-col items-end pointer-events-none transition-all duration-500 ease-in-out ${isUIHidden ? 'opacity-0 translate-x-12' : 'opacity-100 translate-x-0'}`}>
+      <div className={`absolute top-[85px] md:top-[90px] left-4 md:left-6 z-[20] flex flex-col items-start pointer-events-none transition-all duration-500 ease-in-out ${isUIHidden ? 'opacity-0 -translate-x-12' : 'opacity-100 translate-x-0'}`}>
         {showLegend ? (
-          <div className="bg-white/95 backdrop-blur-md border border-slate-300 rounded-none shadow-xl p-4 sm:p-5 pointer-events-auto w-[240px] sm:w-[280px] animate-in slide-in-from-right-4">
-             <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-3.5">
-               <h4 className="text-[10px] sm:text-xs font-black uppercase text-slate-800 tracking-widest flex items-center gap-2"><MapIcon size={14} className="text-blue-600"/> Legenda</h4>
-               <button onClick={() => setShowLegend(false)} className="text-slate-500 hover:text-rose-500 transition-colors p-1 bg-slate-100 rounded-none hover:bg-slate-200" title="Sembunyikan Legenda"><X size={12} /></button>
+          <div className="bg-white/95 backdrop-blur-md border border-slate-200 rounded-2xl shadow-xl p-5 pointer-events-auto w-max animate-in slide-in-from-left-4">
+             <div className="flex justify-between items-center border-b border-slate-200 pb-3 mb-4">
+               <h4 className="text-xs font-black uppercase text-slate-800 tracking-widest flex items-center gap-2"><MapIcon size={14} className="text-blue-600"/> Legenda</h4>
+               <button onClick={() => setShowLegend(false)} className="text-slate-500 hover:text-rose-500 transition-colors p-1.5 bg-slate-100 rounded-lg hover:bg-slate-200 ml-8" title="Sembunyikan Legenda"><X size={14} /></button>
              </div>
              
-             <div className="flex flex-col gap-3.5 max-h-[50vh] overflow-y-auto custom-scrollbar pr-2">
-               <div className="flex items-center gap-3">
-                 <div className="w-5 h-1.5 border-t-[4px] border-solid border-blue-500 shrink-0 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
-                 <span className="text-[10px] font-bold text-slate-700 leading-tight">Jalur Realisasi (Total: {mapCounts.realisasi})</span>
-               </div>
+             <div className="grid grid-cols-[auto_1fr_auto] gap-x-3 gap-y-3.5 items-center max-h-[50vh] overflow-y-auto custom-scrollbar pr-2">
+               {/* Baris Realisasi */}
+               <div className="w-5 h-1.5 border-t-[4px] border-solid border-blue-500 shrink-0 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
+               <span className="text-xs font-bold text-slate-700 whitespace-nowrap">Jalur Realisasi</span>
+               <span className="text-xs font-bold text-slate-700 whitespace-nowrap">: (Total: {mapCounts.realisasi})</span>
                
-               <div className="flex items-center gap-3">
-                 <div className="w-5 h-1.5 border-t-[4px] border-dashed border-amber-500 shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.6)]"></div>
-                 <span className="text-[10px] font-bold text-slate-700 leading-tight">Jalur Rencana (Total: {mapCounts.rencana})</span>
-               </div>
+               {/* Baris Rencana */}
+               <div className="w-5 h-1.5 border-t-[4px] border-dashed border-amber-500 shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.6)]"></div>
+               <span className="text-xs font-bold text-slate-700 whitespace-nowrap">Jalur Rencana</span>
+               <span className="text-xs font-bold text-slate-700 whitespace-nowrap">: (Total: {mapCounts.rencana})</span>
 
                {/* TAMPILAN DINAMIS LAYER GLOBAL DI LEGENDA */}
                {globalLayers && globalLayers.length > 0 ? (
                  globalLayers.map(layer => (
-                   <div key={layer.id} className="flex items-center gap-3">
+                   <React.Fragment key={layer.id}>
                      {layer.type === 'polygon' ? (
                        <div className="w-5 h-3 border-2 shrink-0 bg-opacity-30" style={{ borderColor: layer.color || '#14b8a6', backgroundColor: layer.color || '#14b8a6' }}></div>
                      ) : (
                        <div className="w-5 h-1.5 border-t-[4px] shrink-0" style={{ borderColor: layer.color || '#0ea5e9', borderStyle: layer.isDashed ? 'dashed' : 'solid' }}></div>
                      )}
-                     <span className="text-[10px] font-bold text-slate-700 leading-tight truncate max-w-[180px]" title={layer.name}>
+                     <span className="text-xs font-bold text-slate-700 truncate max-w-[140px]" title={layer.name}>
                        {layer.name}
                      </span>
-                   </div>
+                     <span className="text-xs font-bold text-slate-700 whitespace-nowrap">: (Total: 1)</span>
+                   </React.Fragment>
                  ))
                ) : (
                  <>
-                   <div className="flex items-center gap-3">
+                   <React.Fragment>
                      <div className="w-5 h-1.5 border-t-[4px] border-solid border-cyan-400 shrink-0 shadow-[0_0_8px_rgba(34,211,238,0.6)]"></div>
-                     <span className="text-[10px] font-bold text-slate-700 leading-tight">Keterangan Jalur Air (Total: 0)</span>
-                   </div>
-                   <div className="flex items-center gap-3">
+                     <span className="text-xs font-bold text-slate-700 whitespace-nowrap">Keterangan Jalur Air</span>
+                     <span className="text-xs font-bold text-slate-700 whitespace-nowrap">: (Total: 0)</span>
+                   </React.Fragment>
+                   <React.Fragment>
                      <div className="w-5 h-3 border-2 border-teal-500 bg-teal-500/30 shrink-0"></div>
-                     <span className="text-[10px] font-bold text-slate-700 leading-tight">Kolam Retensi (Total: 0)</span>
-                   </div>
+                     <span className="text-xs font-bold text-slate-700 whitespace-nowrap">Kolam Retensi</span>
+                     <span className="text-xs font-bold text-slate-700 whitespace-nowrap">: (Total: 0)</span>
+                   </React.Fragment>
                  </>
                )}
              </div>
           </div>
         ) : (
-          <button onClick={() => setShowLegend(true)} className="bg-white/95 backdrop-blur-md p-3 sm:px-4 sm:py-3 rounded-none shadow-md border border-slate-300 hover:bg-slate-50 transition-all text-slate-800 pointer-events-auto group flex items-center gap-2" title="Tampilkan Legenda">
+          <button onClick={() => setShowLegend(true)} className="bg-white/95 backdrop-blur-md p-3 sm:px-4 sm:py-3 rounded-2xl shadow-md border border-slate-200 hover:bg-slate-50 transition-all text-slate-800 pointer-events-auto group flex items-center gap-2" title="Tampilkan Legenda">
              <MapIcon size={18} className="text-blue-600 group-hover:scale-110 transition-transform shrink-0" />
              <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Legenda Peta</span>
           </button>
@@ -5097,9 +5100,9 @@ export default function App() {
            display: none !important; /* Menghilangkan panah segitiga bawaan */
         }
 
-        /* GESER TOMBOL ZOOM DI PETA INDUK AGAR TIDAK TERTUTUP MENU KIRI ATAS */
-        #master-map .leaflet-top.leaflet-left {
-           margin-top: 80px !important;
+        /* GESER TOMBOL ZOOM DI PETA INDUK AGAR LEBIH RAPI DI KIRI BAWAH */
+        #master-map .leaflet-bottom.leaflet-left {
+           margin-bottom: 30px !important;
            margin-left: 10px !important;
         }
       `;
