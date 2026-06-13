@@ -1906,23 +1906,20 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
                      ) : (
                        <div className="w-5 h-1.5 border-t-[4px] border-solid shrink-0" style={{ borderColor: group.color }}></div>
                      )}
-                     <span className="text-xs font-bold text-slate-700 truncate max-w-[140px]" title={group.name}>
+                     <span className="text-xs font-bold text-slate-700 truncate max-w-[140px] col-span-2" title={group.name}>
                        {group.name}
                      </span>
-                     <span className="text-xs font-bold text-slate-700 whitespace-nowrap">: (Total: {group.count})</span>
                    </React.Fragment>
                  ))
                ) : (
                  <>
                    <React.Fragment>
                      <div className="w-5 h-1.5 border-t-[4px] border-solid border-cyan-400 shrink-0 shadow-[0_0_8px_rgba(34,211,238,0.6)]"></div>
-                     <span className="text-xs font-bold text-slate-700 whitespace-nowrap">Jalur Air</span>
-                     <span className="text-xs font-bold text-slate-700 whitespace-nowrap">: (Total: 0)</span>
+                     <span className="text-xs font-bold text-slate-700 whitespace-nowrap col-span-2">Jalur Air</span>
                    </React.Fragment>
                    <React.Fragment>
                      <div className="w-5 h-3 border-2 border-teal-500 bg-teal-500/30 shrink-0"></div>
-                     <span className="text-xs font-bold text-slate-700 whitespace-nowrap">Kolam Retensi</span>
-                     <span className="text-xs font-bold text-slate-700 whitespace-nowrap">: (Total: 0)</span>
+                     <span className="text-xs font-bold text-slate-700 whitespace-nowrap col-span-2">Kolam Retensi</span>
                    </React.Fragment>
                  </>
                )}
