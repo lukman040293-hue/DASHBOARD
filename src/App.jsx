@@ -4995,7 +4995,12 @@ export default function App() {
            .order('created_at', { ascending: false })
            .limit(2000); // <- DITINGKATKAN DARI 100 MENJADI 2000 AGAR FOTO LAMA TETAP TAMPIL DI PETA INDUK
         if (!error && data) {
-           setGlobalFeeds(data);
+           // PERBAIKAN: Mencegah layer foto di peta ter-render ulang tiap 5 detik jika tidak ada foto baru
+           setGlobalFeeds(prev => {
+               const oldData = JSON.stringify(prev);
+               const newData = JSON.stringify(data);
+               return oldData === newData ? prev : data;
+           });
            if (data.length > 0 && !globalLatestFeedIdRef.current) {
                globalLatestFeedIdRef.current = data[0].id;
            }
@@ -5540,7 +5545,13 @@ export default function App() {
         .order('created_at', { ascending: false });
         
       if (error) { showMsg("Gagal memuat daftar proyek: " + error.message, "error"); return; }
-      setMasterProjects(projs || []);
+      
+      // PERBAIKAN: Mencegah Peta Induk menggambar ulang rute tiap 5 detik jika data tidak berubah (Mencegah Pop-up tertutup sendiri)
+      setMasterProjects(prev => {
+          const oldData = JSON.stringify(prev);
+          const newData = JSON.stringify(projs || []);
+          return oldData === newData ? prev : (projs || []);
+      });
     } catch (e) { showMsg("Gagal memuat daftar proyek.", "error"); }
   };
 
