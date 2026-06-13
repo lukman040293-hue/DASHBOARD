@@ -1115,10 +1115,9 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
     let rencana = 0;
     allProjects.forEach(p => {
       const aSegs = p.actual_segments_data || [];
-      let rCount = aSegs.length;
-      // Hitung fallback data lama jika rute realisasi array kosong tapi ada titik pusat
-      if (rCount === 0 && p.start_lat && p.start_lng && p.start_lat !== '-') rCount = 1;
-      realisasi += rCount;
+      // PERBAIKAN: Hanya hitung jumlah segmen yang benar-benar ada di data rute realisasi
+      // Titik pusat (marker bulat merah/biru) tidak lagi dihitung sebagai jalur
+      realisasi += aSegs.length;
 
       const pSegs = p.planned_path || [];
       rencana += pSegs.length;
