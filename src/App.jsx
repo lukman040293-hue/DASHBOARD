@@ -2060,16 +2060,50 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
                            className="text-[9px] font-bold outline-none bg-transparent text-slate-300 flex-1 cursor-pointer"
                            title="Pilih Warna"
                         >
-                           <option value="#3b82f6" className="bg-slate-800">Biru</option>
-                           <option value="#0ea5e9" className="bg-slate-800">Cyan</option>
-                           <option value="#14b8a6" className="bg-slate-800">Teal</option>
-                           <option value="#10b981" className="bg-slate-800">Hijau</option>
-                           <option value="#eab308" className="bg-slate-800">Kuning</option>
-                           <option value="#f59e0b" className="bg-slate-800">Amber</option>
-                           <option value="#f97316" className="bg-slate-800">Jingga</option>
-                           <option value="#ef4444" className="bg-slate-800">Merah</option>
-                           <option value="#a855f7" className="bg-slate-800">Ungu</option>
-                           <option value="#64748b" className="bg-slate-800">Abu-abu</option>
+                           <optgroup label="Biru & Cyan" className="bg-slate-900 text-slate-400">
+                              <option value="#60a5fa" className="text-white">Biru Terang</option>
+                              <option value="#3b82f6" className="text-white">Biru Normal</option>
+                              <option value="#1e40af" className="text-white">Biru Gelap</option>
+                              <option value="#38bdf8" className="text-white">Cyan Terang</option>
+                              <option value="#0ea5e9" className="text-white">Cyan Normal</option>
+                              <option value="#0369a1" className="text-white">Cyan Gelap</option>
+                           </optgroup>
+                           <optgroup label="Hijau & Teal" className="bg-slate-900 text-slate-400">
+                              <option value="#4ade80" className="text-white">Hijau Terang</option>
+                              <option value="#22c55e" className="text-white">Hijau Normal</option>
+                              <option value="#166534" className="text-white">Hijau Gelap</option>
+                              <option value="#2dd4bf" className="text-white">Teal Terang</option>
+                              <option value="#14b8a6" className="text-white">Teal Normal</option>
+                              <option value="#0f766e" className="text-white">Teal Gelap</option>
+                           </optgroup>
+                           <optgroup label="Kuning & Jingga" className="bg-slate-900 text-slate-400">
+                              <option value="#fde047" className="text-white">Kuning Terang</option>
+                              <option value="#eab308" className="text-white">Kuning Normal</option>
+                              <option value="#a16207" className="text-white">Kuning Gelap</option>
+                              <option value="#fb923c" className="text-white">Jingga Terang</option>
+                              <option value="#f97316" className="text-white">Jingga Normal</option>
+                              <option value="#9a3412" className="text-white">Jingga Gelap</option>
+                           </optgroup>
+                           <optgroup label="Merah & Pink" className="bg-slate-900 text-slate-400">
+                              <option value="#f87171" className="text-white">Merah Terang</option>
+                              <option value="#ef4444" className="text-white">Merah Normal</option>
+                              <option value="#991b1b" className="text-white">Merah Gelap</option>
+                              <option value="#f472b6" className="text-white">Pink Terang</option>
+                              <option value="#ec4899" className="text-white">Pink Normal</option>
+                              <option value="#9d174d" className="text-white">Pink Gelap</option>
+                           </optgroup>
+                           <optgroup label="Ungu" className="bg-slate-900 text-slate-400">
+                              <option value="#c084fc" className="text-white">Ungu Terang</option>
+                              <option value="#a855f7" className="text-white">Ungu Normal</option>
+                              <option value="#6b21a8" className="text-white">Ungu Gelap</option>
+                           </optgroup>
+                           <optgroup label="Netral" className="bg-slate-900 text-slate-400">
+                              <option value="#94a3b8" className="text-white">Abu Terang</option>
+                              <option value="#64748b" className="text-white">Abu Normal</option>
+                              <option value="#334155" className="text-white">Abu Gelap</option>
+                              <option value="#ffffff" className="text-slate-800 bg-white">Putih</option>
+                              <option value="#000000" className="text-white bg-black">Hitam</option>
+                           </optgroup>
                         </select>
                         <select 
                            value={layer.type || 'line'}
