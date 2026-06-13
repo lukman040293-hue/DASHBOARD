@@ -1124,11 +1124,34 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
       rencana += pSegs.length;
     });
 
-    const jalurAir = globalLayers.filter(l => l.type === 'line').length;
-    const kolam = globalLayers.filter(l => l.type === 'polygon').length;
+    return { realisasi, rencana };
+  }, [allProjects]);
 
-    return { realisasi, rencana, jalurAir, kolam };
-  }, [allProjects, globalLayers]);
+  // LOGIKA BARU: Mengelompokkan layer global di Legenda berdasarkan Warna
+  const globalLayerGroups = useMemo(() => {
+     const groups = {};
+     globalLayers.forEach(layer => {
+         const color = layer.color;
+         let groupName = layer.name;
+         
+         // Paksa penamaan untuk warna tertentu terlepas dari nama inputan manual
+         // Cyan (Terang, Normal, Gelap) -> Jalur Air
+         if (['#38bdf8', '#0ea5e9', '#0369a1'].includes(color)) groupName = 'Jalur Air';
+         // Teal (Terang, Normal, Gelap) -> Kolam Retensi
+         if (['#2dd4bf', '#14b8a6', '#0f766e'].includes(color)) groupName = 'Kolam Retensi';
+
+         if (!groups[color]) {
+             groups[color] = {
+                 name: groupName,
+                 color: color,
+                 type: layer.type,
+                 count: 0
+             };
+         }
+         groups[color].count += 1;
+     });
+     return Object.values(groups);
+  }, [globalLayers]);
 
   useEffect(() => { localStorage.setItem('master_showPaths', JSON.stringify(showPaths)); }, [showPaths]);
   useEffect(() => { localStorage.setItem('master_showDistances', JSON.stringify(showDistances)); }, [showDistances]);
@@ -1874,26 +1897,26 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
                <span className="text-xs font-bold text-slate-700 whitespace-nowrap">Jalur Rencana</span>
                <span className="text-xs font-bold text-slate-700 whitespace-nowrap">: (Total: {mapCounts.rencana})</span>
 
-               {/* TAMPILAN DINAMIS LAYER GLOBAL DI LEGENDA */}
-               {globalLayers && globalLayers.length > 0 ? (
-                 globalLayers.map(layer => (
-                   <React.Fragment key={layer.id}>
-                     {layer.type === 'polygon' ? (
-                       <div className="w-5 h-3 border-2 shrink-0 bg-opacity-30" style={{ borderColor: layer.color || '#14b8a6', backgroundColor: layer.color || '#14b8a6' }}></div>
+               {/* TAMPILAN DINAMIS LAYER GLOBAL DI LEGENDA BERDASARKAN GRUP WARNA */}
+               {globalLayerGroups && globalLayerGroups.length > 0 ? (
+                 globalLayerGroups.map((group, idx) => (
+                   <React.Fragment key={idx}>
+                     {group.type === 'polygon' ? (
+                       <div className="w-5 h-3 border-2 shrink-0 bg-opacity-30" style={{ borderColor: group.color, backgroundColor: group.color }}></div>
                      ) : (
-                       <div className="w-5 h-1.5 border-t-[4px] shrink-0" style={{ borderColor: layer.color || '#0ea5e9', borderStyle: layer.isDashed ? 'dashed' : 'solid' }}></div>
+                       <div className="w-5 h-1.5 border-t-[4px] border-solid shrink-0" style={{ borderColor: group.color }}></div>
                      )}
-                     <span className="text-xs font-bold text-slate-700 truncate max-w-[140px]" title={layer.name}>
-                       {layer.name}
+                     <span className="text-xs font-bold text-slate-700 truncate max-w-[140px]" title={group.name}>
+                       {group.name}
                      </span>
-                     <span className="text-xs font-bold text-slate-700 whitespace-nowrap">: (Total: 1)</span>
+                     <span className="text-xs font-bold text-slate-700 whitespace-nowrap">: (Total: {group.count})</span>
                    </React.Fragment>
                  ))
                ) : (
                  <>
                    <React.Fragment>
                      <div className="w-5 h-1.5 border-t-[4px] border-solid border-cyan-400 shrink-0 shadow-[0_0_8px_rgba(34,211,238,0.6)]"></div>
-                     <span className="text-xs font-bold text-slate-700 whitespace-nowrap">Keterangan Jalur Air</span>
+                     <span className="text-xs font-bold text-slate-700 whitespace-nowrap">Jalur Air</span>
                      <span className="text-xs font-bold text-slate-700 whitespace-nowrap">: (Total: 0)</span>
                    </React.Fragment>
                    <React.Fragment>
