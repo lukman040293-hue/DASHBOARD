@@ -2052,18 +2052,29 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
                         />
                         <button onClick={() => setGlobalLayers(prev => prev.filter(l => l.id !== layer.id))} className="text-rose-400 bg-rose-500/10 p-1.5 rounded hover:bg-rose-500/20 shrink-0"><Trash size={12} /></button>
                      </div>
-                     <div className="flex items-center gap-2 mb-2 bg-slate-800/60 p-1.5 rounded-lg border border-slate-700/50">
-                        <input 
-                           type="color" 
+                     <div className="flex items-center gap-1.5 mb-2 bg-slate-800/60 p-1.5 rounded-lg border border-slate-700/50">
+                        <div className="w-3 h-3 rounded-[3px] shrink-0 border border-white/20 shadow-sm ml-1" style={{backgroundColor: layer.color || (layer.type === 'polygon' ? '#14b8a6' : '#0ea5e9')}}></div>
+                        <select 
                            value={layer.color || (layer.type === 'polygon' ? '#14b8a6' : '#0ea5e9')} 
                            onChange={(e) => setGlobalLayers(prev => prev.map(l => l.id === layer.id ? { ...l, color: e.target.value } : l))}
-                           className="w-6 h-6 p-0 border-0 rounded cursor-pointer shrink-0"
-                           title="Warna Layer"
-                        />
+                           className="text-[9px] font-bold outline-none bg-transparent text-slate-300 flex-1 cursor-pointer"
+                           title="Pilih Warna"
+                        >
+                           <option value="#3b82f6" className="bg-slate-800">Biru</option>
+                           <option value="#0ea5e9" className="bg-slate-800">Cyan</option>
+                           <option value="#14b8a6" className="bg-slate-800">Teal</option>
+                           <option value="#10b981" className="bg-slate-800">Hijau</option>
+                           <option value="#eab308" className="bg-slate-800">Kuning</option>
+                           <option value="#f59e0b" className="bg-slate-800">Amber</option>
+                           <option value="#f97316" className="bg-slate-800">Jingga</option>
+                           <option value="#ef4444" className="bg-slate-800">Merah</option>
+                           <option value="#a855f7" className="bg-slate-800">Ungu</option>
+                           <option value="#64748b" className="bg-slate-800">Abu-abu</option>
+                        </select>
                         <select 
                            value={layer.type || 'line'}
                            onChange={(e) => setGlobalLayers(prev => prev.map(l => l.id === layer.id ? { ...l, type: e.target.value } : l))}
-                           className="text-[9px] font-bold outline-none bg-transparent text-slate-300 w-full cursor-pointer"
+                           className="text-[9px] font-bold outline-none bg-transparent text-slate-300 flex-1 cursor-pointer border-l border-slate-600 pl-1.5"
                         >
                            <option value="line" className="bg-slate-800">Garis</option>
                            <option value="polygon" className="bg-slate-800">Poligon</option>
@@ -2071,10 +2082,10 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
                         <select 
                            value={layer.isDashed ? 'dashed' : 'solid'}
                            onChange={(e) => setGlobalLayers(prev => prev.map(l => l.id === layer.id ? { ...l, isDashed: e.target.value === 'dashed' } : l))}
-                           className="text-[9px] font-bold outline-none bg-transparent text-slate-300 w-full cursor-pointer"
+                           className="text-[9px] font-bold outline-none bg-transparent text-slate-300 flex-1 cursor-pointer border-l border-slate-600 pl-1.5"
                         >
                            <option value="solid" className="bg-slate-800">Lurus</option>
-                           <option value="dashed" className="bg-slate-800">Putus-putus</option>
+                           <option value="dashed" className="bg-slate-800">Putus</option>
                         </select>
                      </div>
                      
