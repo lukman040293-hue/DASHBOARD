@@ -1115,12 +1115,14 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
     let rencana = 0;
     allProjects.forEach(p => {
       const aSegs = p.actual_segments_data || [];
-      // PERBAIKAN: Hanya hitung jumlah segmen yang benar-benar ada di data rute realisasi
-      // Titik pusat (marker bulat merah/biru) tidak lagi dihitung sebagai jalur
-      realisasi += aSegs.length;
+      // PERBAIKAN: Hitung 1 per Proyek jika memiliki minimal 1 segmen yang sudah digambar garisnya (> 1 titik)
+      const hasValidActual = aSegs.some(seg => seg.points && seg.points.length > 1);
+      if (hasValidActual) realisasi += 1;
 
       const pSegs = p.planned_path || [];
-      rencana += pSegs.length;
+      // PERBAIKAN: Hitung 1 per Proyek jika memiliki minimal 1 jalur sketsa yang digambar
+      const hasValidPlan = pSegs.some(path => path.points && path.points.length > 1);
+      if (hasValidPlan) rencana += 1;
     });
 
     return { realisasi, rencana };
@@ -1446,9 +1448,18 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
       // 1. Fungsi Gambar Marker Titik Pusat Proyek
       const createProjectMarker = (proj) => {
         const actualProg = parseFloat(proj.actual_progress || 0);
+        const isFinished = actualProg >= 100;
         const isRunning = proj.status === 'Running' || actualProg > 0;
-        const rgbColor = isRunning ? '59, 130, 246' : '244, 63, 94';
-        const hexColor = isRunning ? '#3b82f6' : '#f43f5e';
+        
+        let rgbColor = '244, 63, 94';
+        let hexColor = '#f43f5e';
+        if (isFinished) {
+            rgbColor = '16, 185, 129';
+            hexColor = '#10b981'; // Hijau untuk Selesai
+        } else if (isRunning) {
+            rgbColor = '59, 130, 246';
+            hexColor = '#3b82f6'; // Biru untuk Pelaksanaan
+        }
 
         return window.L.divIcon({
           className: 'bg-transparent border-0 overflow-visible',
@@ -1466,25 +1477,36 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
       const bindMainProjectPopup = (layer, proj) => {
         const uniqueId = `btn-main-detail-${proj.id}-${Math.random().toString(36).substr(2, 9)}`;
         const actualProg = parseFloat(proj.actual_progress || 0);
+        const isFinished = actualProg >= 100;
         const isRunning = proj.status === 'Running' || actualProg > 0;
-        const statusText = isRunning ? 'Pelaksanaan' : 'Persiapan';
-        const hexColor = isRunning ? '#3b82f6' : '#f43f5e';
+        
+        let statusText = 'Persiapan';
+        let hexColor = '#f43f5e';
+        if (isFinished) {
+            statusText = 'Selesai';
+            hexColor = '#10b981';
+        } else if (isRunning) {
+            statusText = 'Pelaksanaan';
+            hexColor = '#3b82f6';
+        }
 
         const popupContent = `
             <div class="text-left min-w-[240px]">
               <h3 class="text-sm font-black text-slate-800 leading-relaxed text-left mb-3 uppercase tracking-wider border-b border-slate-200 pb-3">[${proj.tahun || '-'}] ${proj.pekerjaan}</h3>
-              <div class="flex justify-between items-end mb-5">
-                 <div class="flex flex-col text-left">
+              <div class="flex ${isFinished ? 'justify-center' : 'justify-between'} items-end mb-5">
+                 <div class="flex flex-col ${isFinished ? 'items-center text-center w-full' : 'text-left'}">
                     <span class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Status</span>
-                    <span class="text-sm font-black uppercase tracking-widest" style="color: ${hexColor}">${statusText}</span>
+                    <span class="text-${isFinished ? '2xl' : 'sm'} font-black uppercase tracking-widest" style="color: ${hexColor}">${statusText}</span>
                  </div>
+                 ${!isFinished ? `
                  <div class="flex flex-col text-right pl-6">
                     <span class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Progress</span>
                     <span class="text-3xl font-black leading-none drop-shadow-sm" style="color: ${hexColor}">${actualProg.toFixed(1)}<span class="text-base ml-0.5">%</span></span>
                  </div>
+                 ` : ''}
               </div>
               <button id="${uniqueId}" class="w-full bg-blue-600 text-white py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-md hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5 mt-1">
-                Buka Dashboard
+                KLIK DETAIL
               </button>
             </div>
         `;
@@ -1769,10 +1791,15 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
 
             if (!isNaN(lat) && !isNaN(lng)) {
               const actualProg = parseFloat(p.actual_progress || 0);
+              const isFinished = actualProg >= 100;
               const isRunning = p.status === 'Running' || actualProg > 0;
               
+              let hexColor = '#f43f5e';
+              if (isFinished) hexColor = '#10b981';
+              else if (isRunning) hexColor = '#3b82f6';
+              
               const areaCircle = window.L.circleMarker([lat, lng], {
-                radius: 25, stroke: false, fillColor: isRunning ? '#3b82f6' : '#f43f5e', fillOpacity: 0.2, className: 'animate-pulse' 
+                radius: 25, stroke: false, fillColor: hexColor, fillOpacity: 0.2, className: 'animate-pulse' 
               }).addTo(markerLayerRef.current);
               
               bindMainProjectPopup(areaCircle, p);
@@ -1879,22 +1906,22 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
       {/* --- LEGENDA PETA INDUK --- */}
       <div className={`absolute top-[85px] md:top-[90px] left-4 md:left-6 z-[20] flex flex-col items-start pointer-events-none transition-all duration-500 ease-in-out ${isUIHidden ? 'opacity-0 -translate-x-12' : 'opacity-100 translate-x-0'}`}>
         {showLegend ? (
-          <div className="bg-white/95 backdrop-blur-md border border-slate-200 rounded-2xl shadow-xl p-5 pointer-events-auto w-max animate-in slide-in-from-left-4">
+          <div className="bg-white/80 backdrop-blur-md border border-slate-200 rounded-2xl shadow-xl p-5 pointer-events-auto w-max animate-in slide-in-from-left-4">
              <div className="flex justify-between items-center border-b border-slate-200 pb-3 mb-4">
                <h4 className="text-xs font-black uppercase text-slate-800 tracking-widest flex items-center gap-2"><MapIcon size={14} className="text-blue-600"/> Legenda</h4>
-               <button onClick={() => setShowLegend(false)} className="text-slate-500 hover:text-rose-500 transition-colors p-1.5 bg-slate-100 rounded-lg hover:bg-slate-200 ml-8" title="Sembunyikan Legenda"><X size={14} /></button>
+               <button onClick={() => setShowLegend(false)} className="text-slate-500 hover:text-rose-500 transition-colors p-1.5 bg-slate-100/50 rounded-lg hover:bg-slate-200 ml-8" title="Sembunyikan Legenda"><X size={14} /></button>
              </div>
              
-             <div className="grid grid-cols-[auto_1fr_auto] gap-x-3 gap-y-3.5 items-center max-h-[50vh] overflow-y-auto custom-scrollbar pr-2">
+             <div className="grid grid-cols-[auto_1fr_auto] gap-x-4 gap-y-3.5 items-center max-h-[50vh] overflow-y-auto custom-scrollbar pr-2">
                {/* Baris Realisasi */}
                <div className="w-5 h-1.5 border-t-[4px] border-solid border-blue-500 shrink-0 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
-               <span className="text-xs font-bold text-slate-700 whitespace-nowrap">Jalur Realisasi</span>
-               <span className="text-xs font-bold text-slate-700 whitespace-nowrap">: (Total: {mapCounts.realisasi})</span>
+               <span className="text-xs font-normal text-slate-700 whitespace-nowrap">Jalur Realisasi</span>
+               <span className="text-xs font-normal text-slate-700 whitespace-nowrap">: ({mapCounts.realisasi} Titik)</span>
                
                {/* Baris Rencana */}
                <div className="w-5 h-1.5 border-t-[4px] border-dashed border-amber-500 shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.6)]"></div>
-               <span className="text-xs font-bold text-slate-700 whitespace-nowrap">Jalur Rencana</span>
-               <span className="text-xs font-bold text-slate-700 whitespace-nowrap">: (Total: {mapCounts.rencana})</span>
+               <span className="text-xs font-normal text-slate-700 whitespace-nowrap">Jalur Rencana</span>
+               <span className="text-xs font-normal text-slate-700 whitespace-nowrap">: ({mapCounts.rencana} Titik)</span>
 
                {/* TAMPILAN DINAMIS LAYER GLOBAL DI LEGENDA BERDASARKAN GRUP WARNA */}
                {globalLayerGroups && globalLayerGroups.length > 0 ? (
@@ -1905,7 +1932,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
                      ) : (
                        <div className="w-5 h-1.5 border-t-[4px] border-solid shrink-0" style={{ borderColor: group.color }}></div>
                      )}
-                     <span className="text-xs font-bold text-slate-700 truncate max-w-[140px] col-span-2" title={group.name}>
+                     <span className="text-xs font-normal text-slate-700 truncate max-w-[140px] col-span-2" title={group.name}>
                        {group.name}
                      </span>
                    </React.Fragment>
@@ -1914,18 +1941,18 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
                  <>
                    <React.Fragment>
                      <div className="w-5 h-1.5 border-t-[4px] border-solid border-cyan-400 shrink-0 shadow-[0_0_8px_rgba(34,211,238,0.6)]"></div>
-                     <span className="text-xs font-bold text-slate-700 whitespace-nowrap col-span-2">Jalur Air</span>
+                     <span className="text-xs font-normal text-slate-700 whitespace-nowrap col-span-2">Jalur Air</span>
                    </React.Fragment>
                    <React.Fragment>
                      <div className="w-5 h-3 border-2 border-teal-500 bg-teal-500/30 shrink-0"></div>
-                     <span className="text-xs font-bold text-slate-700 whitespace-nowrap col-span-2">Kolam Retensi</span>
+                     <span className="text-xs font-normal text-slate-700 whitespace-nowrap col-span-2">Kolam Retensi</span>
                    </React.Fragment>
                  </>
                )}
              </div>
           </div>
         ) : (
-          <button onClick={() => setShowLegend(true)} className="bg-white/95 backdrop-blur-md p-3 sm:px-4 sm:py-3 rounded-2xl shadow-md border border-slate-200 hover:bg-slate-50 transition-all text-slate-800 pointer-events-auto group flex items-center gap-2" title="Tampilkan Legenda">
+          <button onClick={() => setShowLegend(true)} className="bg-white/80 backdrop-blur-md p-3 sm:px-4 sm:py-3 rounded-2xl shadow-md border border-slate-200 hover:bg-slate-50 transition-all text-slate-800 pointer-events-auto group flex items-center gap-2" title="Tampilkan Legenda">
              <MapIcon size={18} className="text-blue-600 group-hover:scale-110 transition-transform shrink-0" />
              <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Legenda Peta</span>
           </button>
