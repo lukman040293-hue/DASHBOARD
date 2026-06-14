@@ -1418,7 +1418,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
                 zIndexOffset: 7000, 
                 icon: window.L.divIcon({ 
                   className: 'bg-transparent border-0 overflow-visible', 
-                  html: `<div style="transform: translate(-50%, -50%); background-color: transparent; color: ${layer.color}; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;" class="w-max whitespace-nowrap px-1 py-0 text-[10px] font-black uppercase tracking-wider text-center pointer-events-none drop-shadow-md">
+                  html: `<div style="transform: translate(-50%, -50%); background-color: transparent; color: ${layer.color}; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;" class="w-max whitespace-nowrap px-1 py-0 text-[10px] font-black uppercase tracking-wider text-center pointer-events-none drop-shadow-md">
                     ${layer.name || 'Jalur Pendukung'}
                   </div>`, 
                   iconSize: [0, 0] 
