@@ -6104,15 +6104,10 @@ export default function App() {
   const handleAppendRouteSubmit = async (e) => {
     e.preventDefault(); if (!projectData) return; setIsProcessing(true);
     try {
-       const parseCoord = (val) => {
-          if (!val) return null; let str = String(val).replace(/\s+/g, '');
-          if (str.includes(',') && str.split(',').length === 2) { const parts = str.split(','); const lat = parseFloat(parts[0]); if (!isNaN(lat)) return lat; }
-          const num = parseFloat(str.replace(',', '.')); return isNaN(num) ? null : num;
-       };
-
-       const lat = parseCoord(appendRouteForm.lat);
-       const lng = parseCoord(appendRouteForm.lng);
-       if (lat === null || lng === null) throw new Error("Format kordinat tidak valid");
+       // MENGGUNAKAN GLOBAL PARSER AGAR AMAN DARI BUG KOMA
+       const lat = parseCoordToFloat(appendRouteForm.lat);
+       const lng = parseCoordToFloat(appendRouteForm.lng);
+       if (isNaN(lat) || isNaN(lng)) throw new Error("Format kordinat tidak valid");
 
        const isActual = appendRouteForm.targetType === 'actual';
        let dbUpdatePayload = {};
@@ -6317,16 +6312,11 @@ export default function App() {
     e.preventDefault(); if (!projectData) return; setIsProcessing(true);
 
     try {
-      const parseCoord = (val) => {
-        if (!val) return null; let str = String(val).replace(/\s+/g, '');
-        if (str.includes(',') && str.split(',').length === 2) { const parts = str.split(','); const lat = parseFloat(parts[0]); if (!isNaN(lat)) return lat; }
-        const num = parseFloat(str.replace(',', '.')); return isNaN(num) ? null : num;
-      };
-
+      // PERBAIKAN: Gunakan parser global agar kebal terhadap kesalahan input format koma (,)
       const validPoints = (uForm.points || []).map(p => {
-          const lat = parseCoord(p.lat);
-          const lng = parseCoord(p.lng);
-          if (lat !== null && lng !== null) return { lat, lng };
+          const lat = parseCoordToFloat(p.lat);
+          const lng = parseCoordToFloat(p.lng);
+          if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
           return null;
       }).filter(Boolean);
 
@@ -6345,7 +6335,11 @@ export default function App() {
 
       if (startPt) {
         if (existingSegIdx >= 0) { 
-            newSegments[existingSegIdx].points = [startPt]; 
+            // Amankan titik lain agar tidak terhapus saat update survei awal
+            const extPts = [...(newSegments[existingSegIdx].points || [])];
+            if (extPts.length > 0) extPts[0] = startPt;
+            else extPts.push(startPt);
+            newSegments[existingSegIdx].points = extPts; 
             newSegments[existingSegIdx].boundary_end = endPt;
         } else { 
             newSegments.push({ id: Date.now(), name: segName, points: [startPt], boundary_end: endPt }); 
