@@ -1128,28 +1128,33 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
     return { realisasi, rencana };
   }, [allProjects]);
 
-  // LOGIKA BARU: Mengelompokkan layer global di Legenda berdasarkan Warna
+  // LOGIKA BARU: Mengelompokkan layer global di Legenda berdasarkan Warna DAN Bentuk
   const globalLayerGroups = useMemo(() => {
      const groups = {};
      globalLayers.forEach(layer => {
          const color = layer.color;
+         const type = layer.type; // 'line' atau 'polygon'
          let groupName = layer.name;
          
-         // Paksa penamaan untuk warna tertentu terlepas dari nama inputan manual
-         // Cyan (Terang, Normal, Gelap) -> Jalur Air
-         if (['#38bdf8', '#0ea5e9', '#0369a1'].includes(color)) groupName = 'Jalur Air';
-         // Teal (Terang, Normal, Gelap) -> Kolam Retensi
-         if (['#2dd4bf', '#14b8a6', '#0f766e'].includes(color)) groupName = 'Kolam Retensi';
+         // Logika Pintar: Beda bentuk, beda nama otomatis meskipun warnanya sama
+         if (type === 'line') {
+             if (['#38bdf8', '#0ea5e9', '#0369a1'].includes(color)) groupName = 'Jalur Air';
+             else if (['#2dd4bf', '#14b8a6', '#0f766e'].includes(color)) groupName = 'Jalur Drainase / Pipa';
+         } else if (type === 'polygon') {
+             if (['#38bdf8', '#0ea5e9', '#0369a1'].includes(color)) groupName = 'Area Penampungan Air';
+             else if (['#2dd4bf', '#14b8a6', '#0f766e'].includes(color)) groupName = 'Kolam Retensi';
+         }
 
-         if (!groups[color]) {
-             groups[color] = {
+         // Key pemisah di legenda: Kombinasi Tipe dan Warna agar tidak tercampur
+         const groupKey = `${type}-${color}`;
+
+         if (!groups[groupKey]) {
+             groups[groupKey] = {
                  name: groupName,
                  color: color,
-                 type: layer.type,
-                 count: 0
+                 type: type
              };
          }
-         groups[color].count += 1;
      });
      return Object.values(groups);
   }, [globalLayers]);
