@@ -1277,9 +1277,10 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
       kecamatanLayersRef.current = {};
       
       const fetchBoundaries = async () => {
-        // HELPER: Mengambil GeoJSON dengan proxy fallback agar terhindar dari pemblokiran CORS / Error Fetch
+        // HELPER: Mengambil GeoJSON dengan proxy fallback
         const fetchGeoJSON = async (query) => {
-           const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=geojson&polygon_geojson=1&limit=1&polygon_threshold=0.005&email=admin@synxbuild.com`;
+           // PERUBAHAN: limit=5 untuk memastikan kita dapat fitur Polygon/MultiPolygon, bukan cuma Titik Pusat (Node)
+           const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=geojson&polygon_geojson=1&limit=5&email=admin@synxbuild.com`;
            try {
                const res = await fetch(url);
                if (!res.ok) throw new Error('Direct fetch failed');
@@ -1296,7 +1297,10 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
         try {
           const dataKota = await fetchGeoJSON('Kota Samarinda, Kalimantan Timur');
           if (dataKota && dataKota.features && dataKota.features.length > 0) {
-            window.L.geoJSON(dataKota.features[0], {
+            // MENCARI FEATURE YANG BERUPA POLYGON/MULTIPOLYGON (BUKAN POINT)
+            const cityFeature = dataKota.features.find(f => f.geometry && (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon')) || dataKota.features[0];
+            
+            window.L.geoJSON(cityFeature, {
               pane: 'boundaryPane', // Masukkan ke pane dasar
               style: {
                 color: '#1e293b', weight: 6, opacity: 1, fillColor: 'transparent', dashArray: '12, 8'
@@ -1312,14 +1316,23 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
 
         // 2. Looping Ambil Data Batas Per Kecamatan
         for (let i = 0; i < LIST_KECAMATAN.length; i++) {
-          await new Promise(r => setTimeout(r, 1000)); // Delay aman
+          await new Promise(r => setTimeout(r, 2000)); // PERBAIKAN: Delay ditingkatkan ke 2 detik agar aman dari blokir API OSM
           
           try {
-            const dataKec = await fetchGeoJSON(`Kecamatan ${LIST_KECAMATAN[i]}, Samarinda, Kalimantan Timur`);
+            // PERBAIKAN FORMAT KUERI: Menyesuaikan penamaan di database OSM (Tanpa kata "Kecamatan")
+            let dataKec = await fetchGeoJSON(`${LIST_KECAMATAN[i]}, Kota Samarinda`);
+            let kecFeature = dataKec?.features?.find(f => f.geometry && (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon'));
             
-            if (dataKec && dataKec.features && dataKec.features.length > 0) {
-              const layer = window.L.geoJSON(dataKec.features[0], {
-                pane: 'boundaryPane', // Masukkan ke pane dasar
+            // Jika tidak dapat Polygon, coba format pencarian kedua (Fallback)
+            if (!kecFeature) {
+                await new Promise(r => setTimeout(r, 2000)); // Delay lagi sebelum mencoba fallback
+                dataKec = await fetchGeoJSON(`Kecamatan ${LIST_KECAMATAN[i]}, Samarinda`);
+                kecFeature = dataKec?.features?.find(f => f.geometry && (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon'));
+            }
+
+            if (kecFeature) {
+              const layer = window.L.geoJSON(kecFeature, {
+                pane: 'boundaryPane', 
                 style: {
                   color: colors[i], weight: 2, opacity: 0.9, fillColor: colors[i], fillOpacity: 0.15, dashArray: '4, 4'
                 },
@@ -1330,12 +1343,12 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
                   });
                   
                   l.on('mouseover', function(e) {
-                    e.target.setStyle({ fillOpacity: 0.4, weight: 3 });
-                    e.target.bringToFront(); // Hanya memindahkannya paling atas di dalam pane 'boundaryPane'
+                    if (e.target.setStyle) e.target.setStyle({ fillOpacity: 0.4, weight: 3 });
+                    if (e.target.bringToFront) e.target.bringToFront(); 
                   });
                   l.on('mouseout', function(e) {
-                    e.target.setStyle({ fillOpacity: 0.15, weight: 2 });
-                    e.target.bringToBack();
+                    if (e.target.setStyle) e.target.setStyle({ fillOpacity: 0.15, weight: 2 });
+                    if (e.target.bringToBack) e.target.bringToBack();
                   });
                 }
               });
