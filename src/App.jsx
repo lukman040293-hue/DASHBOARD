@@ -5161,8 +5161,25 @@ const ProjectSelectionListView = ({ projects, onSelectProject, onBack, onAddProj
 
 // --- KOMPONEN APLIKASI UTAMA ---
 export default function App() {
+  // Get URL params secara sinkron untuk mencegah layar berkedip ke halaman login
+  const checkIsPublic = () => {
+    if (typeof window === 'undefined') return { isPub: false, id: null };
+    const searchParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#\/?/, ''));
+    
+    const isPub = searchParams.get('public') === 'true' || hashParams.get('public') === 'true';
+    const id = searchParams.get('projectId') || hashParams.get('projectId');
+    
+    return { isPub, id };
+  };
+
+  const { isPub: initialIsPublic, id: initialPublicId } = checkIsPublic();
+
   // STATE BARU UNTUK LOGIKA LOGIN & PEMILIHAN
-  const [appMode, setAppMode] = useState('login'); // 'login', 'selection', 'project_list', 'master', 'project', 'absensi', 'public_dashboard'
+  const [appMode, setAppMode] = useState(initialIsPublic && initialPublicId ? 'public_dashboard' : 'login'); // 'login', 'selection', 'project_list', 'master', 'project', 'absensi', 'public_dashboard'
+  const [isPublicRoute] = useState(initialIsPublic);
+  const [publicProjectId] = useState(initialPublicId);
+  
   const [previousAppMode, setPreviousAppMode] = useState('selection'); // Menyimpan asal halaman sebelum masuk proyek
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authError, setAuthError] = useState('');
@@ -5214,10 +5231,6 @@ export default function App() {
   const [supabaseClient, setSupabaseClient] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [notification, setNotification] = useState(null);
-
-  // --- CEK URL PUBLIK ---
-  const isPublicRoute = useMemo(() => new URLSearchParams(window.location.search).get('public') === 'true', []);
-  const publicProjectId = useMemo(() => new URLSearchParams(window.location.search).get('projectId'), []);
 
   // --- Modal States ---
   const [showGlobalRekap, setShowGlobalRekap] = useState(false);
@@ -5571,9 +5584,8 @@ export default function App() {
   useEffect(() => {
     if (!supabaseClient) return;
 
-    // JIKA URL MENGANDUNG PARAMETER PUBLIC, BYPASS LOGIN
+    // JIKA URL MENGANDUNG PARAMETER PUBLIC, BYPASS LOGIN & LANGSUNG MUAT DATA
     if (isPublicRoute && publicProjectId) {
-      setAppMode('public_dashboard');
       fetchProjectDetails(publicProjectId);
       return; 
     }
@@ -5582,7 +5594,7 @@ export default function App() {
     supabaseClient.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setIsLoggedIn(true);
-        if (appMode === 'login') setAppMode('selection');
+        setAppMode(prev => prev === 'login' ? 'selection' : prev);
       }
     });
 
@@ -5593,7 +5605,7 @@ export default function App() {
 
       setIsLoggedIn(!!session);
       if (session) {
-         if (appMode === 'login') setAppMode('selection');
+         setAppMode(prev => prev === 'login' ? 'selection' : prev);
       } else {
          setAppMode('login');
          setProjectData(null);
@@ -5602,7 +5614,7 @@ export default function App() {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabaseClient, appMode, isPublicRoute, publicProjectId]);
+  }, [supabaseClient]); // Mengurangi array dependensi agar tidak terjadi infinite loop / re-render saat mode publik
 
   // Fetch data hanya jika sudah login atau minimal supabase siap
   useEffect(() => { 
@@ -7634,7 +7646,8 @@ export default function App() {
                   
                   {/* TOMBOL BAGIKAN LINK PUBLIK */}
                   <button type="button" onClick={() => {
-                     const url = `${window.location.origin}${window.location.pathname}?public=true&projectId=${projectData.id}`;
+                     // Menambahkan hash param (#) sebagai pengaman ganda agar tahan terhadap rewrite server
+                     const url = `${window.location.origin}${window.location.pathname}?public=true&projectId=${projectData.id}#public=true&projectId=${projectData.id}`;
                      const el = document.createElement('textarea');
                      el.value = url;
                      document.body.appendChild(el);
