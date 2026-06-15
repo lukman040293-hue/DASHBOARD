@@ -5161,24 +5161,21 @@ const ProjectSelectionListView = ({ projects, onSelectProject, onBack, onAddProj
 
 // --- KOMPONEN APLIKASI UTAMA ---
 export default function App() {
-  // Get URL params secara sinkron untuk mencegah layar berkedip ke halaman login
-  const checkIsPublic = () => {
+  // Gunakan regex parsing global pada href untuk kebal terhadap manipulasi Vercel/Router
+  const checkIsPublicUrl = () => {
     if (typeof window === 'undefined') return { isPub: false, id: null };
-    const searchParams = new URLSearchParams(window.location.search);
-    const hashParams = new URLSearchParams(window.location.hash.replace(/^#\/?/, ''));
-    
-    const isPub = searchParams.get('public') === 'true' || hashParams.get('public') === 'true';
-    const id = searchParams.get('projectId') || hashParams.get('projectId');
-    
-    return { isPub, id };
+    const url = window.location.href || '';
+    const isPub = url.includes('public=true');
+    const idMatch = url.match(/projectId=([a-zA-Z0-9-]+)/);
+    return { isPub, id: idMatch ? idMatch[1] : null };
   };
 
-  const { isPub: initialIsPublic, id: initialPublicId } = checkIsPublic();
+  const initialUrlState = checkIsPublicUrl();
 
   // STATE BARU UNTUK LOGIKA LOGIN & PEMILIHAN
-  const [appMode, setAppMode] = useState(initialIsPublic && initialPublicId ? 'public_dashboard' : 'login'); // 'login', 'selection', 'project_list', 'master', 'project', 'absensi', 'public_dashboard'
-  const [isPublicRoute] = useState(initialIsPublic);
-  const [publicProjectId] = useState(initialPublicId);
+  const [appMode, setAppMode] = useState(initialUrlState.isPub && initialUrlState.id ? 'public_dashboard' : 'login'); 
+  const [isPublicRoute, setIsPublicRoute] = useState(initialUrlState.isPub);
+  const [publicProjectId, setPublicProjectId] = useState(initialUrlState.id);
   
   const [previousAppMode, setPreviousAppMode] = useState('selection'); // Menyimpan asal halaman sebelum masuk proyek
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -5338,6 +5335,16 @@ export default function App() {
   useEffect(() => {
     document.title = "SynxBuild - Command Center";
   }, []);
+
+  // --- CEK URL PUBLIK SETIAP RENDER (Pencegah Bug URL Asynchronous) ---
+  useEffect(() => {
+    const { isPub, id } = checkIsPublicUrl();
+    if (isPub && id && (!isPublicRoute || publicProjectId !== id)) {
+       setIsPublicRoute(true);
+       setPublicProjectId(id);
+       setAppMode('public_dashboard');
+    }
+  }, [isPublicRoute, publicProjectId]);
 
   // --- KUNCI KE FONT WINDOWS (SEGOE UI / ARIAL) & HAPUS BACKGROUND POPUP ---
   useEffect(() => {
@@ -5585,6 +5592,7 @@ export default function App() {
     if (!supabaseClient) return;
 
     // JIKA URL MENGANDUNG PARAMETER PUBLIC, BYPASS LOGIN & LANGSUNG MUAT DATA
+    // Dengan mendaftarkan isPublicRoute sebagai dependency, listener login terblokir permanen di mode publik
     if (isPublicRoute && publicProjectId) {
       fetchProjectDetails(publicProjectId);
       return; 
@@ -5600,9 +5608,6 @@ export default function App() {
 
     // Dengarkan perubahan login/logout
     const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((_event, session) => {
-      // Abaikan auth event jika sedang di mode publik
-      if (isPublicRoute) return; 
-
       setIsLoggedIn(!!session);
       if (session) {
          setAppMode(prev => prev === 'login' ? 'selection' : prev);
@@ -5614,7 +5619,7 @@ export default function App() {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabaseClient]); // Mengurangi array dependensi agar tidak terjadi infinite loop / re-render saat mode publik
+  }, [supabaseClient, isPublicRoute, publicProjectId]); // KUNCI UTAMA SINKRONISASI
 
   // Fetch data hanya jika sudah login atau minimal supabase siap
   useEffect(() => { 
@@ -7646,8 +7651,7 @@ export default function App() {
                   
                   {/* TOMBOL BAGIKAN LINK PUBLIK */}
                   <button type="button" onClick={() => {
-                     // Menambahkan hash param (#) sebagai pengaman ganda agar tahan terhadap rewrite server
-                     const url = `${window.location.origin}${window.location.pathname}?public=true&projectId=${projectData.id}#public=true&projectId=${projectData.id}`;
+                     const url = `${window.location.origin}${window.location.pathname}?public=true&projectId=${projectData.id}`;
                      const el = document.createElement('textarea');
                      el.value = url;
                      document.body.appendChild(el);
