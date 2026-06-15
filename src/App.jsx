@@ -3669,7 +3669,28 @@ const DokumentasiView = ({ feeds, onView, onDelete, userRole }) => {
 };
 
 // --- KOMPONEN BARU: PUBLIC DASHBOARD VIEW (TANPA LOGIN) ---
-const PublicDashboardView = ({ projectData, actualProg, terminNum, terminPct, sisaWaktuInfo, processedSCurveData, deviasi, isDeviasiPositive }) => {
+const PublicDashboardView = ({ projectData, actualProg, terminNum, terminPct, sisaWaktuInfo, processedSCurveData, deviasi, isDeviasiPositive, errorMsg }) => {
+  if (errorMsg) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50 flex-col gap-4 p-8 text-center">
+        <AlertCircle className="text-rose-500" size={64} />
+        <h1 className="text-2xl font-black text-slate-800 tracking-tight">Akses Publik Ditolak</h1>
+        <p className="text-sm font-bold text-slate-500 max-w-md">{errorMsg}</p>
+        <div className="bg-blue-50 border border-blue-200 p-5 rounded-2xl max-w-lg text-left mt-2 shadow-sm">
+           <p className="text-xs text-blue-800 font-medium leading-relaxed mb-2">
+              <b>🛠️ Panduan Untuk Pemilik Sistem:</b>
+           </p>
+           <p className="text-xs text-blue-800 font-medium leading-relaxed">
+              Secara default, Supabase memblokir akses baca dari publik. Untuk mengizinkan link ini dibuka tanpa perlu login, Anda harus membuat kebijakan <b>New Policy (RLS)</b> di dashboard Supabase Anda pada tabel <code>projects</code>, <code>field_reports</code>, dan <code>documents</code> untuk role <code>anon</code> dengan operasi <code>SELECT</code>.
+           </p>
+        </div>
+        <button onClick={() => window.location.href = '/'} className="mt-4 px-8 py-3.5 bg-slate-800 hover:bg-slate-900 transition-colors text-white font-bold text-xs uppercase tracking-widest rounded-xl shadow-md">
+           Kembali ke Login
+        </button>
+      </div>
+    );
+  }
+
   if (!projectData) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50 flex-col gap-4">
@@ -5176,6 +5197,7 @@ export default function App() {
   const [appMode, setAppMode] = useState(initialUrlState.isPub && initialUrlState.id ? 'public_dashboard' : 'login'); 
   const [isPublicRoute, setIsPublicRoute] = useState(initialUrlState.isPub);
   const [publicProjectId, setPublicProjectId] = useState(initialUrlState.id);
+  const [publicError, setPublicError] = useState('');
   
   const [previousAppMode, setPreviousAppMode] = useState('selection'); // Menyimpan asal halaman sebelum masuk proyek
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -5786,7 +5808,9 @@ export default function App() {
 
   const fetchProjectDetails = async (projectId) => {
     try {
-      const { data: proj } = await supabaseClient.from('projects').select('*').eq('id', projectId).single();
+      const { data: proj, error: projErr } = await supabaseClient.from('projects').select('*').eq('id', projectId).single();
+      if (projErr) throw projErr;
+      
       if (proj) {
         setProjectData(proj);
         let tKe = '1', tPct = '0';
@@ -5839,7 +5863,13 @@ export default function App() {
 
     const { data: docs } = await supabaseClient.from('documents').select('*').eq('project_id', projectId).order('created_at', { ascending: false });
     setDocuments(docs || []);
-    } catch (e) { showMsg("Gagal memuat detail proyek.", "error"); }
+    } catch (e) { 
+       console.error("Fetch detail error:", e);
+       showMsg("Gagal memuat detail proyek.", "error"); 
+       if (isPublicRoute) {
+           setPublicError("Data proyek tidak ditemukan atau akses publik masih diblokir oleh keamanan database.");
+       }
+    }
   };
 
   const showMsg = (msg, type = 'info') => {
@@ -6939,6 +6969,7 @@ export default function App() {
           processedSCurveData={processedSCurveData}
           deviasi={deviasi}
           isDeviasiPositive={isDeviasiPositive}
+          errorMsg={publicError}
         />
       </>
     );
@@ -7622,18 +7653,47 @@ export default function App() {
                 {/* AKSI KANAN: Bell, Settings, Main Action (Dipindah ke baris atas) */}
                 <div className="flex items-center gap-1.5 md:gap-2 shrink-0 relative z-[99999]">
                   
-                  {/* TOMBOL BAGIKAN LINK PUBLIK */}
-                  <button type="button" onClick={() => {
-                     const url = `${window.location.origin}${window.location.pathname}?public=true&projectId=${projectData.id}`;
-                     const el = document.createElement('textarea');
-                     el.value = url;
-                     document.body.appendChild(el);
-                     el.select();
-                     document.execCommand('copy');
-                     document.body.removeChild(el);
-                     showMsg("Link Dashboard Publik berhasil disalin! Kirimkan link ini ke Dinas/Pejabat.", "success");
-                  }} className="relative z-50 p-2 text-slate-400 hover:text-emerald-600 transition-colors bg-white hover:bg-emerald-50 rounded-xl shadow-sm border border-slate-200 cursor-pointer pointer-events-auto" title="Salin Link Dashboard Publik">
+                  {/* TOMBOL BAGIKAN / IZIN AKSES PUBLIK (DIPERBARUI) */}
+                  <button 
+                    type="button" 
+                    onClick={async () => {
+                       const newStatus = !projectData.is_public;
+                       setIsProcessing(true);
+                       try {
+                           // Update status di database
+                           const { error } = await supabaseClient.from('projects').update({ is_public: newStatus }).eq('id', projectData.id);
+                           if (error) throw error;
+                           
+                           // Update state lokal
+                           setProjectData(prev => ({ ...prev, is_public: newStatus }));
+                           setMasterProjects(prev => prev.map(p => p.id === projectData.id ? { ...p, is_public: newStatus } : p));
+                           
+                           if (newStatus) {
+                               const url = `${window.location.origin}${window.location.pathname}?public=true&projectId=${projectData.id}`;
+                               const el = document.createElement('textarea');
+                               el.value = url;
+                               document.body.appendChild(el);
+                               el.select();
+                               document.execCommand('copy');
+                               document.body.removeChild(el);
+                               showMsg("Akses Publik DIBUKA. Link Dashboard Publik berhasil disalin ke clipboard!", "success");
+                           } else {
+                               showMsg("Akses Publik DITUTUP. Link tidak akan bisa dibuka lagi oleh siapapun.", "warning");
+                           }
+                       } catch (e) {
+                           showMsg("Gagal mengubah akses publik: " + e.message, "error");
+                       } finally {
+                           setIsProcessing(false);
+                       }
+                    }} 
+                    className={`relative z-50 p-2 sm:px-3 sm:py-2 transition-colors rounded-xl shadow-sm border cursor-pointer pointer-events-auto flex items-center gap-2 ${projectData?.is_public ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100' : 'bg-white text-slate-400 border-slate-200 hover:text-emerald-600 hover:bg-emerald-50'}`} 
+                    title={projectData?.is_public ? "Tutup Akses Publik" : "Buka Akses Publik & Salin Link"}
+                    disabled={isProcessing}
+                  >
                     <Share2 size={16} />
+                    <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest">
+                       {projectData?.is_public ? 'Publik Aktif' : 'Share'}
+                    </span>
                   </button>
 
                   <button type="button" onClick={() => setReadFeeds(new Set(safeFeeds.map(f => f.id)))} className="relative z-50 p-2 text-slate-400 hover:text-blue-600 transition-colors bg-white hover:bg-blue-50 rounded-xl shadow-sm border border-slate-200 cursor-pointer pointer-events-auto" title="Tandai semua log sudah dibaca">
