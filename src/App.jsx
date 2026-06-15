@@ -1129,6 +1129,8 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
 
   const [showGlobalEditor, setShowGlobalEditor] = useState(false);
   const [globalInputMode, setGlobalInputMode] = useState('view'); // 'view', 'line', 'polygon'
+  const [expandedGlobalLayerId, setExpandedGlobalLayerId] = useState(null); // STATE BARU: Accordion Layer
+  const [confirmDeleteGlobalId, setConfirmDeleteGlobalId] = useState(null); // STATE BARU: Konfirmasi Hapus
 
   // STATE BARU: Filter Jenis Rute (Rencana, Realisasi, Poligon)
   const [pathFilters, setPathFilters] = useState(() => {
@@ -1416,14 +1418,16 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
 
             // Buat layer baru jika belum ada atau ganti mode gambar
             if (newLayers.length === 0 || lastType !== globalInputMode) {
+              const newId = `global-${Date.now()}`;
               newLayers.push({
-                id: `global-${Date.now()}`,
+                id: newId,
                 name: globalInputMode === 'line' ? `Sungai/Jalan ${newLayers.length + 1}` : `Area Utama ${newLayers.length + 1}`,
                 type: globalInputMode,
                 color: globalInputMode === 'line' ? '#0ea5e9' : '#14b8a6', // Cyan atau Teal default
                 isDashed: false,
                 points: []
               });
+              setExpandedGlobalLayerId(newId); // Auto-expand layer baru
             }
             const idx = newLayers.length - 1;
             newLayers[idx] = {
@@ -2150,124 +2154,194 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
              <div className="space-y-3">
                {globalLayers.length === 0 ? (
                   <div className="p-6 text-center text-slate-400 text-xs font-medium border border-dashed border-slate-300 rounded-2xl bg-white/50">Belum ada layer global yang digambar.</div>
-               ) : globalLayers.map(layer => (
-                  <div key={layer.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm group mb-3">
-                     <div className="flex justify-between items-center mb-2.5 gap-2">
-                        <input 
-                           type="text" 
-                           value={layer.name} 
-                           onChange={(e) => setGlobalLayers(prev => prev.map(l => l.id === layer.id ? { ...l, name: e.target.value } : l))}
-                           className="font-bold text-slate-800 text-xs outline-none bg-transparent w-full focus:border-b border-blue-400"
-                           placeholder="Nama Area / Jalur"
-                        />
-                        <button onClick={() => setGlobalLayers(prev => prev.filter(l => l.id !== layer.id))} className="text-rose-500 bg-rose-50 p-1.5 rounded hover:bg-rose-100 shrink-0"><Trash size={12} /></button>
-                     </div>
-                     <div className="flex items-center gap-1.5 mb-2 bg-slate-50 p-1.5 rounded-lg border border-slate-100">
-                        <div className="w-3 h-3 rounded-[3px] shrink-0 border border-black/10 shadow-sm ml-1" style={{backgroundColor: layer.color || (layer.type === 'polygon' ? '#14b8a6' : '#0ea5e9')}}></div>
-                        <select 
-                           value={layer.color || (layer.type === 'polygon' ? '#14b8a6' : '#0ea5e9')} 
-                           onChange={(e) => setGlobalLayers(prev => prev.map(l => l.id === layer.id ? { ...l, color: e.target.value } : l))}
-                           className="text-[9px] font-bold outline-none bg-transparent text-slate-700 flex-1 cursor-pointer"
-                           title="Pilih Warna"
-                        >
-                           <optgroup label="Biru & Cyan" className="bg-white text-slate-500">
-                              <option value="#60a5fa" className="text-slate-800">Biru Terang</option>
-                              <option value="#3b82f6" className="text-slate-800">Biru Normal</option>
-                              <option value="#1e40af" className="text-slate-800">Biru Gelap</option>
-                              <option value="#38bdf8" className="text-slate-800">Cyan Terang</option>
-                              <option value="#0ea5e9" className="text-slate-800">Cyan Normal</option>
-                              <option value="#0369a1" className="text-slate-800">Cyan Gelap</option>
-                           </optgroup>
-                           <optgroup label="Hijau & Teal" className="bg-white text-slate-500">
-                              <option value="#4ade80" className="text-slate-800">Hijau Terang</option>
-                              <option value="#22c55e" className="text-slate-800">Hijau Normal</option>
-                              <option value="#166534" className="text-slate-800">Hijau Gelap</option>
-                              <option value="#2dd4bf" className="text-slate-800">Teal Terang</option>
-                              <option value="#14b8a6" className="text-slate-800">Teal Normal</option>
-                              <option value="#0f766e" className="text-slate-800">Teal Gelap</option>
-                           </optgroup>
-                           <optgroup label="Kuning & Jingga" className="bg-white text-slate-500">
-                              <option value="#fde047" className="text-slate-800">Kuning Terang</option>
-                              <option value="#eab308" className="text-slate-800">Kuning Normal</option>
-                              <option value="#a16207" className="text-slate-800">Kuning Gelap</option>
-                              <option value="#fb923c" className="text-slate-800">Jingga Terang</option>
-                              <option value="#f97316" className="text-slate-800">Jingga Normal</option>
-                              <option value="#9a3412" className="text-slate-800">Jingga Gelap</option>
-                           </optgroup>
-                           <optgroup label="Merah & Pink" className="bg-white text-slate-500">
-                              <option value="#f87171" className="text-slate-800">Merah Terang</option>
-                              <option value="#ef4444" className="text-slate-800">Merah Normal</option>
-                              <option value="#991b1b" className="text-slate-800">Merah Gelap</option>
-                              <option value="#f472b6" className="text-slate-800">Pink Terang</option>
-                              <option value="#ec4899" className="text-slate-800">Pink Normal</option>
-                              <option value="#9d174d" className="text-slate-800">Pink Gelap</option>
-                           </optgroup>
-                           <optgroup label="Ungu" className="bg-white text-slate-500">
-                              <option value="#c084fc" className="text-slate-800">Ungu Terang</option>
-                              <option value="#a855f7" className="text-slate-800">Ungu Normal</option>
-                              <option value="#6b21a8" className="text-slate-800">Ungu Gelap</option>
-                           </optgroup>
-                           <optgroup label="Netral" className="bg-white text-slate-500">
-                              <option value="#94a3b8" className="text-slate-800">Abu Terang</option>
-                              <option value="#64748b" className="text-slate-800">Abu Normal</option>
-                              <option value="#334155" className="text-slate-800">Abu Gelap</option>
-                              <option value="#ffffff" className="text-slate-800">Putih</option>
-                              <option value="#000000" className="text-slate-800">Hitam</option>
-                           </optgroup>
-                        </select>
-                        <select 
-                           value={layer.type || 'line'}
-                           onChange={(e) => setGlobalLayers(prev => prev.map(l => l.id === layer.id ? { ...l, type: e.target.value } : l))}
-                           className="text-[9px] font-bold outline-none bg-transparent text-slate-700 flex-1 cursor-pointer border-l border-slate-300 pl-1.5"
-                        >
-                           <option value="line" className="bg-white text-slate-800">Garis</option>
-                           <option value="polygon" className="bg-white text-slate-800">Poligon</option>
-                        </select>
-                        <select 
-                           value={layer.isDashed ? 'dashed' : 'solid'}
-                           onChange={(e) => setGlobalLayers(prev => prev.map(l => l.id === layer.id ? { ...l, isDashed: e.target.value === 'dashed' } : l))}
-                           className="text-[9px] font-bold outline-none bg-transparent text-slate-700 flex-1 cursor-pointer border-l border-slate-300 pl-1.5"
-                        >
-                           <option value="solid" className="bg-white text-slate-800">Lurus</option>
-                           <option value="dashed" className="bg-white text-slate-800">Putus</option>
-                        </select>
-                     </div>
+               ) : globalLayers.map(layer => {
+                  const isExpanded = expandedGlobalLayerId === layer.id;
+                  
+                  return (
+                  <div key={layer.id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden transition-all">
                      
-                     {/* List Titik Vertex */}
-                     <div className="pl-1 max-h-32 overflow-y-auto custom-scrollbar pr-1">
-                       {(!layer.points || layer.points.length === 0) ? <div className="text-[9px] text-slate-400 italic pb-1">0 Titik</div> : layer.points.map((p, i) => (
-                         <div key={i} className="flex justify-between items-center mb-1 pl-2 border-l-2 text-slate-600 group/pt hover:bg-slate-50 rounded py-0.5" style={{ borderColor: layer.color || (layer.type === 'polygon' ? '#14b8a6' : '#0ea5e9') }}>
-                            <div className="flex items-center gap-1 w-full mr-2">
-                               <span className="text-[8px] font-bold w-4">T{i+1}</span>
-                               <input type="number" step="any" value={p.lat} onChange={e => {
-                                  setGlobalLayers(prev => prev.map(l => {
-                                     if (l.id === layer.id) { const nPts = [...l.points]; nPts[i].lat = e.target.value; return { ...l, points: nPts }; }
-                                     return l;
-                                  }));
-                               }} className="w-full p-1 text-[9px] border border-slate-200 rounded outline-none focus:border-blue-400 bg-white font-mono text-slate-700 shadow-inner" />
-                               <input type="number" step="any" value={p.lng} onChange={e => {
-                                  setGlobalLayers(prev => prev.map(l => {
-                                     if (l.id === layer.id) { const nPts = [...l.points]; nPts[i].lng = e.target.value; return { ...l, points: nPts }; }
-                                     return l;
-                                  }));
-                               }} className="w-full p-1 text-[9px] border border-slate-200 rounded outline-none focus:border-blue-400 bg-white font-mono text-slate-700 shadow-inner" />
-                            </div>
-                            <button onClick={() => {
-                               setGlobalLayers(prev => prev.map(l => {
-                                  if (l.id === layer.id) { const nPts = [...l.points]; nPts.splice(i, 1); return { ...l, points: nPts }; }
-                                  return l;
-                               }));
-                            }} className="text-rose-400 opacity-0 group-hover/pt:opacity-100 p-1 shrink-0"><X size={10} /></button>
-                         </div>
-                       ))}
+                     {/* Header Layer (Buka / Tutup Accordion) */}
+                     <div 
+                         className="flex justify-between items-center p-3 cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors"
+                         onClick={() => setExpandedGlobalLayerId(isExpanded ? null : layer.id)}
+                     >
+                        <div className="flex items-center gap-2">
+                           <div className="w-3 h-3 rounded-[3px] shrink-0 border border-black/10 shadow-sm" style={{backgroundColor: layer.color || (layer.type === 'polygon' ? '#14b8a6' : '#0ea5e9')}}></div>
+                           <span className="font-bold text-slate-700 text-xs truncate max-w-[140px]" title={layer.name}>{layer.name || 'Area / Jalur'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                           <span className="text-[9px] font-bold text-slate-400 bg-white px-1.5 py-0.5 rounded shadow-sm border border-slate-200 uppercase">{layer.type === 'polygon' ? 'Poligon' : 'Garis'}</span>
+                           {isExpanded ? <ChevronDown size={14} className="text-slate-500" /> : <ChevronRight size={14} className="text-slate-500" />}
+                        </div>
                      </div>
+
+                     {/* Body Form yang Tersembunyi */}
+                     {isExpanded && (
+                       <div className="p-3 border-t border-slate-100 bg-white animate-in slide-in-from-top-2 fade-in duration-200">
+                         
+                         {/* Input Nama Layer */}
+                         <div className="mb-2.5">
+                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Nama Layer</label>
+                            <input 
+                               type="text" 
+                               value={layer.name} 
+                               onChange={(e) => setGlobalLayers(prev => prev.map(l => l.id === layer.id ? { ...l, name: e.target.value } : l))}
+                               className="font-bold text-slate-800 text-xs outline-none bg-slate-50 w-full p-2.5 rounded-lg border border-slate-200 focus:border-blue-400 focus:bg-white transition-all shadow-inner"
+                               placeholder="Nama Area / Jalur"
+                            />
+                         </div>
+
+                         {/* Pengaturan Gaya (Warna, Tipe, Style) */}
+                         <div className="mb-2.5">
+                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Tampilan Visual</label>
+                            <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                               <div className="w-3 h-3 rounded-[3px] shrink-0 border border-black/10 shadow-sm ml-1" style={{backgroundColor: layer.color || (layer.type === 'polygon' ? '#14b8a6' : '#0ea5e9')}}></div>
+                               <select 
+                                  value={layer.color || (layer.type === 'polygon' ? '#14b8a6' : '#0ea5e9')} 
+                                  onChange={(e) => setGlobalLayers(prev => prev.map(l => l.id === layer.id ? { ...l, color: e.target.value } : l))}
+                                  className="text-[9px] font-bold outline-none bg-transparent text-slate-700 flex-1 cursor-pointer"
+                                  title="Pilih Warna"
+                               >
+                                  <optgroup label="Biru & Cyan" className="bg-white text-slate-500">
+                                     <option value="#60a5fa" className="text-slate-800">Biru Terang</option>
+                                     <option value="#3b82f6" className="text-slate-800">Biru Normal</option>
+                                     <option value="#1e40af" className="text-slate-800">Biru Gelap</option>
+                                     <option value="#38bdf8" className="text-slate-800">Cyan Terang</option>
+                                     <option value="#0ea5e9" className="text-slate-800">Cyan Normal</option>
+                                     <option value="#0369a1" className="text-slate-800">Cyan Gelap</option>
+                                  </optgroup>
+                                  <optgroup label="Hijau & Teal" className="bg-white text-slate-500">
+                                     <option value="#4ade80" className="text-slate-800">Hijau Terang</option>
+                                     <option value="#22c55e" className="text-slate-800">Hijau Normal</option>
+                                     <option value="#166534" className="text-slate-800">Hijau Gelap</option>
+                                     <option value="#2dd4bf" className="text-slate-800">Teal Terang</option>
+                                     <option value="#14b8a6" className="text-slate-800">Teal Normal</option>
+                                     <option value="#0f766e" className="text-slate-800">Teal Gelap</option>
+                                  </optgroup>
+                                  <optgroup label="Kuning & Jingga" className="bg-white text-slate-500">
+                                     <option value="#fde047" className="text-slate-800">Kuning Terang</option>
+                                     <option value="#eab308" className="text-slate-800">Kuning Normal</option>
+                                     <option value="#a16207" className="text-slate-800">Kuning Gelap</option>
+                                     <option value="#fb923c" className="text-slate-800">Jingga Terang</option>
+                                     <option value="#f97316" className="text-slate-800">Jingga Normal</option>
+                                     <option value="#9a3412" className="text-slate-800">Jingga Gelap</option>
+                                  </optgroup>
+                                  <optgroup label="Merah & Pink" className="bg-white text-slate-500">
+                                     <option value="#f87171" className="text-slate-800">Merah Terang</option>
+                                     <option value="#ef4444" className="text-slate-800">Merah Normal</option>
+                                     <option value="#991b1b" className="text-slate-800">Merah Gelap</option>
+                                     <option value="#f472b6" className="text-slate-800">Pink Terang</option>
+                                     <option value="#ec4899" className="text-slate-800">Pink Normal</option>
+                                     <option value="#9d174d" className="text-slate-800">Pink Gelap</option>
+                                  </optgroup>
+                                  <optgroup label="Ungu" className="bg-white text-slate-500">
+                                     <option value="#c084fc" className="text-slate-800">Ungu Terang</option>
+                                     <option value="#a855f7" className="text-slate-800">Ungu Normal</option>
+                                     <option value="#6b21a8" className="text-slate-800">Ungu Gelap</option>
+                                  </optgroup>
+                                  <optgroup label="Netral" className="bg-white text-slate-500">
+                                     <option value="#94a3b8" className="text-slate-800">Abu Terang</option>
+                                     <option value="#64748b" className="text-slate-800">Abu Normal</option>
+                                     <option value="#334155" className="text-slate-800">Abu Gelap</option>
+                                     <option value="#ffffff" className="text-slate-800">Putih</option>
+                                     <option value="#000000" className="text-slate-800">Hitam</option>
+                                  </optgroup>
+                               </select>
+                               <select 
+                                  value={layer.type || 'line'}
+                                  onChange={(e) => setGlobalLayers(prev => prev.map(l => l.id === layer.id ? { ...l, type: e.target.value } : l))}
+                                  className="text-[9px] font-bold outline-none bg-transparent text-slate-700 flex-1 cursor-pointer border-l border-slate-300 pl-1.5"
+                               >
+                                  <option value="line" className="bg-white text-slate-800">Garis</option>
+                                  <option value="polygon" className="bg-white text-slate-800">Poligon</option>
+                               </select>
+                               <select 
+                                  value={layer.isDashed ? 'dashed' : 'solid'}
+                                  onChange={(e) => setGlobalLayers(prev => prev.map(l => l.id === layer.id ? { ...l, isDashed: e.target.value === 'dashed' } : l))}
+                                  className="text-[9px] font-bold outline-none bg-transparent text-slate-700 flex-1 cursor-pointer border-l border-slate-300 pl-1.5"
+                               >
+                                  <option value="solid" className="bg-white text-slate-800">Lurus</option>
+                                  <option value="dashed" className="bg-white text-slate-800">Putus</option>
+                               </select>
+                            </div>
+                         </div>
+                         
+                         {/* List Titik Vertex */}
+                         <div className="mb-4">
+                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex justify-between items-center mb-1">
+                               <span>Titik Koordinat</span>
+                               <span className="bg-slate-200 text-slate-600 px-1.5 py-[1px] rounded">{layer.points?.length || 0} Titik</span>
+                            </label>
+                            <div className="max-h-32 overflow-y-auto custom-scrollbar pr-1 bg-slate-50 border border-slate-100 rounded-lg p-1.5">
+                              {(!layer.points || layer.points.length === 0) ? <div className="text-[9px] text-slate-400 italic text-center py-2">Belum ada titik digambar</div> : layer.points.map((p, i) => (
+                                <div key={i} className="flex justify-between items-center mb-1 pl-2 border-l-2 text-slate-600 group/pt hover:bg-white rounded py-0.5" style={{ borderColor: layer.color || (layer.type === 'polygon' ? '#14b8a6' : '#0ea5e9') }}>
+                                   <div className="flex items-center gap-1 w-full mr-2">
+                                      <span className="text-[8px] font-bold w-4">T{i+1}</span>
+                                      <input type="number" step="any" value={p.lat} onChange={e => {
+                                         setGlobalLayers(prev => prev.map(l => {
+                                            if (l.id === layer.id) { const nPts = [...l.points]; nPts[i].lat = e.target.value; return { ...l, points: nPts }; }
+                                            return l;
+                                         }));
+                                      }} className="w-full p-1 text-[9px] border border-slate-200 rounded outline-none focus:border-blue-400 bg-white font-mono text-slate-700 shadow-inner" />
+                                      <input type="number" step="any" value={p.lng} onChange={e => {
+                                         setGlobalLayers(prev => prev.map(l => {
+                                            if (l.id === layer.id) { const nPts = [...l.points]; nPts[i].lng = e.target.value; return { ...l, points: nPts }; }
+                                            return l;
+                                         }));
+                                      }} className="w-full p-1 text-[9px] border border-slate-200 rounded outline-none focus:border-blue-400 bg-white font-mono text-slate-700 shadow-inner" />
+                                   </div>
+                                   <button onClick={() => {
+                                      setGlobalLayers(prev => prev.map(l => {
+                                         if (l.id === layer.id) { const nPts = [...l.points]; nPts.splice(i, 1); return { ...l, points: nPts }; }
+                                         return l;
+                                      }));
+                                   }} className="text-rose-400 opacity-0 group-hover/pt:opacity-100 p-1 shrink-0"><X size={10} /></button>
+                                </div>
+                              ))}
+                            </div>
+                         </div>
+
+                         {/* Tombol Hapus Layer & Konfirmasi Ganda */}
+                         <div className="pt-2 border-t border-slate-100">
+                             {confirmDeleteGlobalId === layer.id ? (
+                                <div className="flex flex-col gap-2 p-2 bg-rose-50 border border-rose-100 rounded-lg animate-in zoom-in-95">
+                                   <span className="text-[9px] font-bold text-rose-600 text-center uppercase tracking-widest">Yakin hapus layer ini?</span>
+                                   <div className="flex gap-2">
+                                       <button onClick={() => {
+                                          setGlobalLayers(prev => prev.filter(l => l.id !== layer.id));
+                                          setConfirmDeleteGlobalId(null);
+                                          setExpandedGlobalLayerId(null);
+                                       }} className="flex-1 py-2 bg-rose-500 text-white rounded text-[10px] font-bold shadow-sm hover:bg-rose-600 transition-colors">Ya, Hapus</button>
+                                       <button onClick={() => setConfirmDeleteGlobalId(null)} className="flex-1 py-2 bg-white border border-slate-200 text-slate-600 rounded text-[10px] font-bold hover:bg-slate-100 transition-colors">Batal</button>
+                                   </div>
+                                </div>
+                             ) : (
+                                <button onClick={() => setConfirmDeleteGlobalId(layer.id)} className="w-full py-2 bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-colors border border-transparent hover:border-rose-200">
+                                   <Trash size={12} /> Hapus Layer dari Peta
+                                </button>
+                             )}
+                         </div>
+
+                       </div>
+                     )}
                   </div>
-               ))}
+               );
+               })}
              </div>
              
              <div className="flex gap-2 mt-4">
-               <button onClick={() => setGlobalLayers(prev => [...prev, { id: `global-${Date.now()}`, name: `Jalur Air ${prev.length + 1}`, type: 'line', color: '#0ea5e9', isDashed: false, points: [] }])} className="flex-1 text-cyan-600 bg-cyan-50 hover:bg-cyan-100 py-2.5 text-[10px] font-bold rounded-xl border border-cyan-200 transition-colors shadow-sm">+ Tambah Garis</button>
-               <button onClick={() => setGlobalLayers(prev => [...prev, { id: `gpoly-${Date.now()}`, name: `Kolam Retensi ${prev.length + 1}`, type: 'polygon', color: '#14b8a6', isDashed: false, points: [] }])} className="flex-1 text-teal-600 bg-teal-50 hover:bg-teal-100 py-2.5 text-[10px] font-bold rounded-xl border border-teal-200 transition-colors shadow-sm">+ Area</button>
+               <button onClick={() => {
+                   const newId = `global-${Date.now()}`;
+                   setGlobalLayers(prev => [...prev, { id: newId, name: `Jalur Air ${prev.length + 1}`, type: 'line', color: '#0ea5e9', isDashed: false, points: [] }]);
+                   setExpandedGlobalLayerId(newId);
+                   setGlobalInputMode('line');
+               }} className="flex-1 text-cyan-600 bg-cyan-50 hover:bg-cyan-100 py-2.5 text-[10px] font-bold rounded-xl border border-cyan-200 transition-colors shadow-sm">+ Tambah Garis</button>
+               <button onClick={() => {
+                   const newId = `gpoly-${Date.now()}`;
+                   setGlobalLayers(prev => [...prev, { id: newId, name: `Kolam Retensi ${prev.length + 1}`, type: 'polygon', color: '#14b8a6', isDashed: false, points: [] }]);
+                   setExpandedGlobalLayerId(newId);
+                   setGlobalInputMode('polygon');
+               }} className="flex-1 text-teal-600 bg-teal-50 hover:bg-teal-100 py-2.5 text-[10px] font-bold rounded-xl border border-teal-200 transition-colors shadow-sm">+ Area</button>
              </div>
           </div>
           
