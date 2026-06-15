@@ -5427,33 +5427,6 @@ export default function App() {
      // State direset oleh onAuthStateChange
   };
 
-  // Efek untuk memantau status login dari Supabase
-  useEffect(() => {
-    if (!supabaseClient) return;
-
-    // Cek sesi saat pertama kali dimuat
-    supabaseClient.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setIsLoggedIn(true);
-        if (appMode === 'login') setAppMode('selection');
-      }
-    });
-
-    // Dengarkan perubahan login/logout
-    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((_event, session) => {
-      setIsLoggedIn(!!session);
-      if (session) {
-         if (appMode === 'login') setAppMode('selection');
-      } else {
-         setAppMode('login');
-         setProjectData(null);
-         setReadFeeds(new Set());
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [supabaseClient, appMode]);
-
   const docInputRef = useRef(null);
   const reportFileInputRef = useRef(null);
 
