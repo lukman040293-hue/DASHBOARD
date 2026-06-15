@@ -1139,13 +1139,13 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
   
   // STATE BARU KHUSUS FILTER KECAMATAN (Menyimpan visibilitas per kecamatan)
   const [kecamatanVisibility, setKecamatanVisibility] = useState(() => {
-    const saved = localStorage.getItem('master_kec_vis_v2');
+    const saved = localStorage.getItem('master_kec_vis_v3');
     if (saved !== null) {
       try { return JSON.parse(saved); } catch(e){}
     }
-    // Default: Semua kecamatan disembunyikan (hide)
+    // Default: Semua kecamatan ditampilkan (show) secara otomatis
     const initial = {};
-    LIST_KECAMATAN.forEach(k => initial[k] = false);
+    LIST_KECAMATAN.forEach(k => initial[k] = true);
     return initial;
   });
   
@@ -1207,7 +1207,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
   useEffect(() => { localStorage.setItem('master_showSketchPoints', JSON.stringify(showSketchPoints)); }, [showSketchPoints]);
   useEffect(() => { localStorage.setItem('master_showPhotos', JSON.stringify(showPhotos)); }, [showPhotos]);
   useEffect(() => { localStorage.setItem('master_pathFilters', JSON.stringify(pathFilters)); }, [pathFilters]);
-  useEffect(() => { localStorage.setItem('master_kec_vis_v2', JSON.stringify(kecamatanVisibility)); }, [kecamatanVisibility]);
+  useEffect(() => { localStorage.setItem('master_kec_vis_v3', JSON.stringify(kecamatanVisibility)); }, [kecamatanVisibility]);
   useEffect(() => { localStorage.setItem('master_showGlobalLayers', JSON.stringify(showGlobalLayers)); }, [showGlobalLayers]);
   useEffect(() => { localStorage.setItem('master_globalLayersData', JSON.stringify(globalLayers)); }, [globalLayers]);
   useEffect(() => { localStorage.setItem('master_showLegend', JSON.stringify(showLegend)); }, [showLegend]);
@@ -1238,9 +1238,11 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
       
       window.L.control.zoom({ position: 'bottomleft' }).addTo(mapInstanceRef.current);
       
-      // BUAT PANE KHUSUS UNTUK BATAS KECAMATAN AGAR SELALU DI BAWAH JALUR PROYEK
-      mapInstanceRef.current.createPane('boundaryPane');
-      mapInstanceRef.current.getPane('boundaryPane').style.zIndex = 390; // Default overlay (jalur) = 400
+      // BUAT PANE KHUSUS UNTUK BATAS KECAMATAN DENGAN PENGECEKAN AMAN
+      if (!mapInstanceRef.current.getPane('boundaryPane')) {
+          mapInstanceRef.current.createPane('boundaryPane');
+          mapInstanceRef.current.getPane('boundaryPane').style.zIndex = 390; // Default overlay (jalur) = 400
+      }
       
       boundaryLayerRef.current = window.L.layerGroup().addTo(mapInstanceRef.current);
       markerLayerRef.current = window.L.featureGroup().addTo(mapInstanceRef.current);
@@ -1273,69 +1275,84 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
       kecamatanLayersRef.current = {};
       
       const fetchBoundaries = async () => {
+        // HELPER: Mengambil GeoJSON dengan proxy fallback agar terhindar dari pemblokiran CORS / Error Fetch
+        const fetchGeoJSON = async (query) => {
+           const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=geojson&polygon_geojson=1&limit=1&polygon_threshold=0.005&email=admin@synxbuild.com`;
+           try {
+               const res = await fetch(url);
+               if (!res.ok) throw new Error('Direct fetch failed');
+               return await res.json();
+           } catch (err) {
+               console.log("Direct fetch diblokir, mencoba via proxy untuk:", query);
+               const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+               const resProxy = await fetch(proxyUrl);
+               return await resProxy.json();
+           }
+        };
+
+        // 1. Ambil Batas Utama Kota Samarinda
         try {
-          // 1. Ambil Batas Utama Kota Samarinda
-          const resKota = await fetch('https://nominatim.openstreetmap.org/search?q=Kota+Samarinda,+Kalimantan+Timur&format=geojson&polygon_geojson=1&limit=1');
-          const dataKota = await resKota.json();
+          const dataKota = await fetchGeoJSON('Kota Samarinda, Kalimantan Timur');
           if (dataKota && dataKota.features && dataKota.features.length > 0) {
             window.L.geoJSON(dataKota.features[0], {
               pane: 'boundaryPane', // Masukkan ke pane dasar
               style: {
-                color: '#64748b', weight: 3, opacity: 0.8, fillColor: 'transparent', dashArray: '8, 8'
+                color: '#1e293b', weight: 6, opacity: 1, fillColor: 'transparent', dashArray: '12, 8'
               },
               interactive: false
             }).addTo(boundaryLayerRef.current);
           }
+        } catch (err) {
+          console.log('Batas utama Kota Samarinda gagal dimuat:', err);
+        }
 
-          const colors = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#6366f1', '#a855f7', '#ec4899'];
+        const colors = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#6366f1', '#a855f7', '#ec4899'];
 
-          // 3. Looping Ambil Data Batas Per Kecamatan
-          for (let i = 0; i < LIST_KECAMATAN.length; i++) {
-            await new Promise(r => setTimeout(r, 1000)); // Delay 1 detik per kecamatan
+        // 2. Looping Ambil Data Batas Per Kecamatan
+        for (let i = 0; i < LIST_KECAMATAN.length; i++) {
+          await new Promise(r => setTimeout(r, 1000)); // Delay aman
+          
+          try {
+            const dataKec = await fetchGeoJSON(`Kecamatan ${LIST_KECAMATAN[i]}, Samarinda, Kalimantan Timur`);
             
-            try {
-              const resKec = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(LIST_KECAMATAN[i])},+Samarinda&format=geojson&polygon_geojson=1&limit=1`);
-              const dataKec = await resKec.json();
+            if (dataKec && dataKec.features && dataKec.features.length > 0) {
+              const layer = window.L.geoJSON(dataKec.features[0], {
+                pane: 'boundaryPane', // Masukkan ke pane dasar
+                style: {
+                  color: colors[i], weight: 2, opacity: 0.9, fillColor: colors[i], fillOpacity: 0.15, dashArray: '4, 4'
+                },
+                onEachFeature: function (feature, l) {
+                  // Menerapkan class transparan, memaksa opacity penuh (1), dan menggunakan text-shadow untuk border tajam
+                  l.bindTooltip(`<div class="text-[11px] font-black uppercase tracking-wider text-white" style="text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0px 3px 5px rgba(0,0,0,0.8);">Kec. ${LIST_KECAMATAN[i]}</div>`, {
+                    permanent: true, direction: 'center', className: 'kecamatan-tooltip-transparent', opacity: 1
+                  });
+                  
+                  l.on('mouseover', function(e) {
+                    e.target.setStyle({ fillOpacity: 0.4, weight: 3 });
+                    e.target.bringToFront(); // Hanya memindahkannya paling atas di dalam pane 'boundaryPane'
+                  });
+                  l.on('mouseout', function(e) {
+                    e.target.setStyle({ fillOpacity: 0.15, weight: 2 });
+                    e.target.bringToBack();
+                  });
+                }
+              });
               
-              if (dataKec && dataKec.features && dataKec.features.length > 0) {
-                const layer = window.L.geoJSON(dataKec.features[0], {
-                  pane: 'boundaryPane', // Masukkan ke pane dasar
-                  style: {
-                    color: colors[i], weight: 2, opacity: 0.9, fillColor: colors[i], fillOpacity: 0.15, dashArray: '4, 4'
-                  },
-                  onEachFeature: function (feature, l) {
-                    // Menerapkan class transparan, memaksa opacity penuh (1), dan menggunakan text-shadow untuk border tajam
-                    l.bindTooltip(`<div class="text-[11px] font-black uppercase tracking-wider text-white" style="text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0px 3px 5px rgba(0,0,0,0.8);">Kec. ${LIST_KECAMATAN[i]}</div>`, {
-                      permanent: true, direction: 'center', className: 'kecamatan-tooltip-transparent', opacity: 1
-                    });
-                    
-                    l.on('mouseover', function(e) {
-                      e.target.setStyle({ fillOpacity: 0.4, weight: 3 });
-                      e.target.bringToFront(); // Hanya memindahkannya paling atas di dalam pane 'boundaryPane'
-                    });
-                    l.on('mouseout', function(e) {
-                      e.target.setStyle({ fillOpacity: 0.15, weight: 2 });
-                      e.target.bringToBack();
-                    });
-                  }
-                });
-                
-                kecamatanLayersRef.current[LIST_KECAMATAN[i]] = layer;
+              kecamatanLayersRef.current[LIST_KECAMATAN[i]] = layer;
 
-                // Tampilkan layer ke peta HANYA jika dicentang pada filter visibility-nya
-                setKecamatanVisibility(prevVis => {
-                   if (prevVis[LIST_KECAMATAN[i]]) {
-                       layer.addTo(mapInstanceRef.current);
-                   }
-                   return prevVis;
-                });
-              }
-            } catch (err) {
-              console.log(`Gagal memuat batas Kecamatan ${LIST_KECAMATAN[i]}:`, err);
+              // Tampilkan layer ke peta HANYA jika dicentang pada filter visibility-nya
+              setKecamatanVisibility(prevVis => {
+                 if (prevVis[LIST_KECAMATAN[i]]) {
+                     if (mapInstanceRef.current && !mapInstanceRef.current.hasLayer(layer)) {
+                         layer.addTo(mapInstanceRef.current);
+                     }
+                 }
+                 return prevVis;
+              });
             }
+          } catch (err) {
+            console.log(`Gagal memuat batas Kecamatan ${LIST_KECAMATAN[i]}:`, err);
           }
-        } catch(err) {
-          console.log('Batas wilayah Samarinda gagal dimuat:', err);
         }
       };
 
