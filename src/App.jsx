@@ -1044,7 +1044,7 @@ const AbsensiView = ({ attendances, onBack, onDelete, isProcessing, onRefresh, e
   );
 };
 
-const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, globalFeeds }) => {
+const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, globalFeeds, supabaseClient }) => {
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [isMapReady, setIsMapReady] = useState(false);
   
@@ -1081,10 +1081,52 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
     const saved = localStorage.getItem('master_showGlobalLayers');
     return saved !== null ? JSON.parse(saved) : true; 
   });
-  const [globalLayers, setGlobalLayers] = useState(() => {
-    const saved = localStorage.getItem('master_globalLayersData');
-    return saved !== null ? JSON.parse(saved) : [];
-  });
+  
+  const [globalLayers, setGlobalLayers] = useState([]);
+  const [isSavingGlobal, setIsSavingGlobal] = useState(false);
+
+  // Ambil data dari Supabase saat peta siap
+  useEffect(() => {
+    const fetchGlobalLayers = async () => {
+      if (!supabaseClient) return;
+      try {
+        const { data, error } = await supabaseClient.from('global_settings').select('data_value').eq('id', 'master_map_layers').single();
+        if (data && data.data_value) {
+          setGlobalLayers(data.data_value);
+        } else {
+          const saved = localStorage.getItem('master_globalLayersData');
+          if (saved) setGlobalLayers(JSON.parse(saved));
+        }
+      } catch (e) {
+        console.log("Fallback to local storage for global layers", e);
+        const saved = localStorage.getItem('master_globalLayersData');
+        if (saved) setGlobalLayers(JSON.parse(saved));
+      }
+    };
+    if (isMapReady) fetchGlobalLayers();
+  }, [supabaseClient, isMapReady]);
+
+  // Backup ke local storage setiap kali ada perubahan
+  useEffect(() => { localStorage.setItem('master_globalLayersData', JSON.stringify(globalLayers)); }, [globalLayers]);
+
+  // Fungsi simpan ke database
+  const saveGlobalLayersToDB = async () => {
+    if (!supabaseClient) return;
+    setIsSavingGlobal(true);
+    try {
+      const { error } = await supabaseClient.from('global_settings').upsert({ 
+        id: 'master_map_layers', 
+        data_value: globalLayers 
+      });
+      if (error) throw error;
+      alert("Layer Global berhasil disinkronkan ke Cloud Supabase!");
+    } catch (err) {
+      alert("Gagal menyimpan ke Cloud: " + err.message + "\n\nPastikan Anda sudah membuat tabel 'global_settings' di Supabase.");
+    } finally {
+      setIsSavingGlobal(false);
+    }
+  };
+
   const [showGlobalEditor, setShowGlobalEditor] = useState(false);
   const [globalInputMode, setGlobalInputMode] = useState('view'); // 'view', 'line', 'polygon'
 
@@ -2212,8 +2254,16 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
              </div>
           </div>
           
-          <div className="p-4 border-t border-slate-200 bg-transparent mt-2">
-            <p className="text-[8px] text-slate-400 text-center font-medium leading-relaxed">Data Layer Global tersimpan secara lokal di peramban ini dan akan selalu tampil menimpa peta proyek mana pun.</p>
+          <div className="p-4 border-t border-slate-200 bg-transparent mt-2 flex flex-col gap-2">
+            <button 
+              onClick={saveGlobalLayersToDB} 
+              disabled={isSavingGlobal}
+              className="w-full bg-blue-600 text-white py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-md hover:bg-blue-700 transition-colors flex justify-center items-center gap-2"
+            >
+              {isSavingGlobal ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              {isSavingGlobal ? 'Menyimpan...' : 'Simpan ke Cloud'}
+            </button>
+            <p className="text-[8px] text-slate-400 text-center font-medium leading-relaxed">Simpan ke Cloud agar data layer (sungai/jalan) tersinkronisasi dan muncul di device lain.</p>
           </div>
         </div>
       )}
@@ -2222,7 +2272,7 @@ const MasterMapView = ({ allProjects, onSelectProject, mapType, isUIHidden, glob
 };
 
 // --- KOMPONEN BARU: PETA INDUK 360 3D (CESIUM) ---
-const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBackToSelection, onViewRekap, globalFeeds }) => {
+const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBackToSelection, onViewRekap, globalFeeds, supabaseClient }) => {
   // State untuk kontrol peta induk
   const [mapType, setMapType] = useState(() => localStorage.getItem('master_mapType') || 'satellite');
   const [isUIHidden, setIsUIHidden] = useState(false);
@@ -2249,7 +2299,7 @@ const MasterDashboardView = ({ allProjects, onSelectProject, onAddProject, onBac
       
       {/* MAP BACKGROUND (100% SCREEN) */}
       <div className="absolute inset-0 z-0">
-        <MasterMapView allProjects={filteredProjectsForMap} onSelectProject={onSelectProject} mapType={mapType} isUIHidden={isUIHidden} globalFeeds={globalFeeds} />
+        <MasterMapView allProjects={filteredProjectsForMap} onSelectProject={onSelectProject} mapType={mapType} isUIHidden={isUIHidden} globalFeeds={globalFeeds} supabaseClient={supabaseClient} />
       </div>
 
       {/* LOGO & MENU TOGGLE (MENGAMBANG DI KIRI ATAS) */}
@@ -7325,6 +7375,7 @@ export default function App() {
             onBackToSelection={handleBackToSelection}
             onViewRekap={() => setShowGlobalRekap(true)}
             globalFeeds={globalFeeds}
+            supabaseClient={supabaseClient}
         />
 
         {showNewProjectModal && (
